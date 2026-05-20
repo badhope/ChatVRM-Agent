@@ -37,7 +37,7 @@
 - [x] Agent 评估 (`agent-evaluation`)
 
 #### 3. MCP 服务器配置
-- [x] GitHub MCP Server（已配置，集成您的 GitHub Token）
+- [x] GitHub MCP Server
 - [x] Filesystem MCP Server
 - [x] Git MCP Server
 - [x] SQLite MCP Server
@@ -62,7 +62,10 @@ DevFlow-Agent/
 │   ├── agent-tool-builder/
 │   ├── agent-orchestrator/
 │   └── agent-evaluation/
-└── DEVELOPMENT_SETUP.md      # 详细开发环境配置
+└── docs/                    # 开发文档
+    ├── completeness-checklist.md
+    ├── technical-roadmap.md
+    └── tool-library-design.md
 ```
 
 ## 🚀 快速开始
@@ -228,7 +231,6 @@ npm run test:coverage
 已配置以下 MCP 服务器：
 
 1. **GitHub** - GitHub API 集成
-   - Token: 已配置（您的 GitHub Token）
    - 功能: 仓库操作、Issue、PR 等
 
 2. **Filesystem** - 文件系统访问
@@ -243,7 +245,6 @@ npm run test:coverage
    - 功能: 持久化存储
 
 5. **Brave Search** - 网络搜索
-   - API Key: 需要配置
    - 功能: 实时网络搜索
 
 ## 📚 下一步
@@ -261,9 +262,3 @@ npm run test:coverage
 ## 📄 许可证
 
 MIT License - 详见 [LICENSE](./LICENSE)
-
----
-
-**配置时间**: 2026-05-19  
-**配置者**: AI Assistant (基于 AI-Dev-Config)  
-**版本**: 1.0.0
