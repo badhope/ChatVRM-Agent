@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+dist/
+.pnp
+.pnp.js
+
+# Coverage
+coverage/
+
+# Build
+build/
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+*.test.js
+*.spec.js
+
+# Temporary
+tmp/
+temp/
+
+# Source
+src/
+tsconfig.json
+.eslintrc.cjs
+jest.config.js
+vitest.config.ts
+
+# DevFlow data
+.devflow/
+
+# SDK
+sdk/
+
+# Packages
+packages/
+
+# Config backups
+config_backup*.json
+
+# Tests
+*.test.ts
+*.spec.ts
+__tests__/
+
+# Docs
+CONTRIBUTING.md
+README_zh.md

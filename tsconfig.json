@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mcp/skills": ["./packages/core/index.ts"],
+      "@mcp/skills/*": ["./packages/core/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "packages/**",
+    "skills/**",
+    "mcp/**"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}

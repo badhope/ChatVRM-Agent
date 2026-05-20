@@ -1,0 +1,56 @@
+{
+  "name": "devflow-agent",
+  "displayName": "DevFlow Agent",
+  "description": "AI-powered development assistant integrated into VS Code",
+  "version": "0.1.0",
+  "publisher": "devflow",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Machine Learning", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "devflow.runAgent", "title": "DevFlow: Run Agent" },
+      { "command": "devflow.openChat", "title": "DevFlow: Open Chat" },
+      { "command": "devflow.generateRepoMap", "title": "DevFlow: Generate Repo Map" },
+      { "command": "devflow.showPlugins", "title": "DevFlow: Show Plugins" },
+      { "command": "devflow.enableMCP", "title": "DevFlow: Enable MCP Service" },
+      { "command": "devflow.gitCheckpoint", "title": "DevFlow: Git Checkpoint" },
+      { "command": "devflow.gitUndo", "title": "DevFlow: Git Undo" }
+    ],
+    "viewsContainers": {
+      "activitybar": [{ "id": "devflow", "title": "DevFlow Agent", "icon": "resources/icon.svg" }]
+    },
+    "views": {
+      "devflow": [
+        { "id": "devflow.chat", "name": "Chat", "type": "webview" },
+        { "id": "devflow.plugins", "name": "Plugins" },
+        { "id": "devflow.mcp", "name": "MCP Services" }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        { "command": "devflow.runAgent", "when": "editorHasSelection", "group": "devflow" }
+      ]
+    },
+    "configuration": {
+      "title": "DevFlow Agent",
+      "properties": {
+        "devflow.cliPath": { "type": "string", "default": "", "description": "Path to devflow CLI (auto-detected if empty)" },
+        "devflow.defaultModel": { "type": "string", "default": "claude-3-5-sonnet-20241022", "description": "Default AI model" },
+        "devflow.autoCheckpoint": { "type": "boolean", "default": true, "description": "Auto-create git checkpoints before changes" },
+        "devflow.showRepoMap": { "type": "boolean", "default": true, "description": "Show repo map on startup" }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

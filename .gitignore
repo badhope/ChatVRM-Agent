@@ -1,0 +1,112 @@
+# Sensitive files - NEVER commit these
+.env
+.env.*
+.devflow/
+config_backup.json
+config_backup*.json
+*.key
+*.pem
+
+# Documentation files that may contain sensitive info
+*_NOTES.md
+*_BACKUP.md
+*_COMPLETE.md
+*_REPAIR.md
+*_SETUP.md
+TEMP_*.md
+SECURITY_*.md
+CREDENTIALS_*.md
+
+# GitHub tokens and secrets patterns
+.github_token
+*.token
+*.secret
+ghp_*
+sk-*
+
+# Sensitive configuration files
+credentials.json
+secrets.json
+*.credentials
+*.private
+
+# Local development files
+setup.sh
+*.local
+local_*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+config-validation-report.json
+*.tmp
+
+# Memory stores (runtime data)
+memory/stores/*.json
+!memory/stores/*.json.example
+
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.bak
+*.temp
+*.swp
+node_modules/
+dist/
+
+# DevFlow runtime data
+.devflow/
+
+# Config backups
+config_backup.json
+config_backup*.json
+
+# SDK build output
+sdk/dist/
+
+# Packages (local)
+packages/

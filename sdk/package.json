@@ -1,0 +1,22 @@
+{
+  "name": "@devflow/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./agent": { "types": "./dist/agent.d.ts", "import": "./dist/agent.js" },
+    "./parser": { "types": "./dist/parser.d.ts", "import": "./dist/parser.js" },
+    "./editor": { "types": "./dist/editor.d.ts", "import": "./dist/editor.js" },
+    "./plugins": { "types": "./dist/plugins.d.ts", "import": "./dist/plugins.js" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
