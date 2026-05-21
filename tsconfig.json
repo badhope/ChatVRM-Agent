@@ -15,11 +15,7 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "baseUrl": ".",
-    "paths": {
-      "@mcp/skills": ["./packages/core/index.ts"],
-      "@mcp/skills/*": ["./packages/core/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src/**/*.ts"

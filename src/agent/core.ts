@@ -56,7 +56,7 @@ export type { TaskStep, Task } from './types.js';
 // Re-export 意图识别器（向后兼容）
 export { intentRecognizer } from './intent-recognizer.js';
 export { planTask } from './task-planner.js';
-export { executeStep } from './step-executor.js';
+export { executeStep } from './core/tool-executor.js';
 
 // Re-export 核心子模块类型
 export {

@@ -88,7 +88,7 @@ export { IntentRecognizer, type IntentResult } from './intent-recognizer.js';
 export { planTask } from './task-planner.js';
 
 // ==================== Step Executor ====================
-export { executeStep } from './step-executor.js';
+export { executeStep } from './core/tool-executor.js';
 
 // ==================== Reasoner ====================
 export {

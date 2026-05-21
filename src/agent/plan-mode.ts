@@ -14,7 +14,7 @@ import type { ReasonerConfig } from './llm-caller.js';
 import { intentRecognizer } from './intent-recognizer.js';
 import { planTask } from './task-planner.js';
 import { reasonStep } from './reasoner.js';
-import { executeStep } from './step-executor.js';
+import { executeStep } from './core/tool-executor.js';
 import { ContextBuilder } from './context-builder.js';
 import type { TaskStep, Task } from './types.js';
 

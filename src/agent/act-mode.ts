@@ -11,7 +11,7 @@ import chalk from 'chalk';
 import type { TaskStep } from './types.js';
 import type { PlanResult } from './plan-mode.js';
 import { reasonStep } from './reasoner.js';
-import { executeStep } from './step-executor.js';
+import { executeStep } from './core/tool-executor.js';
 import { intentRecognizer } from './intent-recognizer.js';
 import { planTask } from './task-planner.js';
 import { detectIssues, generateTrustReport, askUserConfirmation, TrustLevel } from './trust.js';
