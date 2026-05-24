@@ -253,7 +253,6 @@ npm run lint
 
 ## 子项目
 
-- `/web` — React Web 界面
 - `/sdk` — JavaScript SDK
 - `/vscode` — VSCode 扩展
 

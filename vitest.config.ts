@@ -15,7 +15,6 @@ export default defineConfig({
         '**/*.test.ts',
         '**/mcp/**',
         '**/vscode/**',
-        '**/web/**',
         '**/sdk/**'
       ]
     }
