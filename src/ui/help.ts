@@ -57,8 +57,8 @@ function showContent(topic: HelpTopic): void {
         console.log(chalk.yellow(`  ${line}`));
       } else if (line.startsWith('  \u2022')) {
         console.log(chalk.white(`  ${line}`));
-      } else if (line.startsWith('  devflow') || line.startsWith('  ')) {
-        const cmdMatch = line.match(/^( {2})(devflow\s+\S+)(.*)/);
+      } else if (line.startsWith('  personal-assistant') || line.startsWith('  ')) {
+        const cmdMatch = line.match(/^( {2})(personal-assistant\s+\S+)(.*)/);
         if (cmdMatch) {
           console.log(`  ${chalk.green(cmdMatch[2])}${chalk.gray(cmdMatch[3])}`);
         } else {
@@ -125,16 +125,16 @@ export async function interactiveHelp(): Promise<void> {
 
 export function printQuickHelp(): void {
   console.log();
-  console.log(chalk.bold.cyan('  DevFlow Agent 快速帮助'));
+  console.log(chalk.bold.cyan('  Personal-Assistant Agent 快速帮助'));
   console.log(chalk.gray('  ' + '\u2500'.repeat(30)));
   console.log();
   console.log('  常用命令:');
-  console.log(`  ${chalk.green('devflow')}                    交互式主菜单`);
-  console.log(`  ${chalk.green('devflow chat ask "问题"')}    快速提问`);
-  console.log(`  ${chalk.green('devflow agent run "任务"')}   Agent执行任务`);
-  console.log(`  ${chalk.green('devflow help')}              交互式帮助`);
-  console.log(`  ${chalk.green('devflow --help')}            命令行帮助`);
+  console.log(`  ${chalk.green('personal-assistant')}                    交互式主菜单`);
+  console.log(`  ${chalk.green('personal-assistant chat ask "问题"')}    快速提问`);
+  console.log(`  ${chalk.green('personal-assistant agent run "任务"')}   Agent执行任务`);
+  console.log(`  ${chalk.green('personal-assistant help')}              交互式帮助`);
+  console.log(`  ${chalk.green('personal-assistant --help')}            命令行帮助`);
   console.log();
-  console.log(chalk.gray('  \uD83D\uDCA1 输入 devflow help 进入多级帮助目录'));
+  console.log(chalk.gray('  \uD83D\uDCA1 输入 personal-assistant help 进入多级帮助目录'));
   console.log();
 }

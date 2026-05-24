@@ -1,4 +1,4 @@
-# DevFlow-Agent 技术路线图
+# Personal-Assistant 技术路线图
 
 ## 市场分析与创新方向
 
@@ -31,7 +31,7 @@
 | Cursor | ★★★★☆ | ★★☆☆☆ | ❌ 单Agent |
 | Copilot | ★★★★☆ | ★★☆☆☆ | ❌ 单Agent |
 | Claude Code | ★★★★★ | ★★☆☆☆ | ❌ 单Agent |
-| **DevFlow（目标）** | ★★★★☆ | ★★★★★ | ✅ 双Agent |
+| **Personal Assistant（目标）** | ★★★★☆ | ★★★★★ | ✅ 双Agent |
 
 ---
 
@@ -41,7 +41,7 @@
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              DevFlow 双Agent系统                  │
+│              Personal Assistant 双Agent系统                  │
 ├─────────────────────────────────────────────────┤
 │                                                  │
 │  ┌──────────────┐      ┌──────────────┐        │
@@ -74,7 +74,7 @@
 
 #### B. **隐私优先：100%本地运行**
 
-| 需求 | 市场现状 | DevFlow机会 |
+| 需求 | 市场现状 | Personal Assistant机会 |
 |------|---------|------------|
 | 代码不上云 | Copilot Enterprise（昂贵） | ✅ 纯本地，免费 |
 | 数据主权 | 无开源方案 | ✅ 完全可控 |
@@ -88,7 +88,7 @@
 用户需求 → Agent生成 → 结果（可能错误）→ 用户手动修改 → 继续
 ```
 
-**DevFlow流程**：
+**Personal Assistant流程**：
 ```
 用户需求 → 开发Agent生成 → 审查Agent检测问题
     ↑                                    ↓
@@ -171,7 +171,7 @@ interface AgentProtocol {
 | Ollama | 简单、本地 | 速度慢 | 个人开发 |
 | LM Studio | 图形界面 | 资源占用高 | 设计师 |
 | vLLM | 高性能 | 配置复杂 | 企业部署 |
-| **本地API + DevFlow** | 完全可控 | 需要调优 | DevFlow目标 |
+| **本地API + Personal Assistant** | 完全可控 | 需要调优 | Personal Assistant目标 |
 
 #### 存储与向量数据库
 
@@ -185,7 +185,7 @@ interface AgentProtocol {
 
 ### 4.1 核心差异化：不是"助手"，是"团队"
 
-| 传统工具 | DevFlow |
+| 传统工具 | Personal Assistant |
 |---------|---------|
 | 你是司机，AI是副驾驶 | AI是同事，你是PM |
 | AI执行，你检查 | AI开发，AI审查 |
@@ -221,7 +221,7 @@ interface AgentProtocol {
 
 ```
 ┌─────────────────────────────────────┐
-│  DevFlow 本地架构                    │
+│  Personal Assistant 本地架构                    │
 ├─────────────────────────────────────┤
 │                                      │
 │  用户代码 ──→ 开发Agent（本地）      │
@@ -243,16 +243,16 @@ interface AgentProtocol {
 
 ```bash
 # 快速审查（仅安全）
-devflow review --depth quick
+personal-assistant review --depth quick
 
 # 标准审查（安全+性能）
-devflow review --depth standard
+personal-assistant review --depth standard
 
 # 深度审查（全部维度）
-devflow review --depth deep
+personal-assistant review --depth deep
 
 # 自定义审查规则
-devflow review --rules custom-rules.json
+personal-assistant review --rules custom-rules.json
 ```
 
 ---
@@ -292,7 +292,7 @@ devflow review --rules custom-rules.json
 
 ## 六、与竞品的直接对比
 
-| 维度 | Copilot | Cursor | Claude Code | **DevFlow** |
+| 维度 | Copilot | Cursor | Claude Code | **Personal Assistant** |
 |------|---------|--------|------------|------------|
 | 架构 | 单Agent | 单Agent | 单Agent | **双Agent** |
 | 本地化 | ❌ 云端 | ❌ 云端 | ❌ 云端 | **✅ 100%本地** |
@@ -352,7 +352,7 @@ Pro版（$9.9/月）
 
 ```bash
 # 1. 用户输入任务
-devflow develop "实现用户登录功能"
+personal-assistant develop "实现用户登录功能"
 
 # 2. 开发Agent生成代码
 → 生成 login.ts

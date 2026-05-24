@@ -8,7 +8,7 @@ import type { ChangeAction } from '../../agent/risk-rules.js';
 export const agentRiskCommand = new Command('risk')
   .description('风险评估与变更控制');
 
-// devflow agent risk <action> <target> - 风险评估
+// personal-assistant agent risk <action> <target> - 风险评估
 agentRiskCommand
   .command('risk')
   .description('风险评估 - 评估文件操作的风险等级')
@@ -48,7 +48,7 @@ agentRiskCommand
     console.log();
   });
 
-// devflow agent risk-rules - 查看风险规则
+// personal-assistant agent risk-rules - 查看风险规则
 agentRiskCommand
   .command('risk-rules')
   .description('查看所有风险评估规则')
@@ -68,7 +68,7 @@ agentRiskCommand
     console.log();
   });
 
-// devflow agent changes - 变更历史
+// personal-assistant agent changes - 变更历史
 agentRiskCommand
   .command('changes')
   .description('查看变更控制历史')
@@ -114,7 +114,7 @@ agentRiskCommand
     console.log();
   });
 
-// devflow agent backup <文件> - 手动备份文件
+// personal-assistant agent backup <文件> - 手动备份文件
 agentRiskCommand
   .command('backup')
   .description('手动备份文件')
@@ -132,7 +132,7 @@ agentRiskCommand
     console.log();
   });
 
-// devflow agent rollback <记录ID> - 回滚变更
+// personal-assistant agent rollback <记录ID> - 回滚变更
 agentRiskCommand
   .command('rollback')
   .description('回滚变更（恢复到修改前的状态）')
@@ -146,7 +146,7 @@ agentRiskCommand
 
     if (!record) {
       printError(`找不到变更记录: ${id}`);
-      console.log(chalk.gray('  提示: 使用 devflow agent changes 查看变更历史'));
+      console.log(chalk.gray('  提示: 使用 personal-assistant agent changes 查看变更历史'));
       console.log();
       return;
     }

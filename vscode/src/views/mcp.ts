@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DevFlowClient, MCPServiceInfo } from '../client';
+import { PersonalAssistantClient, MCPServiceInfo } from '../client';
 
 export class MCPViewProvider implements vscode.TreeDataProvider<MCPItem> {
     private _onDidChangeTreeData = new vscode.EventEmitter<MCPItem | undefined | void>();
@@ -7,7 +7,7 @@ export class MCPViewProvider implements vscode.TreeDataProvider<MCPItem> {
 
     private services: MCPServiceInfo[] = [];
 
-    constructor(private client: DevFlowClient) {}
+    constructor(private client: PersonalAssistantClient) {}
 
     public getTreeItem(element: MCPItem): vscode.TreeItem {
         return element;
@@ -76,7 +76,7 @@ export class MCPItem extends vscode.TreeItem {
         );
 
         this.command = {
-            command: 'devflow.enableMCP',
+            command: 'personal-assistant.enableMCP',
             title: 'Toggle MCP Service',
             arguments: []
         };

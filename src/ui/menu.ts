@@ -205,7 +205,7 @@ export async function showMainMenu(): Promise<string | null> {
   ];
 
   return showGroupedMenu(groups, {
-    title: '📋 DevFlow Agent 主菜单',
+    title: '📋 Personal Assistant Agent 主菜单',
     showBack: false,
   });
 }

@@ -27,10 +27,10 @@ toolsExecCommand
     }
 
     printInfo('独立使用示例:');
-    console.log(chalk.gray('  devflow tools shell "ls -la"'));
-    console.log(chalk.gray('  devflow tools run read_file path=./src/index.ts'));
-    console.log(chalk.gray('  devflow tools run search_files pattern="TODO" path=./src'));
-    console.log(chalk.gray('  echo "hello" | devflow tools run write_file path=output.txt'));
+    console.log(chalk.gray('  personal-assistant tools shell "ls -la"'));
+    console.log(chalk.gray('  personal-assistant tools run read_file path=./src/index.ts'));
+    console.log(chalk.gray('  personal-assistant tools run search_files pattern="TODO" path=./src'));
+    console.log(chalk.gray('  echo "hello" | personal-assistant tools run write_file path=output.txt'));
     console.log();
   });
 

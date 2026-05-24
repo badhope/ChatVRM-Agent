@@ -1,6 +1,6 @@
 {
-  "name": "@devflow/sdk",
-  "version": "0.1.0",
+  "name": "@personal-assistant/sdk",
+  "version": "1.0.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

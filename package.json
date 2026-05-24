@@ -1,11 +1,11 @@
 {
-  "name": "@devflow/agent",
-  "version": "0.1.0",
-  "description": "DevFlow Agent CLI - 可靠、诚实、可控的AI开发助手",
+  "name": "@personal-assistant/agent",
+  "version": "1.0.0",
+  "description": "Personal Assistant Agent CLI - 个人AI助手代理",
   "type": "module",
   "main": "dist/cli.js",
   "bin": {
-    "devflow": "./dist/cli.js"
+    "personal-assistant": "./dist/cli.js"
   },
   "scripts": {
     "postinstall": "npm run build",
@@ -29,15 +29,14 @@
     "ai",
     "cli",
     "agent",
-    "devflow",
+    "personal-assistant",
     "llm",
-    "chat",
-    "code-review"
+    "chat"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/badhope/DevFlow-Agent"
+    "url": "https://github.com/badhope/Personal-Assistant"
   },
   "dependencies": {
     "async-lock": "^1.4.1",

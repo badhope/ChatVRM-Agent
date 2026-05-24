@@ -16,7 +16,7 @@ export interface PluginManifest {
 }
 
 export interface ShareBundle {
-  format: 'devflow-plugin';
+  format: 'personal-assistant-plugin';
   version: string;
   plugin: { manifest: PluginManifest; files: Record<string, string> };
   metadata: { createdAt: string; exportedBy?: string; checksum: string };
@@ -49,14 +49,14 @@ export interface ImportResult {
 }
 
 const BUNDLE_FORMAT_VERSION = '1.0.0';
-const PLUGIN_SEARCH_DIRS = ['./plugins', '~/.devflow/plugins'];
+const PLUGIN_SEARCH_DIRS = ['./plugins', '~/.personal-assistant/plugins'];
 
 function resolveHome(p: string): string {
   return p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p;
 }
 
 function defaultConfigDir(): string {
-  return path.join(os.homedir(), '.devflow');
+  return path.join(os.homedir(), '.personal-assistant');
 }
 
 export function generateChecksum(content: string): string {
@@ -73,7 +73,7 @@ export function stringToBundle(str: string): ShareBundle {
 
 export function validateBundle(bundle: ShareBundle): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-  if (bundle.format !== 'devflow-plugin') errors.push(`Invalid format: expected "devflow-plugin", got "${bundle.format}"`);
+  if (bundle.format !== 'personal-assistant-plugin') errors.push(`Invalid format: expected "personal-assistant-plugin", got "${bundle.format}"`);
   if (!bundle.version) errors.push('Missing bundle version');
   if (!bundle.plugin?.manifest) {
     errors.push('Missing plugin manifest');
@@ -123,10 +123,10 @@ export async function exportPlugin(options: ExportOptions): Promise<ShareBundle>
   }
   files['manifest.json'] = Buffer.from(manifestRaw, 'utf-8').toString('base64');
   const pluginData = { manifest, files };
-  const serialized = JSON.stringify({ format: 'devflow-plugin' as const, version: BUNDLE_FORMAT_VERSION, plugin: pluginData });
+  const serialized = JSON.stringify({ format: 'personal-assistant-plugin' as const, version: BUNDLE_FORMAT_VERSION, plugin: pluginData });
   const checksum = generateChecksum(serialized);
   const bundle: ShareBundle = {
-    format: 'devflow-plugin', version: BUNDLE_FORMAT_VERSION, plugin: pluginData,
+    format: 'personal-assistant-plugin', version: BUNDLE_FORMAT_VERSION, plugin: pluginData,
     metadata: { createdAt: new Date().toISOString(), exportedBy: process.env.USER ?? process.env.USERNAME ?? undefined, checksum },
   };
   if (options.outputPath) {

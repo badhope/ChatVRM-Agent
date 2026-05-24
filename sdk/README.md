@@ -1,17 +1,17 @@
-# @devflow/sdk
+# @personal-assistant/sdk
 
-Programmatic API for DevFlow Agent.
+Programmatic API for Personal Assistant.
 
 ## Installation
 
 ```bash
-npm install @devflow/sdk
+npm install @personal-assistant/sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { runAgent, parseFile, generateRepoMap, DevFlowError } from '@devflow/sdk';
+import { runAgent, parseFile, generateRepoMap, PersonalAssistantError } from '@personal-assistant/sdk';
 
 // Run agent
 const result = await runAgent('Add error handling to the auth module');
@@ -29,7 +29,7 @@ console.log(map);
 try {
   await runAgent('Do something');
 } catch (error) {
-  if (error instanceof DevFlowError) {
+  if (error instanceof PersonalAssistantError) {
     console.error(`[${error.code}] ${error.message}`);
   }
 }
@@ -39,12 +39,12 @@ try {
 
 ### Agent
 
-The `DevFlowAgent` class provides full control over agent execution.
+The `PersonalAssistantAgent` class provides full control over agent execution.
 
 ```typescript
-import { DevFlowAgent } from '@devflow/sdk/agent';
+import { PersonalAssistantAgent } from '@personal-assistant/sdk/agent';
 
-const agent = new DevFlowAgent({
+const agent = new PersonalAssistantAgent({
   model: 'claude-3-5-sonnet',
   temperature: 0.3,
   autoCheckpoint: true
@@ -102,7 +102,7 @@ console.log('All steps succeeded:', result.allSuccess);
 #### Convenience Functions
 
 ```typescript
-import { runAgent, planTask, executePlan } from '@devflow/sdk';
+import { runAgent, planTask, executePlan } from '@personal-assistant/sdk';
 
 // Run agent
 const result = await runAgent('Add tests for the API module', {
@@ -125,7 +125,7 @@ The `ContextBuilder` class builds comprehensive context for the agent by combini
 - **Knowledge Graph**: Prior context from memory
 
 ```typescript
-import { ContextBuilder } from '@devflow/sdk/parser';
+import { ContextBuilder } from '@personal-assistant/sdk/parser';
 
 const builder = new ContextBuilder();
 const result = await builder.build({
@@ -146,7 +146,7 @@ console.log('Knowledge entries found:', result.knowledgeEntryCount);
 Or via the agent:
 
 ```typescript
-const agent = new DevFlowAgent();
+const agent = new PersonalAssistantAgent();
 const result = await agent.contextBuilder.build({
   rootDir: './src',
   query: 'authentication'
@@ -158,7 +158,7 @@ const result = await agent.contextBuilder.build({
 Build a searchable index of code symbols:
 
 ```typescript
-import { buildCodeIndex, searchIndex, CodeIndexer } from '@devflow/sdk/parser';
+import { buildCodeIndex, searchIndex, CodeIndexer } from '@personal-assistant/sdk/parser';
 
 // Build an index
 const index = await buildCodeIndex('./src');
@@ -173,12 +173,12 @@ const index = await CodeIndexer.build('./src');
 
 ### Parser
 
-The `DevFlowParser` class provides code parsing and analysis.
+The `PersonalAssistantParser` class provides code parsing and analysis.
 
 ```typescript
-import { DevFlowParser } from '@devflow/sdk/parser';
+import { PersonalAssistantParser } from '@personal-assistant/sdk/parser';
 
-const parser = new DevFlowParser();
+const parser = new PersonalAssistantParser();
 
 // Parse a file
 const result = await parser.parseFile('./src/app.ts');
@@ -214,12 +214,12 @@ interface Symbol {
 
 ### Editor
 
-The `DevFlowEditor` class provides code editing capabilities using the SEARCH/REPLACE pattern.
+The `PersonalAssistantEditor` class provides code editing capabilities using the SEARCH/REPLACE pattern.
 
 ```typescript
-import { DevFlowEditor } from '@devflow/sdk/editor';
+import { PersonalAssistantEditor } from '@personal-assistant/sdk/editor';
 
-const editor = new DevFlowEditor();
+const editor = new PersonalAssistantEditor();
 
 // Single edit
 const result = await editor.edit({
@@ -254,12 +254,12 @@ refs.forEach(ref => {
 
 ### Plugins
 
-The `DevFlowPlugins` class manages plugins and MCP servers.
+The `PersonalAssistantPlugins` class manages plugins and MCP servers.
 
 ```typescript
-import { DevFlowPlugins } from '@devflow/sdk/plugins';
+import { PersonalAssistantPlugins } from '@personal-assistant/sdk/plugins';
 
-const plugins = new DevFlowPlugins();
+const plugins = new PersonalAssistantPlugins();
 
 // List plugins
 const list = await plugins.list();
@@ -283,13 +283,13 @@ mcpServers.forEach(s => {
 The SDK provides unified error types that correspond to the backend:
 
 ```typescript
-import { DevFlowError, ValidationError, NotFoundError, AuthenticationError, NetworkError, formatError } from '@devflow/sdk';
+import { PersonalAssistantError, ValidationError, NotFoundError, AuthenticationError, NetworkError, formatError } from '@personal-assistant/sdk';
 
 try {
   await agent.run('Do something');
 } catch (error) {
   // Check error type
-  if (error instanceof DevFlowError) {
+  if (error instanceof PersonalAssistantError) {
     console.error(`[${error.code}] ${error.message}`);
     console.error(`Status: ${error.statusCode}`);
     if (error.details) {
@@ -379,7 +379,7 @@ import type {
   KnowledgeEntry,
   ChangeControlStats,
   ApiResponse
-} from '@devflow/sdk';
+} from '@personal-assistant/sdk';
 ```
 
 ### New Types Added
@@ -391,7 +391,7 @@ import type {
 - **KnowledgeEntry**: Entry from the knowledge graph
 - **ChangeControlStats**: Statistics from change control
 - **ApiResponse**: Standard API response wrapper
-- **DevFlowError**: Base error class (re-exported from errors)
+- **PersonalAssistantError**: Base error class (re-exported from errors)
 
 ## License
 

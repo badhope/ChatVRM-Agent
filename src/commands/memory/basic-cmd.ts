@@ -20,7 +20,7 @@ memoryBasicCommand
 
     if (recent.length === 0) {
       printInfo('暂无对话记忆');
-      printInfo('使用 devflow chat ask 开始对话后，记忆会自动保存');
+      printInfo('使用 personal-assistant chat ask 开始对话后，记忆会自动保存');
       return;
     }
 

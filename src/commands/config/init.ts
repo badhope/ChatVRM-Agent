@@ -18,7 +18,7 @@ initConfigCommand
     printHeader();
     printSection('初始化配置向导');
 
-    printInfo('本向导将帮助您配置 DevFlow Agent\n');
+    printInfo('本向导将帮助您配置 Personal Assistant Agent\n');
 
     // 选择要配置的平台
     const { providers } = await inquirer.prompt([{
@@ -88,8 +88,8 @@ initConfigCommand
     }
 
     printSuccess('\n配置完成！');
-    printInfo('使用 devflow config list 查看当前配置');
-    printInfo('使用 devflow config test 测试连接');
+    printInfo('使用 personal-assistant config list 查看当前配置');
+    printInfo('使用 personal-assistant config test 测试连接');
   });
 
 // 查看所有配置

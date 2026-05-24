@@ -6,7 +6,7 @@ import inquirer from 'inquirer';
 import { printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 
-const SNIPPETS_DIR = path.join(os.homedir(), '.devflow', 'snippets');
+const SNIPPETS_DIR = path.join(os.homedir(), '.personal-assistant', 'snippets');
 
 export const snippetCommand = new Command('snippet')
   .description('代码片段管理（保存/搜索/插入）');

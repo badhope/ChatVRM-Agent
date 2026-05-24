@@ -182,7 +182,7 @@ historyCommand
     }
 
     const fs = await import('fs/promises');
-    const filename = `devflow-session-${session.id.slice(0, 8)}.${options.format}`;
+    const filename = `personal-assistant-session-${session.id.slice(0, 8)}.${options.format}`;
 
     let content = '';
     if (options.format === 'json') {

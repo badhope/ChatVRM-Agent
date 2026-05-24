@@ -94,7 +94,7 @@ export const chatSearchCommand = new Command('search')
     });
 
     console.log();
-    printInfo(`使用: devflow chat ask "你的问题" -m <模型ID>`);
+    printInfo(`使用: personal-assistant chat ask "你的问题" -m <模型ID>`);
     console.log();
   });
 
@@ -142,6 +142,6 @@ export const chatRemoteModelsCommand = new Command('remote-models')
     }
 
     console.log();
-    printInfo(`搜索: devflow chat search <关键词>`);
+    printInfo(`搜索: personal-assistant chat search <关键词>`);
     console.log();
   });

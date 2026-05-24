@@ -25,7 +25,7 @@ export function checkApiKey(providerType: ProviderType): boolean {
   const providerConfig = configManager.getProviderConfig(providerType);
   if (!providerConfig.apiKey && PROVIDER_INFO[providerType].requiresApiKey) {
     printError(`${PROVIDER_INFO[providerType].displayName} 需要配置API密钥`);
-    printInfo(`运行: devflow config set-key ${providerType} <apiKey>`);
+    printInfo(`运行: personal-assistant config set-key ${providerType} <apiKey>`);
     return false;
   }
   return true;

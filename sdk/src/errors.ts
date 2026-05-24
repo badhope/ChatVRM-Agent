@@ -1,25 +1,25 @@
 /**
- * DevFlow SDK - Error Classes
+ * Personal Assistant SDK - Error Classes
  *
- * Unified error handling for the DevFlow SDK.
+ * Unified error handling for the Personal Assistant SDK.
  * These errors correspond to the backend error types in src/utils/errors.ts.
  */
 
 /**
- * Base error class for DevFlow-specific errors.
+ * Base error class for Personal Assistant-specific errors.
  *
  * @example
  * ```typescript
  * try {
  *   await agent.run('some task');
  * } catch (error) {
- *   if (error instanceof DevFlowError) {
+ *   if (error instanceof Personal AssistantError) {
  *     console.error(`Error [${error.code}]: ${error.message}`);
  *   }
  * }
  * ```
  */
-export class DevFlowError extends Error {
+export class PersonalAssistantError extends Error {
   /**
    * Error code for programmatic handling.
    */
@@ -42,7 +42,7 @@ export class DevFlowError extends Error {
     details?: Record<string, any>
   ) {
     super(message);
-    this.name = 'DevFlowError';
+    this.name = 'PersonalAssistantError';
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
@@ -57,7 +57,7 @@ export class DevFlowError extends Error {
  * throw new ValidationError('Invalid input', { field: 'email' });
  * ```
  */
-export class ValidationError extends DevFlowError {
+export class ValidationError extends PersonalAssistantError {
   constructor(message: string, details?: Record<string, any>) {
     super(message, 'VALIDATION_ERROR', 400, details);
     this.name = 'ValidationError';
@@ -72,7 +72,7 @@ export class ValidationError extends DevFlowError {
  * throw new NotFoundError('File not found: ./src/missing.ts');
  * ```
  */
-export class NotFoundError extends DevFlowError {
+export class NotFoundError extends PersonalAssistantError {
   constructor(resource: string) {
     super(`${resource} not found`, 'NOT_FOUND', 404);
     this.name = 'NotFoundError';
@@ -87,7 +87,7 @@ export class NotFoundError extends DevFlowError {
  * throw new AuthenticationError('API key is invalid or expired');
  * ```
  */
-export class AuthenticationError extends DevFlowError {
+export class AuthenticationError extends PersonalAssistantError {
   constructor(message: string = 'Authentication required') {
     super(message, 'AUTH_ERROR', 401);
     this.name = 'AuthenticationError';
@@ -102,7 +102,7 @@ export class AuthenticationError extends DevFlowError {
  * throw new NetworkError('Failed to connect to API', { host: 'api.example.com' });
  * ```
  */
-export class NetworkError extends DevFlowError {
+export class NetworkError extends PersonalAssistantError {
   constructor(message: string, details?: Record<string, any>) {
     super(message, 'NETWORK_ERROR', 0, details);
     this.name = 'NetworkError';
@@ -126,7 +126,7 @@ export class NetworkError extends DevFlowError {
  * ```
  */
 export function formatError(error: unknown): { code: string; message: string; details?: any } {
-  if (error instanceof DevFlowError) {
+  if (error instanceof PersonalAssistantError) {
     return {
       code: error.code,
       message: error.message,

@@ -1,7 +1,7 @@
 /**
- * DevFlow Agent SDK - Agent Module
+ * Personal Assistant Agent SDK - Agent Module
  *
- * Provides programmatic access to the DevFlow Agent for running
+ * Provides programmatic access to the Personal Assistant Agent for running
  * AI-powered development tasks.
  */
 
@@ -14,7 +14,7 @@ import type {
   ContextBuildResult,
   KnowledgeEntry,
 } from './types.js';
-import { DevFlowError, formatError } from './errors.js';
+import { PersonalAssistantError, formatError } from './errors.js';
 
 /**
  * Plan result from plan mode.
@@ -79,21 +79,21 @@ export interface ActStepResult {
 }
 
 /**
- * DevFlowAgent - Main agent class for executing development tasks.
+ * PersonalAssistantAgent - Main agent class for executing development tasks.
  *
  * @example
  * ```typescript
- * const agent = new DevFlowAgent({ model: 'claude-3-5-sonnet' });
+ * const agent = new PersonalAssistantAgent({ model: 'claude-3-5-sonnet' });
  * agent.on('step', (step) => console.log(step));
  * const result = await agent.run('Add error handling to the auth module');
  * ```
  */
-export class DevFlowAgent {
+export class PersonalAssistantAgent {
   private options: AgentOptions;
   private stepHandlers: Map<string, Set<Function>> = new Map();
 
   /**
-   * Create a new DevFlowAgent instance.
+   * Create a new PersonalAssistantAgent instance.
    *
    * @param options - Configuration options for the agent
    */
@@ -154,14 +154,14 @@ export class DevFlowAgent {
     } catch (error) {
       const duration = Date.now() - startTime;
 
-      // Handle DevFlowError and re-throw with proper error handling
-      if (error instanceof DevFlowError) {
+      // Handle PersonalAssistantError and re-throw with proper error handling
+      if (error instanceof PersonalAssistantError) {
         throw error;
       }
 
       // Wrap unknown errors
       const formatted = formatError(error);
-      throw new DevFlowError(formatted.message, formatted.code, 500, formatted.details);
+      throw new PersonalAssistantError(formatted.message, formatted.code, 500, formatted.details);
     }
   }
 
@@ -213,11 +213,11 @@ export class DevFlowAgent {
         context: result.context,
       };
     } catch (error) {
-      if (error instanceof DevFlowError) {
+      if (error instanceof PersonalAssistantError) {
         throw error;
       }
       const formatted = formatError(error);
-      throw new DevFlowError(formatted.message, formatted.code, 500, formatted.details);
+      throw new PersonalAssistantError(formatted.message, formatted.code, 500, formatted.details);
     }
   }
 
@@ -294,11 +294,11 @@ export class DevFlowAgent {
         changeControlStats: result.changeControlStats,
       };
     } catch (error) {
-      if (error instanceof DevFlowError) {
+      if (error instanceof PersonalAssistantError) {
         throw error;
       }
       const formatted = formatError(error);
-      throw new DevFlowError(formatted.message, formatted.code, 500, formatted.details);
+      throw new PersonalAssistantError(formatted.message, formatted.code, 500, formatted.details);
     }
   }
 
@@ -459,11 +459,11 @@ export class ContextBuilderWrapper {
         knowledgeEntryCount: result.knowledgeEntryCount,
       };
     } catch (error) {
-      if (error instanceof DevFlowError) {
+      if (error instanceof PersonalAssistantError) {
         throw error;
       }
       const formatted = formatError(error);
-      throw new DevFlowError(formatted.message, formatted.code, 500, formatted.details);
+      throw new PersonalAssistantError(formatted.message, formatted.code, 500, formatted.details);
     }
   }
 
@@ -486,11 +486,11 @@ export class ContextBuilderWrapper {
       const builder = new ContextBuilder();
       return await builder.queryKnowledgeGraph(query);
     } catch (error) {
-      if (error instanceof DevFlowError) {
+      if (error instanceof PersonalAssistantError) {
         throw error;
       }
       const formatted = formatError(error);
-      throw new DevFlowError(formatted.message, formatted.code, 500, formatted.details);
+      throw new PersonalAssistantError(formatted.message, formatted.code, 500, formatted.details);
     }
   }
 
@@ -517,7 +517,7 @@ export class ContextBuilderWrapper {
  * ```
  */
 export async function runAgent(input: string, options?: AgentOptions): Promise<AgentResult> {
-  const agent = new DevFlowAgent(options);
+  const agent = new PersonalAssistantAgent(options);
   return agent.run(input);
 }
 
@@ -535,7 +535,7 @@ export async function runAgent(input: string, options?: AgentOptions): Promise<A
  * ```
  */
 export async function planTask(input: string, options?: AgentOptions & { rootDir?: string }): Promise<PlanResult> {
-  const agent = new DevFlowAgent(options);
+  const agent = new PersonalAssistantAgent(options);
   return agent.plan(input, { rootDir: options?.rootDir });
 }
 
@@ -553,6 +553,6 @@ export async function planTask(input: string, options?: AgentOptions & { rootDir
  * ```
  */
 export async function executePlan(plan: PlanResult, options?: ActModeConfig): Promise<ActResult> {
-  const agent = new DevFlowAgent();
+  const agent = new PersonalAssistantAgent();
   return agent.execute(plan, options);
 }

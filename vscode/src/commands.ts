@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
-import { DevFlowClient } from './client';
+import { PersonalAssistantClient } from './client';
 
-export function registerCommands(context: vscode.ExtensionContext, client: DevFlowClient): void {
-    // devflow.runAgent
+export function registerCommands(context: vscode.ExtensionContext, client: PersonalAssistantClient): void {
+    // personal-assistant.runAgent
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.runAgent', async () => {
+        vscode.commands.registerCommand('personal-assistant.runAgent', async () => {
             const input = await vscode.window.showInputBox({
-                prompt: 'Enter task for DevFlow',
-                placeHolder: 'Describe what you want DevFlow to do...'
+                prompt: 'Enter task for Personal Assistant',
+                placeHolder: 'Describe what you want Personal Assistant to do...'
             });
 
             if (input) {
-                const config = vscode.workspace.getConfiguration('devflow');
+                const config = vscode.workspace.getConfiguration('personal-assistant');
                 const model = config.get<string>('defaultModel');
                 const autoCheckpoint = config.get<boolean>('autoCheckpoint');
 
@@ -26,7 +26,7 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
                     await vscode.window.withProgress(
                         {
                             location: vscode.ProgressLocation.Notification,
-                            title: 'DevFlow Agent running...',
+                            title: 'Personal Assistant Agent running...',
                             cancellable: false
                         },
                         async (progress) => {
@@ -38,25 +38,25 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
                         }
                     );
 
-                    vscode.window.showInformationMessage('DevFlow completed successfully');
+                    vscode.window.showInformationMessage('Personal Assistant completed successfully');
                 } catch (err) {
                     const errorMsg = err instanceof Error ? err.message : String(err);
-                    vscode.window.showErrorMessage(`DevFlow error: ${errorMsg}`);
+                    vscode.window.showErrorMessage(`Personal Assistant error: ${errorMsg}`);
                 }
             }
         })
     );
 
-    // devflow.openChat
+    // personal-assistant.openChat
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.openChat', () => {
-            vscode.commands.executeCommand('devflow.chat.focus');
+        vscode.commands.registerCommand('personal-assistant.openChat', () => {
+            vscode.commands.executeCommand('personal-assistant.chat.focus');
         })
     );
 
-    // devflow.generateRepoMap
+    // personal-assistant.generateRepoMap
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.generateRepoMap', async () => {
+        vscode.commands.registerCommand('personal-assistant.generateRepoMap', async () => {
             try {
                 const result = await vscode.window.withProgress(
                     {
@@ -86,9 +86,9 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
         })
     );
 
-    // devflow.showPlugins
+    // personal-assistant.showPlugins
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.showPlugins', async () => {
+        vscode.commands.registerCommand('personal-assistant.showPlugins', async () => {
             try {
                 const response = await client.listPlugins();
 
@@ -117,9 +117,9 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
         })
     );
 
-    // devflow.enableMCP
+    // personal-assistant.enableMCP
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.enableMCP', async () => {
+        vscode.commands.registerCommand('personal-assistant.enableMCP', async () => {
             try {
                 const response = await client.listMCPServices();
 
@@ -155,9 +155,9 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
         })
     );
 
-    // devflow.gitCheckpoint
+    // personal-assistant.gitCheckpoint
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.gitCheckpoint', async () => {
+        vscode.commands.registerCommand('personal-assistant.gitCheckpoint', async () => {
             const message = await vscode.window.showInputBox({
                 prompt: 'Checkpoint message',
                 placeHolder: 'Describe this checkpoint...'
@@ -178,9 +178,9 @@ export function registerCommands(context: vscode.ExtensionContext, client: DevFl
         })
     );
 
-    // devflow.gitUndo
+    // personal-assistant.gitUndo
     context.subscriptions.push(
-        vscode.commands.registerCommand('devflow.gitUndo', async () => {
+        vscode.commands.registerCommand('personal-assistant.gitUndo', async () => {
             const confirm = await vscode.window.showWarningMessage(
                 'Undo last checkpoint? This will revert recent changes.',
                 'Yes',

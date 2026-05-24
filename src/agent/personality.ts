@@ -53,7 +53,7 @@ const DEFAULT_PERSONALITY: PersonalityTraits = {
 
 function createDefaultIdentity(): AgentIdentity {
   return {
-    name: 'DevFlow',
+    name: 'Personal Assistant',
     role: '全栈开发工程师',
     expertise: ['TypeScript', 'React', 'Node.js', 'Python'],
     communicationLanguage: 'zh-CN',

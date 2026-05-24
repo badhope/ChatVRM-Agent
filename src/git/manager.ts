@@ -249,9 +249,9 @@ export class GitManager {
         author: `${commit.author_name} <${commit.author_email}>`,
         date: commit.date,
         message: commit.message,
-        isAider: commit.author_name.includes('(devflow)') ||
+        isAider: commit.author_name.includes('(personal-assistant)') ||
                  commit.author_name.includes('(aider)') ||
-                 commit.message.startsWith('[devflow]'),
+                 commit.message.startsWith('[personal-assistant]'),
       }));
     } catch (error) {
       gitLogger.error({ error }, 'Failed to get commits');

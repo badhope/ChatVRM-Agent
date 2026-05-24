@@ -18,7 +18,7 @@ export function formatApiError(error: unknown): FormattedApiError {
   const errMsg = getErrorMessage(error);
 
   if (errMsg.includes('401') || errMsg.includes('Unauthorized') || errMsg.includes('invalid key') || errMsg.includes('Incorrect API key')) {
-    return { message: 'API Key 无效或未配置', hint: '请运行: devflow config set-key <平台> <apiKey>' };
+    return { message: 'API Key 无效或未配置', hint: '请运行: personal-assistant config set-key <平台> <apiKey>' };
   }
   if (errMsg.includes('403') || errMsg.includes('Forbidden')) {
     return { message: 'API Key 没有访问权限', hint: '请检查 API Key 是否有该模型的访问权限' };
@@ -45,7 +45,7 @@ export function formatApiError(error: unknown): FormattedApiError {
     return { message: 'API 额度不足', hint: '请到平台充值，或切换到有额度的模型' };
   }
   if (errMsg.includes('model') && errMsg.includes('not found')) {
-    return { message: '模型不存在', hint: '请用 devflow chat models 查看可用模型列表' };
+    return { message: '模型不存在', hint: '请用 personal-assistant chat models 查看可用模型列表' };
   }
 
   return { message: errMsg, hint: '' };

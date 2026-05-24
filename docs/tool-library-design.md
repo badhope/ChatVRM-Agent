@@ -2,7 +2,7 @@
 
 ## 概念
 
-DevFlow Agent 的工具库是一个**可选的扩展系统**，用户可以根据需要下载和启用各种专业工具，而不是一股脑儿加载所有工具。
+Personal-Assistant 的工具库是一个**可选的扩展系统**，用户可以根据需要下载和启用各种专业工具，而不是一股脑儿加载所有工具。
 
 ### 设计理念
 
@@ -32,7 +32,7 @@ DevFlow Agent 的工具库是一个**可选的扩展系统**，用户可以根�
 ## 工具库结构
 
 ```
-DevFlow-Agent/
+Personal-Assistant/
 ├── src/
 │   ├── tools/
 │   │   ├── registry.ts           # 核心工具注册表
@@ -127,7 +127,7 @@ export default {
   version: '1.0.0',
   description: '代码安全审计工具',
   category: 'security',
-  author: 'DevFlow',
+  author: 'Personal Assistant',
   tools: [
     {
       id: 'scan-vulnerabilities',
@@ -197,7 +197,7 @@ export async function getToolIndex(): Promise<ToolIndex> {
         category: 'security',
         description: '代码安全审计工具',
         version: '1.0.0',
-        author: 'DevFlow',
+        author: 'Personal Assistant',
         tools: ['scan-vulnerabilities', 'check-dependencies'],
         dependencies: [],
         size: '150KB'
@@ -225,55 +225,55 @@ export async function getTool(toolName: string): Promise<ToolMetadata | null> {
 ### 1. 查看可用工具
 
 ```bash
-devflow tools available          # 列出所有可用工具
-devflow tools available --category security  # 按分类查看
-devflow tools search <keyword>   # 搜索工具
+personal-assistant tools available          # 列出所有可用工具
+personal-assistant tools available --category security  # 按分类查看
+personal-assistant tools search <keyword>   # 搜索工具
 ```
 
 ### 2. 管理已安装工具
 
 ```bash
-devflow tools list              # 列出已安装的工具
-devflow tools list --enabled    # 只显示已启用的
-devflow tools list --disabled    # 只显示已禁用的
+personal-assistant tools list              # 列出已安装的工具
+personal-assistant tools list --enabled    # 只显示已启用的
+personal-assistant tools list --disabled    # 只显示已禁用的
 ```
 
 ### 3. 安装工具
 
 ```bash
-devflow tools install security-auditor    # 安装单个工具
-devflow tools install security-auditor code-review  # 安装多个
-devflow tools install --all                # 安装所有工具
-devflow tools install --category security # 安装整个分类
+personal-assistant tools install security-auditor    # 安装单个工具
+personal-assistant tools install security-auditor code-review  # 安装多个
+personal-assistant tools install --all                # 安装所有工具
+personal-assistant tools install --category security # 安装整个分类
 ```
 
 ### 4. 卸载工具
 
 ```bash
-devflow tools uninstall security-auditor  # 卸载单个工具
-devflow tools uninstall --all             # 卸载所有
+personal-assistant tools uninstall security-auditor  # 卸载单个工具
+personal-assistant tools uninstall --all             # 卸载所有
 ```
 
 ### 5. 启用/禁用工具
 
 ```bash
-devflow tools enable security-auditor    # 启用
-devflow tools disable security-auditor   # 禁用
-devflow tools disable --all              # 禁用所有
+personal-assistant tools enable security-auditor    # 启用
+personal-assistant tools disable security-auditor   # 禁用
+personal-assistant tools disable --all              # 禁用所有
 ```
 
 ### 6. 工具信息
 
 ```bash
-devflow tools info security-auditor     # 查看工具详情
-devflow tools deps security-auditor      # 查看依赖
+personal-assistant tools info security-auditor     # 查看工具详情
+personal-assistant tools deps security-auditor      # 查看依赖
 ```
 
 ---
 
 ## 配置存储
 
-用户配置保存在 `~/.devflow/tools-config.json`：
+用户配置保存在 `~/.personal-assistant/tools-config.json`：
 
 ```json
 {
@@ -306,10 +306,10 @@ devflow tools deps security-auditor      # 查看依赖
 
 ### Phase 2: 命令实现
 
-4. **实现 `devflow tools available`**
-5. **实现 `devflow tools install`**
-6. **实现 `devflow tools uninstall`**
-7. **实现 `devflow tools enable/disable`**
+4. **实现 `personal-assistant tools available`**
+5. **实现 `personal-assistant tools install`**
+6. **实现 `personal-assistant tools uninstall`**
+7. **实现 `personal-assistant tools enable/disable`**
 
 ### Phase 3: 适配现有工具
 

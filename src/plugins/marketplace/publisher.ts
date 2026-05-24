@@ -36,7 +36,7 @@ function resolveHome(p: string): string {
 }
 
 function defaultConfigDir(): string {
-  return path.join(os.homedir(), '.devflow');
+  return path.join(os.homedir(), '.personal-assistant');
 }
 
 export async function validatePlugin(pluginDir: string): Promise<ValidateResult> {
@@ -126,12 +126,12 @@ export async function createPluginScaffold(name: string, targetDir: string): Pro
   const pluginDir = path.join(resolveHome(targetDir), name);
   await fs.mkdir(pluginDir, { recursive: true });
   const manifest: PluginManifest = {
-    name, version: '0.1.0', description: `A DevFlow plugin: ${name}`,
-    main: 'index.js', keywords: ['devflow', 'plugin'],
+    name, version: '0.1.0', description: `A Personal Assistant plugin: ${name}`,
+    main: 'index.js', keywords: ['personal-assistant', 'plugin'],
   };
   await fs.writeFile(path.join(pluginDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
   const indexJs = `// ${name} plugin\nexport default {\n  manifest: ${JSON.stringify(manifest, null, 4)},\n  async activate(context) {\n    context.logger.info('${name} activated');\n  },\n  async deactivate() {\n    console.log('${name} deactivated');\n  },\n};\n`;
   await fs.writeFile(path.join(pluginDir, 'index.js'), indexJs, 'utf-8');
-  const readme = `# ${name}\n\n## Description\n\n${manifest.description}\n\n## Installation\n\n\`\`\`bash\ndevflow plugin install ${name}\n\`\`\`\n\n## Usage\n\nThis plugin is automatically activated after installation.\n\n## Configuration\n\nNo additional configuration required.\n`;
+  const readme = `# ${name}\n\n## Description\n\n${manifest.description}\n\n## Installation\n\n\`\`\`bash\npersonal-assistant plugin install ${name}\n\`\`\`\n\n## Usage\n\nThis plugin is automatically activated after installation.\n\n## Configuration\n\nNo additional configuration required.\n`;
   await fs.writeFile(path.join(pluginDir, 'README.md'), readme, 'utf-8');
 }

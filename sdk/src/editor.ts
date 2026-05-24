@@ -1,18 +1,18 @@
 /**
- * DevFlow Agent SDK - Editor Module
+ * Personal Assistant Agent SDK - Editor Module
  *
  * Provides programmatic access to the code editing capabilities
- * of DevFlow Agent, implementing the SEARCH/REPLACE pattern.
+ * of Personal Assistant Agent, implementing the SEARCH/REPLACE pattern.
  */
 
 import type { EditOptions, EditResult, SymbolLocation, SymbolReference } from './types.js';
 
 /**
- * DevFlowEditor - Code editing operations.
+ * PersonalAssistantEditor - Code editing operations.
  *
  * @example
  * ```typescript
- * const editor = new DevFlowEditor();
+ * const editor = new PersonalAssistantEditor();
  * await editor.edit({
  *   filePath: './src/app.ts',
  *   search: 'function oldName()',
@@ -20,7 +20,7 @@ import type { EditOptions, EditResult, SymbolLocation, SymbolReference } from '.
  * });
  * ```
  */
-export class DevFlowEditor {
+export class PersonalAssistantEditor {
   /**
    * Perform a SEARCH/REPLACE edit on a file.
    *
@@ -275,7 +275,7 @@ export class DevFlowEditor {
  * @returns True if successful
  */
 export async function applyEdit(options: EditOptions): Promise<boolean> {
-  const editor = new DevFlowEditor();
+  const editor = new PersonalAssistantEditor();
   const result = await editor.edit(options);
   return result.success;
 }

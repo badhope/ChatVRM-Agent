@@ -5,8 +5,8 @@ import { configManager } from '../config/manager.js';
 /** 默认自动提交配置 */
 export const DEFAULT_AUTO_COMMIT_CONFIG: AutoCommitConfig & { aiCommitMessage?: boolean } = {
   enabled: true,
-  authorName: 'DevFlow Agent',
-  authorEmail: 'devflow@agent.local',
+  authorName: 'Personal Assistant Agent',
+  authorEmail: 'personal-assistant@agent.local',
   commitPrefix: 'feat',
   aiCommitMessage: true,
 };
@@ -142,7 +142,7 @@ ${diff.slice(0, 3000)}`;
       ? files.join(', ')
       : `${files.slice(0, 3).join(', ')} 等 ${files.length} 个文件`;
 
-    return `[devflow] ${prefix}: ${summary}\n\n${fileSummary}\n\nCo-authored-by: ${this.config.authorName} <${this.config.authorEmail}>`;
+    return `[personal-assistant] ${prefix}: ${summary}\n\n${fileSummary}\n\nCo-authored-by: ${this.config.authorName} <${this.config.authorEmail}>`;
   }
 
   /**

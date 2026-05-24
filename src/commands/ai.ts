@@ -26,7 +26,7 @@ aiCommand
 
       if (choice === null || choice === 'exit') {
         printHeader();
-        printSuccess('感谢使用 DevFlow Agent，再见！');
+        printSuccess('感谢使用 Personal Assistant Agent，再见！');
         return;
       }
 
@@ -52,13 +52,13 @@ aiCommand
         case 'config-key':
         case 'config-sandbox':
         case 'help': {
-          printInfo('请使用主菜单进入此功能: devflow');
-          printInfo('或使用命令行: devflow chat ask / devflow agent run 等');
+          printInfo('请使用主菜单进入此功能: personal-assistant');
+          printInfo('或使用命令行: personal-assistant chat ask / personal-assistant agent run 等');
           await waitForEnter();
           break;
         }
         default: {
-          printInfo(`功能 "${choice}" 请使用主菜单: devflow`);
+          printInfo(`功能 "${choice}" 请使用主菜单: personal-assistant`);
           await waitForEnter();
         }
       }
@@ -90,7 +90,7 @@ async function showProviderList() {
     if (!info.requiresApiKey) {
       console.log(`     ${chalk.green('✓ 本地运行，无需配置')}`);
     } else if (!isConfigured) {
-      printWarning(`需要配置: devflow config set-key ${type} <apiKey>`);
+      printWarning(`需要配置: personal-assistant config set-key ${type} <apiKey>`);
     }
   });
 

@@ -41,7 +41,7 @@ export class BackupManager {
   private indexFile: string;
 
   constructor(configDir?: string, maxBackups: number = 10) {
-    this.backupDir = configDir || path.join(os.homedir(), '.devflow', 'backups');
+    this.backupDir = configDir || path.join(os.homedir(), '.personal-assistant', 'backups');
     this.maxBackups = maxBackups;
     this.indexFile = path.join(this.backupDir, 'index.json');
   }

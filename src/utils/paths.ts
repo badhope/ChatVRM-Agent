@@ -8,7 +8,7 @@ function getProjectRoot(): string {
 }
 
 export const PROJECT_DIR = getProjectRoot();
-export const DEVFLOW_DIR = path.join(PROJECT_DIR, '.devflow');
+export const DEVFLOW_DIR = path.join(PROJECT_DIR, '.personal-assistant');
 export const MEMORY_DIR = path.join(DEVFLOW_DIR, 'memory');
 export const HISTORY_DIR = path.join(DEVFLOW_DIR, 'history');
 export const TOOLS_DIR = path.join(DEVFLOW_DIR, 'tools');

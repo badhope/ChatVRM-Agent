@@ -65,7 +65,7 @@ export async function checkAndRequestPermission(
   if (!process.stdin.isTTY) {
     return {
       allowed: false,
-      reason: `需要更高权限级别，请使用 devflow config set-sandbox <level> 提升权限`,
+      reason: `需要更高权限级别，请使用 personal-assistant config set-sandbox <level> 提升权限`,
     };
   }
 
@@ -98,13 +98,13 @@ export async function checkAndRequestPermission(
 
   if (sandbox.level === 'minimal') {
     console.log(chalk.gray('  提示: 极小权限模式下只能执行读取操作'));
-    console.log(chalk.gray('  建议: devflow config set-sandbox conservative'));
+    console.log(chalk.gray('  建议: personal-assistant config set-sandbox conservative'));
   } else if (sandbox.level === 'conservative') {
     console.log(chalk.gray('  提示: 保守权限模式禁止删除和系统修改'));
-    console.log(chalk.gray('  建议: devflow config set-sandbox balanced'));
+    console.log(chalk.gray('  建议: personal-assistant config set-sandbox balanced'));
   } else if (sandbox.level === 'balanced') {
     console.log(chalk.gray('  提示: 平衡权限模式已启用'));
-    console.log(chalk.gray('  要允许此操作: devflow config set-sandbox relaxed'));
+    console.log(chalk.gray('  要允许此操作: personal-assistant config set-sandbox relaxed'));
   }
 
   console.log();
@@ -128,7 +128,7 @@ export async function checkAndRequestPermission(
     console.log(chalk.red('  ✗ 无法显示交互提示'));
     return {
       allowed: false,
-      reason: `权限不足，请使用 devflow config set-sandbox <level> 提升权限`,
+      reason: `权限不足，请使用 personal-assistant config set-sandbox <level> 提升权限`,
     };
   }
 }
@@ -160,9 +160,9 @@ export async function showPermissionDeniedError(
 
   console.log();
   console.log(chalk.cyan('💡 解决方案:'));
-  console.log(chalk.gray('  1. 查看权限级别: devflow config sandbox-levels'));
-  console.log(chalk.gray('  2. 提升权限: devflow config set-sandbox <level>'));
-  console.log(chalk.gray('  3. 查看当前配置: devflow config get-sandbox'));
+  console.log(chalk.gray('  1. 查看权限级别: personal-assistant config sandbox-levels'));
+  console.log(chalk.gray('  2. 提升权限: personal-assistant config set-sandbox <level>'));
+  console.log(chalk.gray('  3. 查看当前配置: personal-assistant config get-sandbox'));
   console.log();
 }
 

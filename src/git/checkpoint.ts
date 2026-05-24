@@ -42,7 +42,7 @@ export class CheckpointManager {
     // 创建 Git tag 作为检查点
     const tagMessage = description || `Checkpoint ${id}`;
     try {
-      await this.git.exec(['tag', '-a', `devflow-${id}`, '-m', tagMessage]);
+      await this.git.exec(['tag', '-a', `personal-assistant-${id}`, '-m', tagMessage]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('already exists')) {
@@ -118,7 +118,7 @@ export class CheckpointManager {
     }
 
     // 删除 Git tag
-    await this.git.exec(['tag', '-d', `devflow-${checkpointId}`]);
+    await this.git.exec(['tag', '-d', `personal-assistant-${checkpointId}`]);
 
     this.checkpoints.delete(checkpointId);
     await this.saveCheckpoints();
@@ -131,7 +131,7 @@ export class CheckpointManager {
    */
   private async loadFromGit(): Promise<void> {
     try {
-      const result = await this.git.exec(['tag', '-l', 'devflow-cp-*', '--format=%(refname:short)|%(objectname:short)|%(contents)']);
+      const result = await this.git.exec(['tag', '-l', 'personal-assistant-cp-*', '--format=%(refname:short)|%(objectname:short)|%(contents)']);
       const stdout = typeof result === 'string' ? result : '';
       if (!stdout) return;
 
@@ -139,7 +139,7 @@ export class CheckpointManager {
         const [tagRef, commitHash, message] = line.split('|');
         if (!tagRef) continue;
 
-        const id = tagRef.replace('devflow-', '');
+        const id = tagRef.replace('personal-assistant-', '');
         if (!this.checkpoints.has(id)) {
           this.checkpoints.set(id, {
             id,

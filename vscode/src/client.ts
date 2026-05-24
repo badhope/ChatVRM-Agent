@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // Unified Error Types matching backend
-export class DevFlowError extends Error {
+export class PersonalAssistantError extends Error {
   constructor(
     public readonly code: string,
     message: string,
@@ -12,29 +12,29 @@ export class DevFlowError extends Error {
     public readonly details?: Record<string, unknown>
   ) {
     super(message);
-    this.name = 'DevFlowError';
+    this.name = 'PersonalAssistantError';
   }
 }
 
-export class ValidationError extends DevFlowError {
+export class ValidationError extends PersonalAssistantError {
   constructor(message: string, details?: Record<string, unknown>) {
     super('VALIDATION_ERROR', message, 400, details);
   }
 }
 
-export class NotFoundError extends DevFlowError {
+export class NotFoundError extends PersonalAssistantError {
   constructor(resource: string) {
     super('NOT_FOUND', `${resource} not found`, 404);
   }
 }
 
-export class AuthenticationError extends DevFlowError {
+export class AuthenticationError extends PersonalAssistantError {
   constructor(message: string = 'Authentication required') {
     super('AUTH_ERROR', message, 401);
   }
 }
 
-export class NetworkError extends DevFlowError {
+export class NetworkError extends PersonalAssistantError {
   constructor(message: string, details?: Record<string, unknown>) {
     super('NETWORK_ERROR', message, 0, details);
   }
@@ -42,7 +42,7 @@ export class NetworkError extends DevFlowError {
 
 // Format error to unified format
 function formatError(error: unknown): { code: string; message: string; details?: Record<string, unknown> } {
-  if (error instanceof DevFlowError) {
+  if (error instanceof PersonalAssistantError) {
     return { code: error.code, message: error.message, details: error.details };
   }
   if (error instanceof Error) {
@@ -88,22 +88,22 @@ interface ProgressReporter {
     report: (item: { message?: string; increment?: number }) => void;
 }
 
-export class DevFlowClient {
+export class PersonalAssistantClient {
     private cliPath: string | null = null;
     private outputChannel: vscode.OutputChannel;
 
     constructor() {
-        this.outputChannel = vscode.window.createOutputChannel('DevFlow');
+        this.outputChannel = vscode.window.createOutputChannel('Personal Assistant');
     }
 
     async initialize(): Promise<void> {
         this.cliPath = this.findCliPath();
         if (!this.cliPath) {
             vscode.window.showWarningMessage(
-                'DevFlow CLI not found. Please install or configure path in settings.'
+                'Personal Assistant CLI not found. Please install or configure path in settings.'
             );
         } else {
-            this.outputChannel.appendLine(`DevFlow CLI found at: ${this.cliPath}`);
+            this.outputChannel.appendLine(`Personal Assistant CLI found at: ${this.cliPath}`);
         }
     }
 
@@ -325,14 +325,14 @@ export class DevFlowClient {
     private exec(args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
             if (!this.cliPath) {
-                reject(new NetworkError('DevFlow CLI not found'));
+                reject(new NetworkError('Personal Assistant CLI not found'));
                 return;
             }
 
-            const config = vscode.workspace.getConfiguration('devflow');
+            const config = vscode.workspace.getConfiguration('personal-assistant');
             const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-            this.outputChannel.appendLine(`Executing: devflow ${args.join(' ')}`);
+            this.outputChannel.appendLine(`Executing: personal-assistant ${args.join(' ')}`);
 
             const proc = cp.spawn(this.cliPath, args, {
                 cwd,
@@ -358,7 +358,7 @@ export class DevFlowClient {
                 } else {
                     // Parse error to determine type
                     const errorMessage = stderr.trim() || `Command failed with code ${code}`;
-                    reject(new DevFlowError('COMMAND_FAILED', errorMessage, code || 500));
+                    reject(new PersonalAssistantError('COMMAND_FAILED', errorMessage, code || 500));
                 }
             });
 
@@ -369,7 +369,7 @@ export class DevFlowClient {
     }
 
     private findCliPath(): string | null {
-        const config = vscode.workspace.getConfiguration('devflow');
+        const config = vscode.workspace.getConfiguration('personal-assistant');
         const configPath = config.get<string>('cliPath');
 
         if (configPath && fs.existsSync(configPath)) {
@@ -378,11 +378,11 @@ export class DevFlowClient {
 
         // Check common locations
         const commonPaths = [
-            'devflow',
-            '/usr/local/bin/devflow',
-            '/usr/bin/devflow',
-            path.join(process.env.HOME || '', '.local', 'bin', 'devflow'),
-            path.join(process.env.HOME || '', 'node_modules', '.bin', 'devflow')
+            'personal-assistant',
+            '/usr/local/bin/personal-assistant',
+            '/usr/bin/personal-assistant',
+            path.join(process.env.HOME || '', '.local', 'bin', 'personal-assistant'),
+            path.join(process.env.HOME || '', 'node_modules', '.bin', 'personal-assistant')
         ];
 
         for (const p of commonPaths) {

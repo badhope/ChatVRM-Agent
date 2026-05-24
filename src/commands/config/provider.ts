@@ -41,7 +41,7 @@ providerCommand
     if (!key) {
       // 非交互模式
       if (!process.stdin.isTTY) {
-        printError('请在命令行中提供API密钥: devflow config set-key <provider> <apiKey>');
+        printError('请在命令行中提供API密钥: personal-assistant config set-key <provider> <apiKey>');
         return;
       }
       const keyHint = info.keyPrefix 
@@ -158,7 +158,7 @@ providerCommand
 
       if (configuredProviders.length === 0) {
         printError('没有已配置的平台');
-        printInfo('请先使用 devflow config set-key <provider> <apiKey> 配置API密钥');
+        printInfo('请先使用 personal-assistant config set-key <provider> <apiKey> 配置API密钥');
         return;
       }
 
@@ -277,7 +277,7 @@ providerCommand
     
     if (detected.length === 0) {
       printInfo('无法识别API密钥格式，请手动指定平台');
-      console.log(chalk.gray('用法: devflow config set-key <平台> <apiKey>'));
+      console.log(chalk.gray('用法: personal-assistant config set-key <平台> <apiKey>'));
       return;
     }
     

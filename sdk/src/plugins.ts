@@ -1,23 +1,23 @@
 /**
- * DevFlow Agent SDK - Plugins Module
+ * Personal Assistant Agent SDK - Plugins Module
  *
  * Provides programmatic access to the plugin system for
- * managing and interacting with DevFlow plugins and MCP servers.
+ * managing and interacting with Personal Assistant plugins and MCP servers.
  */
 
 import type { PluginInfo, MCPInfo } from './types.js';
 
 /**
- * DevFlowPlugins - Plugin and MCP management.
+ * PersonalAssistantPlugins - Plugin and MCP management.
  *
  * @example
  * ```typescript
- * const plugins = new DevFlowPlugins();
+ * const plugins = new PersonalAssistantPlugins();
  * const list = await plugins.list();
  * await plugins.enable('my-plugin');
  * ```
  */
-export class DevFlowPlugins {
+export class PersonalAssistantPlugins {
   private pluginDir: string;
 
   /**
@@ -284,7 +284,7 @@ export class DevFlowPlugins {
  * @returns Array of plugin info
  */
 export async function listPlugins(): Promise<PluginInfo[]> {
-  const plugins = new DevFlowPlugins();
+  const plugins = new PersonalAssistantPlugins();
   return plugins.list();
 }
 
@@ -294,7 +294,7 @@ export async function listPlugins(): Promise<PluginInfo[]> {
  * @param name - Plugin name
  */
 export async function enablePlugin(name: string): Promise<void> {
-  const plugins = new DevFlowPlugins();
+  const plugins = new PersonalAssistantPlugins();
   return plugins.enable(name);
 }
 
@@ -304,6 +304,6 @@ export async function enablePlugin(name: string): Promise<void> {
  * @param name - Plugin name
  */
 export async function disablePlugin(name: string): Promise<void> {
-  const plugins = new DevFlowPlugins();
+  const plugins = new PersonalAssistantPlugins();
   return plugins.disable(name);
 }

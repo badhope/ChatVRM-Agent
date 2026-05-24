@@ -79,7 +79,7 @@ export function resolveProvider(): ResolvedProvider | null {
     providerType = configuredProviders[0];
   } else {
     printError('没有已配置的AI平台');
-    printInfo('请运行: devflow config set-key aliyun <apiKey>');
+    printInfo('请运行: personal-assistant config set-key aliyun <apiKey>');
     return null;
   }
 

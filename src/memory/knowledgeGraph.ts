@@ -44,7 +44,7 @@ interface RelationEdgeAttrs {
 /**
  * 知识图谱
  * 使用 graphlib 存储实体和关系，提供高效的图算法支持。
- * 持久化到 ~/.devflow/memory/knowledge.json
+ * 持久化到 ~/.personal-assistant/memory/knowledge.json
  */
 export class KnowledgeGraph {
   private storagePath: string;

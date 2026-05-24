@@ -1,11 +1,11 @@
-# DevFlow-Agent 开发环境配置
+# Personal-Assistant 开发环境配置
 
 > 基于 AI-Dev-Config 规范配置的智能开发助手环境
 
 ## 📋 项目信息
 
-- **项目名称**: DevFlow-Agent
-- **GitHub**: https://github.com/badhope/DevFlow-Agent
+- **项目名称**: Personal-Assistant
+- **GitHub**: https://github.com/badhope/Personal-Assistant
 - **技术栈**: TypeScript, Node.js (>=18.0.0), React, VSCode Extension
 - **项目描述**: 可靠、诚实、可控的 AI 开发助手 CLI 工具
 
@@ -52,8 +52,8 @@
 ### 📁 配置文件位置
 
 ```
-DevFlow-Agent/
-├── .devflow/
+Personal-Assistant/
+├── .personal-assistant/
 │   ├── skills-config.json    # 技能配置清单
 │   └── mcp-config.json       # MCP 服务器配置
 ├── .skills/                  # AI 技能文档
@@ -94,11 +94,11 @@ npm install --legacy-peer-deps
 
 ```bash
 # 配置 API Key
-devflow config provider set-key openai sk-your-key
-devflow config set-default openai
+personal-assistant config provider set-key openai sk-your-key
+personal-assistant config set-default openai
 
 # 测试连接
-devflow config test openai
+personal-assistant config test openai
 ```
 
 ### 4. 启动开发
@@ -144,7 +144,7 @@ npm run lint
 ### 核心模块
 
 ```
-DevFlow-Agent/src/
+Personal-Assistant/src/
 ├── cli.ts                    # CLI 入口点
 ├── agent/                    # Agent 核心系统
 │   ├── core.ts              # 主执行器
@@ -168,16 +168,16 @@ DevFlow-Agent/src/
 
 | 平台 | 状态 | 配置命令 |
 |------|------|---------|
-| OpenAI | ✅ | `devflow config provider set-key openai sk-xxx` |
-| Anthropic Claude | ✅ | `devflow config provider set-key anthropic sk-ant-xxx` |
-| Google Gemini | ✅ | `devflow config provider set-key google AIxxx` |
-| DeepSeek | ✅ | `devflow config provider set-key deepseek sk-xxx` |
-| 硅基流动 | ✅ | `devflow config provider set-key siliconflow sk-xxx` |
-| 阿里云百炼 | ✅ | `devflow config provider set-key aliyun sk-xxx` |
-| 智谱AI | ✅ | `devflow config provider set-key zhipu 32位十六进制` |
-| 百度千帆 | ✅ | `devflow config provider set-key baidu <appId>.<secretKey>` |
-| Ollama | ✅ | `devflow config provider set-key ollama` |
-| LM Studio | ✅ | `devflow config provider set-key lmstudio` |
+| OpenAI | ✅ | `personal-assistant config provider set-key openai sk-xxx` |
+| Anthropic Claude | ✅ | `personal-assistant config provider set-key anthropic sk-ant-xxx` |
+| Google Gemini | ✅ | `personal-assistant config provider set-key google AIxxx` |
+| DeepSeek | ✅ | `personal-assistant config provider set-key deepseek sk-xxx` |
+| 硅基流动 | ✅ | `personal-assistant config provider set-key siliconflow sk-xxx` |
+| 阿里云百炼 | ✅ | `personal-assistant config provider set-key aliyun sk-xxx` |
+| 智谱AI | ✅ | `personal-assistant config provider set-key zhipu 32位十六进制` |
+| 百度千帆 | ✅ | `personal-assistant config provider set-key baidu <appId>.<secretKey>` |
+| Ollama | ✅ | `personal-assistant config provider set-key ollama` |
+| LM Studio | ✅ | `personal-assistant config provider set-key lmstudio` |
 
 ## 🔒 安全特性
 
@@ -234,14 +234,14 @@ npm run test:coverage
    - 功能: 仓库操作、Issue、PR 等
 
 2. **Filesystem** - 文件系统访问
-   - 路径: `/workspace/DevFlow-Agent`
+   - 路径: `/workspace/Personal-Assistant`
    - 功能: 读取、写入、搜索文件
 
 3. **Git** - Git 版本控制
    - 功能: 提交、分支、差异等
 
 4. **SQLite** - 本地数据库
-   - 路径: `.data/devflow.db`
+   - 路径: `.data/personal-assistant.db`
    - 功能: 持久化存储
 
 5. **Brave Search** - 网络搜索

@@ -23,7 +23,7 @@ const pluginLoaderLogger = createLogger('PluginLoader');
 
 /** Options for plugin discovery */
 export interface PluginLoaderOptions {
-  /** Directories to scan for plugins (default: ['./plugins', '~/.devflow/plugins']) */
+  /** Directories to scan for plugins (default: ['./plugins', '~/.personal-assistant/plugins']) */
   pluginDirs?: string[];
   /** Only load these specific plugins (whitelist) */
   enabledPlugins?: string[];
@@ -265,6 +265,6 @@ export class PluginLoader {
   }
 
   private getDefaultDirs(): string[] {
-    return ['./plugins', '~/.devflow/plugins'];
+    return ['./plugins', '~/.personal-assistant/plugins'];
   }
 }

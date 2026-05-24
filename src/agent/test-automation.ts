@@ -62,9 +62,9 @@ export async function runTests(projectDir: string, framework?: string): Promise<
   const detected = framework || await detectTestFramework(projectDir);
 
   const commands: Record<string, string[]> = {
-    'vitest': ['npx', 'vitest', 'run', '--reporter', 'json', '--outputFile', '/tmp/devflow-test-results.json'],
-    'jest': ['npx', 'jest', '--json', '--outputFile', '/tmp/devflow-test-results.json'],
-    'mocha': ['npx', 'mocha', '--reporter', 'json', '--reporter-options', 'output=/tmp/devflow-test-results.json'],
+    'vitest': ['npx', 'vitest', 'run', '--reporter', 'json', '--outputFile', '/tmp/personal-assistant-test-results.json'],
+    'jest': ['npx', 'jest', '--json', '--outputFile', '/tmp/personal-assistant-test-results.json'],
+    'mocha': ['npx', 'mocha', '--reporter', 'json', '--reporter-options', 'output=/tmp/personal-assistant-test-results.json'],
     'pytest': ['python', '-m', 'pytest', '--tb=short', '-v'],
     'playwright': ['npx', 'playwright', 'test', '--reporter', 'json'],
   };

@@ -109,8 +109,8 @@ process.on('SIGTERM', async () => {
 const program = new Command();
 
 program
-  .name('devflow')
-  .description('DevFlow Agent CLI - 可靠、诚实、可控的AI开发助手')
+  .name('personal-assistant')
+  .description('Personal-Assistant Agent CLI - 可靠、诚实、可控的AI开发助手')
   .version('0.1.0');
 
 program.addCommand(aiCommand);
@@ -128,7 +128,7 @@ program.addCommand(dataCommand);
 program.addCommand(explainCommand);
 program.addCommand(snippetCommand);
 
-// 快捷命令：devflow ask（等同于 devflow chat ask）
+// 快捷命令：personal-assistant ask（等同于 personal-assistant chat ask）
 program
   .command('ask <question>')
   .description('快速提问（等同于 chat ask）')
@@ -172,7 +172,7 @@ process.on('unhandledRejection', (reason) => {
 
 if (process.argv.length === 2) {
   (async () => {
-    logger.info('Starting DevFlow Agent in interactive mode');
+    logger.info('Starting Personal-Assistant Agent in interactive mode');
     try {
       await configManager.init();
       logger.debug('Configuration initialized successfully');
@@ -184,18 +184,18 @@ if (process.argv.length === 2) {
         || process.env.ANTHROPIC_API_KEY;
 
       if (!hasApiKey) {
-        console.log();
-        printWarning('⚠️  检测到首次运行：尚未配置 API Key');
-        printInfo('DevFlow Agent 需要 AI 提供商的 API Key 才能工作');
-        console.log();
-        console.log('  快速配置方式：');
-        console.log('    1. 运行 devflow config set-provider --provider openai --api-key YOUR_KEY');
-        console.log('    2. 设置环境变量: export OPENAI_API_KEY=your_key');
-        console.log('    3. 在交互菜单中选择 "⚙️ 配置管理" → "设置AI提供商"');
-        console.log();
-        printInfo('支持 OpenAI、Anthropic、阿里云百炼 等提供商');
-        console.log();
-      }
+      console.log();
+      printWarning('⚠️  检测到首次运行：尚未配置 API Key');
+      printInfo('Personal-Assistant Agent 需要 AI 提供商的 API Key 才能工作');
+      console.log();
+      console.log('  快速配置方式：');
+      console.log('    1. 运行 personal-assistant config set-provider --provider openai --api-key YOUR_KEY');
+      console.log('    2. 设置环境变量: export OPENAI_API_KEY=your_key');
+      console.log('    3. 在交互菜单中选择 "⚙️ 配置管理" → "设置AI提供商"');
+      console.log();
+      printInfo('支持 OpenAI、Anthropic、阿里云百炼 等提供商');
+      console.log();
+    }
 
       // 运行启动健康检查（非阻塞，仅提示）
       try {
@@ -220,7 +220,7 @@ if (process.argv.length === 2) {
       const errMsg = getErrorMessage(error);
       logger.error({ error: errMsg }, 'Configuration initialization failed');
       printError(`配置初始化失败: ${errMsg}`);
-      printInfo('请检查 .devflow 目录权限');
+      printInfo('请检查 .personal-assistant 目录权限');
       process.exit(1);
     }
 
@@ -232,8 +232,8 @@ if (process.argv.length === 2) {
         if (choice === null || choice === 'exit') {
           running = false;
           printHeader();
-          printSuccess('感谢使用 DevFlow Agent，再见！');
-          logger.info('DevFlow Agent exited normally');
+          printSuccess('感谢使用 Personal-Assistant Agent，再见！');
+          logger.info('Personal-Assistant Agent exited normally');
           process.exit(0);
         }
 

@@ -243,7 +243,7 @@ const architectCommand: SlashCommand = {
   execute: async () => {
     return {
       handled: true,
-      message: chalk.cyan('🏗️ 双模型模式需要在 agent run 中使用:\n  devflow agent run "任务" --architect'),
+      message: chalk.cyan('🏗️ 双模型模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --architect'),
     };
   },
 };
@@ -255,7 +255,7 @@ const planCommand: SlashCommand = {
   execute: async () => {
     return {
       handled: true,
-      message: chalk.cyan('📋 Plan/Act 模式需要在 agent run 中使用:\n  devflow agent run "任务" --plan-first'),
+      message: chalk.cyan('📋 Plan/Act 模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --plan-first'),
     };
   },
 };

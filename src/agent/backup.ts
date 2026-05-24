@@ -15,7 +15,7 @@ import type { ChangeRecord } from './change-control.js';
 /**
  * 文件备份 - 将文件复制到备份目录
  *
- * 在 `~/.devflow/backups/` 目录下创建备份文件。
+ * 在 `~/.personal-assistant/backups/` 目录下创建备份文件。
  * 备份文件名格式：`原文件名_时间戳.bak`
  * 如果源文件不存在，返回成功但不创建备份。
  *

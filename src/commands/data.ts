@@ -10,7 +10,7 @@ import { configManager } from '../config/manager.js';
 import { printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 
-const DATA_DIR = path.join(os.homedir(), '.devflow');
+const DATA_DIR = path.join(os.homedir(), '.personal-assistant');
 
 export const dataCommand = new Command('data')
   .description('数据管理（导出、导入、重置）');
@@ -18,7 +18,7 @@ export const dataCommand = new Command('data')
 dataCommand
   .command('export')
   .description('导出所有数据到 JSON 文件')
-  .option('-o, --output <path>', '输出文件路径', './devflow-export.json')
+  .option('-o, --output <path>', '输出文件路径', './personal-assistant-export.json')
   .action(async (opts) => {
     try {
       printInfo('正在导出数据...');
@@ -63,7 +63,7 @@ dataCommand
 dataCommand
   .command('import')
   .description('从 JSON 文件导入数据')
-  .option('-i, --input <path>', '输入文件路径', './devflow-export.json')
+  .option('-i, --input <path>', '输入文件路径', './personal-assistant-export.json')
   .option('--skip-memory', '跳过记忆导入')
   .action(async (opts) => {
     try {
@@ -126,7 +126,7 @@ dataCommand
         await kg.clear();
         printSuccess('所有数据已重置（记忆 + 知识图谱）');
       }
-      printInfo('配置数据未被删除，使用 devflow config reset 可重置配置');
+      printInfo('配置数据未被删除，使用 personal-assistant config reset 可重置配置');
     } catch (error: unknown) {
       printError(`重置失败: ${getErrorMessage(error)}`);
     }

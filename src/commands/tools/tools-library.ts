@@ -70,7 +70,7 @@ toolsLibraryCommand
       }
     }
 
-    console.log(chalk.gray('  使用 devflow tools install <name> 安装工具包\n'));
+    console.log(chalk.gray('  使用 personal-assistant tools install <name> 安装工具包\n'));
   });
 
 // 搜索工具
@@ -93,7 +93,7 @@ toolsLibraryCommand
 
     if (results.length === 0) {
       printWarning('  没有找到匹配的工具');
-      console.log(chalk.gray('  使用 devflow tools available 查看所有工具\n'));
+      console.log(chalk.gray('  使用 personal-assistant tools available 查看所有工具\n'));
       return;
     }
 
@@ -106,7 +106,7 @@ toolsLibraryCommand
       console.log();
     }
 
-    console.log(chalk.gray('  使用 devflow tools install <name> 安装工具包\n'));
+    console.log(chalk.gray('  使用 personal-assistant tools install <name> 安装工具包\n'));
   });
 
 // 安装工具包
@@ -137,7 +137,7 @@ toolsLibraryCommand
       }
     } else {
       printError('  请指定要安装的工具包名称');
-      console.log(chalk.gray('  使用 devflow tools available 查看可用工具\n'));
+      console.log(chalk.gray('  使用 personal-assistant tools available 查看可用工具\n'));
       return;
     }
 
@@ -207,7 +207,7 @@ toolsLibraryCommand
     if (failCount > 0) {
       printError(`安装失败 ${failCount} 个工具包`);
     }
-    console.log(chalk.gray('  使用 devflow tools list 查看已安装的工具\n'));
+    console.log(chalk.gray('  使用 personal-assistant tools list 查看已安装的工具\n'));
   });
 
 // 卸载工具包
@@ -301,7 +301,7 @@ toolsLibraryCommand
 
     if (installedTools.length === 0) {
       printWarning('  暂无已安装的工具包');
-      console.log(chalk.gray('  使用 devflow tools install <name> 安装工具包\n'));
+      console.log(chalk.gray('  使用 personal-assistant tools install <name> 安装工具包\n'));
       return;
     }
 
@@ -312,7 +312,7 @@ toolsLibraryCommand
     }
 
     console.log();
-    console.log(chalk.gray('  使用 devflow tools uninstall <name> 卸载工具包\n'));
+    console.log(chalk.gray('  使用 personal-assistant tools uninstall <name> 卸载工具包\n'));
   });
 
 // 工具包信息
@@ -326,7 +326,7 @@ toolsLibraryCommand
 
     if (!tool) {
       printError(`  工具包 ${name} 不存在于工具库中`);
-      console.log(chalk.gray('  使用 devflow tools available 查看可用工具\n'));
+      console.log(chalk.gray('  使用 personal-assistant tools available 查看可用工具\n'));
       return;
     }
 

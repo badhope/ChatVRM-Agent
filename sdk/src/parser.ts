@@ -1,24 +1,24 @@
 /**
- * DevFlow Agent SDK - Parser Module
+ * Personal Assistant Agent SDK - Parser Module
  *
  * Provides programmatic access to the code parsing and analysis
- * capabilities of DevFlow Agent.
+ * capabilities of Personal Assistant Agent.
  */
 
 import type { ParseResult, Symbol, RepoMapOptions, RepoMapResult } from './types.js';
 import type { KnowledgeEntry, ContextBuildResult, ContextBuilderOptions } from './types.js';
 
 /**
- * DevFlowParser - Code parsing and analysis.
+ * PersonalAssistantParser - Code parsing and analysis.
  *
  * @example
  * ```typescript
- * const parser = new DevFlowParser();
+ * const parser = new PersonalAssistantParser();
  * const result = await parser.parseFile('./src/app.ts');
  * console.log(result.symbols);
  * ```
  */
-export class DevFlowParser {
+export class PersonalAssistantParser {
   private initialized = false;
 
   /**
@@ -203,7 +203,7 @@ export class DevFlowParser {
  *
  * @example
  * ```typescript
- * import { buildCodeIndex, searchIndex } from '@devflow/sdk/parser';
+ * import { buildCodeIndex, searchIndex } from '@personal-assistant/sdk/parser';
  *
  * // Build an index for the codebase
  * const index = await buildCodeIndex('./src');
@@ -290,7 +290,7 @@ export function searchIndex(
  *
  * @example
  * ```typescript
- * import { ContextBuilder } from '@devflow/sdk/parser';
+ * import { ContextBuilder } from '@personal-assistant/sdk/parser';
  *
  * const builder = new ContextBuilder();
  * const result = await builder.build({
@@ -360,7 +360,7 @@ export class ContextBuilder {
  * @returns Parse result
  */
 export async function parseFile(filePath: string): Promise<ParseResult> {
-  const parser = new DevFlowParser();
+  const parser = new PersonalAssistantParser();
   return parser.parseFile(filePath);
 }
 
@@ -371,7 +371,7 @@ export async function parseFile(filePath: string): Promise<ParseResult> {
  * @returns Repo map string
  */
 export async function generateRepoMap(rootDir: string): Promise<string> {
-  const parser = new DevFlowParser();
+  const parser = new PersonalAssistantParser();
   const result = await parser.generateRepoMap(rootDir);
   return result.map;
 }

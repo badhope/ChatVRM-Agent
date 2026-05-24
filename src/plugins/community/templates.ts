@@ -35,7 +35,7 @@ function resolveHome(p: string): string {
 }
 
 function defaultConfigDir(): string {
-  return path.join(os.homedir(), '.devflow');
+  return path.join(os.homedir(), '.personal-assistant');
 }
 
 const kebabPattern = /^[a-z][a-z0-9-]*$/;
@@ -50,7 +50,7 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
       { name: 'description', description: 'What the tool does', default: 'Performs a useful action', required: true },
     ],
     files: {
-      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["devflow","tool"]}`,
+      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","tool"]}`,
       'index.js': `export default {\n  manifest: { name: '{{pluginName}}', version: '0.1.0', description: '{{description}}' },\n  async activate(ctx) {\n    ctx.registerTool({\n      name: '{{toolName}}', description: '{{description}}',\n      parameters: { type: 'object', properties: { input: { type: 'string', description: 'Input value' } }, required: ['input'] },\n      async execute(args) { return { output: 'Processed: ' + args.input }; }\n    });\n    ctx.logger.info('{{pluginName}} activated');\n  }\n};`,
       'README.md': `# {{pluginName}}\n\n{{description}}\n\n## Usage\n\nRegisters the \`{{toolName}}\` tool.\n`,
     },
@@ -63,7 +63,7 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
       { name: 'description', description: 'Toolkit description', default: 'A collection of related tools', required: true },
     ],
     files: {
-      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["devflow","tools"]}`,
+      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","tools"]}`,
       'index.js': `const tools = [\n  { name: 'search', description: 'Search local files', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] }, async execute(a) { return { results: ['file1.ts'] }; } },\n  { name: 'transform', description: 'Transform data', parameters: { type: 'object', properties: { data: { type: 'string' } }, required: ['data'] }, async execute(a) { return { result: a.data.toUpperCase() }; } },\n];\nexport default {\n  manifest: { name: '{{pluginName}}', version: '0.1.0', description: '{{description}}' },\n  async activate(ctx) { tools.forEach(t => ctx.registerTool(t)); ctx.logger.info('{{pluginName}}: ' + tools.length + ' tools registered'); }\n};`,
     },
   },
@@ -76,7 +76,7 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
       { name: 'modelName', description: 'Model identifier', default: 'custom-model', required: true },
     ],
     files: {
-      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"LLM provider for {{modelName}}","main":"index.js","keywords":["devflow","provider"]}`,
+      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"LLM provider for {{modelName}}","main":"index.js","keywords":["personal-assistant","provider"]}`,
       'index.js': `export default {\n  manifest: { name: '{{pluginName}}', version: '0.1.0', description: 'LLM provider for {{modelName}}' },\n  async activate(ctx) {\n    ctx.registerTool({\n      name: 'chat_{{pluginName}}', description: 'Send a prompt to {{modelName}}',\n      parameters: { type: 'object', properties: { prompt: { type: 'string' } }, required: ['prompt'] },\n      async execute(args) {\n        const resp = await fetch('{{endpoint}}/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },\n          body: JSON.stringify({ model: '{{modelName}}', messages: [{ role: 'user', content: args.prompt }] }) });\n        return { response: (await resp.json()).choices?.[0]?.message?.content ?? '' };\n      }\n    });\n  }\n};`,
     },
   },
@@ -88,19 +88,19 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
       { name: 'description', description: 'Workflow description', default: 'Automated multi-step workflow', required: true },
     ],
     files: {
-      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["devflow","workflow"]}`,
+      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","workflow"]}`,
       'index.js': `const steps = [\n  { name: 'validate', run: async (ctx) => ctx.logger.info('Validating...') },\n  { name: 'process', run: async (ctx) => ctx.logger.info('Processing...') },\n  { name: 'report', run: async (ctx) => ctx.logger.info('Reporting...') },\n];\nexport default {\n  manifest: { name: '{{pluginName}}', version: '0.1.0', description: '{{description}}' },\n  async activate(ctx) {\n    ctx.registerTool({ name: 'run_{{pluginName}}', description: '{{description}}', parameters: { type: 'object', properties: {} },\n      async execute() { for (const s of steps) await s.run(ctx); return { completed: steps.map(s => s.name) }; } });\n  }\n};`,
     },
   },
   {
-    name: 'ui-extension', description: 'UI customization plugin for extending the DevFlow interface',
+    name: 'ui-extension', description: 'UI customization plugin for extending the Personal Assistant interface',
     category: 'ui', tags: ['ui', 'theme', 'extension'],
     variables: [
       { name: 'pluginName', description: 'Extension name in kebab-case', default: 'my-theme', required: true, pattern: kebabPattern },
       { name: 'description', description: 'UI extension description', default: 'Custom UI theme and display tweaks', required: true },
     ],
     files: {
-      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["devflow","ui","theme"]}`,
+      'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","ui","theme"]}`,
       'index.js': `export default {\n  manifest: { name: '{{pluginName}}', version: '0.1.0', description: '{{description}}' },\n  async activate(ctx) {\n    ctx.setConfig({ theme: { primary: '#6366f1', secondary: '#8b5cf6', accent: '#06b6d4', background: '#0f172a' } });\n    ctx.logger.info('{{pluginName}} theme applied');\n  },\n  async deactivate() { console.log('{{pluginName}} deactivated'); }\n};`,
     },
   },

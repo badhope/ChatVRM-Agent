@@ -83,7 +83,7 @@ async function selectProvider(providerOption?: string): Promise<ProviderType | n
 
   if (configuredProviders.length === 0) {
     printError('没有已配置的平台');
-    printInfo('请先运行: devflow config init');
+    printInfo('请先运行: personal-assistant config init');
     return null;
   }
 
@@ -465,7 +465,7 @@ async function streamAIResponse(
 function handleAIError(error: unknown): void {
   const errMsg = getErrorMessage(error);
   printError(`\n  请求失败: ${errMsg}`);
-  if (errMsg.includes('401')) printInfo('  API Key 可能无效，请运行: devflow config set-key <平台> <apiKey>');
+  if (errMsg.includes('401')) printInfo('  API Key 可能无效，请运行: personal-assistant config set-key <平台> <apiKey>');
   else if (errMsg.includes('429')) printInfo('  请求频率过高，请稍后重试');
   else if (errMsg.includes('timeout')) printInfo('  请求超时，请检查网络');
   console.log();

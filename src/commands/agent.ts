@@ -13,7 +13,7 @@ import type { ProviderType } from '../types.js';
 const agentCommand = new Command('agent')
   .description('Agent 核心循环 - 智能理解、规划、执行任务');
 
-// devflow agent run <任务> - 执行智能任务
+// personal-assistant agent run <任务> - 执行智能任务
 agentCommand
   .command('run')
   .alias('execute')
@@ -155,7 +155,7 @@ agentCommand
     }
   });
 
-// devflow agent intent <描述> - 测试意图识别
+// personal-assistant agent intent <描述> - 测试意图识别
 agentCommand
   .command('intent')
   .alias('recognize')
@@ -174,7 +174,7 @@ agentCommand
     ]);
   });
 
-// devflow agent plan <任务> - 只做规划，不执行
+// personal-assistant agent plan <任务> - 只做规划，不执行
 agentCommand
   .command('plan')
   .description('仅规划任务步骤（不执行）')
@@ -204,7 +204,7 @@ agentCommand
     }
   });
 
-// devflow agent status - 查看 Agent 状态
+// personal-assistant agent status - 查看 Agent 状态
 agentCommand
   .command('status')
   .description('查看 Agent 系统状态')

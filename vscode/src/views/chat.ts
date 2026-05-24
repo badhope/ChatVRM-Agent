@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import { DevFlowClient } from '../client';
+import { PersonalAssistantClient } from '../client';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'devflow.chat';
+    public static readonly viewType = 'personal-assistant.chat';
     private _view?: vscode.WebviewView;
     private messageHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
-        private client: DevFlowClient
+        private client: PersonalAssistantClient
     ) {}
 
     public resolveWebviewView(
@@ -76,7 +76,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevFlow Chat</title>
+    <title>Personal Assistant Chat</title>
     <style>
         * {
             box-sizing: border-box;
@@ -155,7 +155,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 <body>
     <div class="chat-container" id="chat"></div>
     <div class="input-container">
-        <textarea id="input" rows="3" placeholder="Ask DevFlow..."></textarea>
+        <textarea id="input" rows="3" placeholder="Ask Personal Assistant..."></textarea>
         <button id="send">Send</button>
     </div>
     <script>
@@ -178,7 +178,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 indicator = document.createElement('div');
                 indicator.id = 'typing';
                 indicator.className = 'typing';
-                indicator.textContent = 'DevFlow is thinking...';
+                indicator.textContent = 'Personal Assistant is thinking...';
                 chat.appendChild(indicator);
             } else if (!show && indicator) {
                 indicator.remove();

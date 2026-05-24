@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DevFlowClient, PluginInfo } from '../client';
+import { PersonalAssistantClient, PluginInfo } from '../client';
 
 export class PluginsViewProvider implements vscode.TreeDataProvider<PluginItem> {
     private _onDidChangeTreeData = new vscode.EventEmitter<PluginItem | undefined | void>();
@@ -7,7 +7,7 @@ export class PluginsViewProvider implements vscode.TreeDataProvider<PluginItem> 
 
     private plugins: PluginInfo[] = [];
 
-    constructor(private client: DevFlowClient) {}
+    constructor(private client: PersonalAssistantClient) {}
 
     public getTreeItem(element: PluginItem): vscode.TreeItem {
         return element;
@@ -57,7 +57,7 @@ export class PluginItem extends vscode.TreeItem {
         );
 
         this.command = {
-            command: 'devflow.showPlugins',
+            command: 'personal-assistant.showPlugins',
             title: 'Show Plugin Details',
             arguments: [name]
         };

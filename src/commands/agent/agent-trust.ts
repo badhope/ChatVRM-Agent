@@ -7,7 +7,7 @@ import { detectIssues, generateTrustReport, formatTrustOutput, DANGEROUS_PATTERN
 export const agentTrustCommand = new Command('trust')
   .description('信任检查与规则');
 
-// devflow agent trust <文本> - 信任检查
+// personal-assistant agent trust <文本> - 信任检查
 agentTrustCommand
   .command('trust')
   .description('信任检查 - 检测文本中的潜在风险')
@@ -43,7 +43,7 @@ agentTrustCommand
     console.log();
   });
 
-// devflow agent trust-rules - 查看信任规则
+// personal-assistant agent trust-rules - 查看信任规则
 agentTrustCommand
   .command('trust-rules')
   .description('查看所有信任检测规则')

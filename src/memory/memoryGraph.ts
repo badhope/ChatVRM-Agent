@@ -73,7 +73,7 @@ interface EdgeAttrs {
  *   - derived_from: 派生自
  *   - contradicts: 矛盾
  *
- * 持久化位置：~/.devflow/memory/graph.json
+ * 持久化位置：~/.personal-assistant/memory/graph.json
  */
 export class MemoryGraph {
   private graph: GraphWrapper;

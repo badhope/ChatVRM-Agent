@@ -19,7 +19,7 @@ export interface SyncProvider {
 }
 
 // ============================================================
-// Local Sync Provider - stores data in ~/.devflow/sync/
+// Local Sync Provider - stores data in ~/.personal-assistant/sync/
 // ============================================================
 
 export class LocalSyncProvider implements SyncProvider {
@@ -29,7 +29,7 @@ export class LocalSyncProvider implements SyncProvider {
   private dataFile: string;
 
   constructor(syncDir?: string) {
-    this.syncDir = syncDir || path.join(os.homedir(), '.devflow', 'sync');
+    this.syncDir = syncDir || path.join(os.homedir(), '.personal-assistant', 'sync');
     this.devicesFile = path.join(this.syncDir, 'devices.json');
     this.dataFile = path.join(this.syncDir, 'sync-data.json');
   }
@@ -80,13 +80,13 @@ export class GistSyncProvider implements SyncProvider {
 
   async upload(data: SyncData): Promise<void> {
     await this.gistRequest('PATCH', `/gists/${this.gistId}`, 
-      { files: { 'devflow-sync.json': { content: JSON.stringify(data, null, 2) } } });
+      { files: { 'personal-assistant-sync.json': { content: JSON.stringify(data, null, 2) } } });
   }
 
   async download(): Promise<SyncData | null> {
     try {
       const res = await this.gistRequest('GET', `/gists/${this.gistId}`) as { files?: Record<string, { content?: string }> };
-      const content = res.files?.['devflow-sync.json']?.content;
+      const content = res.files?.['personal-assistant-sync.json']?.content;
       return content ? JSON.parse(content) as SyncData : null;
     } catch (error) {
       return null;
@@ -108,7 +108,7 @@ export class GistSyncProvider implements SyncProvider {
   private gistRequest(method: string, endpoint: string, body?: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const req = https.request({ hostname: 'api.github.com', path: endpoint, method,
-        headers: { 'Authorization': `Bearer ${this.token}`, 'User-Agent': 'DevFlow-Agent', 'Content-Type': 'application/json' } },
+        headers: { 'Authorization': `Bearer ${this.token}`, 'User-Agent': 'Personal Assistant-Agent', 'Content-Type': 'application/json' } },
         (res) => {
           let data = '';
           res.on('data', c => data += c);

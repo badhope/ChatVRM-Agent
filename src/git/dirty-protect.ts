@@ -36,7 +36,7 @@ export class DirtyProtect {
     }
 
     // 暂存用户更改
-    const result = await this.git.stash(`devflow-auto-save: ${dirtyFiles.join(', ')}`);
+    const result = await this.git.stash(`personal-assistant-auto-save: ${dirtyFiles.join(', ')}`);
     if (result.success) {
       this.stashed = true;
       return {

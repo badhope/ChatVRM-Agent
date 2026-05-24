@@ -79,7 +79,7 @@ gitCommand
 
     const commits = await git.getCommits({
       count: parseInt(options.count),
-      author: options.ai ? '(devflow)' : undefined,
+      author: options.ai ? '(personal-assistant)' : undefined,
     });
 
     if (commits.length === 0) {
@@ -291,7 +291,7 @@ gitCommand
       return;
     }
 
-    const branchName = name.startsWith('devflow/') ? name : `devflow/${name}`;
+    const branchName = name.startsWith('personal-assistant/') ? name : `personal-assistant/${name}`;
     const result = await git.createBranch(branchName);
     if (result.success) {
       printSuccess(result.message);

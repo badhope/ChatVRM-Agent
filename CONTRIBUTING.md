@@ -1,6 +1,6 @@
-# Contributing to DevFlow Agent
+# Contributing to Personal-Assistant
 
-We welcome contributions to DevFlow Agent! This document outlines the guidelines for contributing to this project.
+We welcome contributions to Personal-Assistant! This document outlines the guidelines for contributing to this project.
 
 ## 📋 Prerequisites
 
@@ -14,10 +14,10 @@ Before contributing, please ensure you have:
 
 ```bash
 # Clone the repository
-git clone https://github.com/badhope/DevFlow-Agent.git
+git clone https://github.com/badhope/Personal-Assistant.git
 
 # Install dependencies
-cd DevFlow-Agent
+cd Personal-Assistant
 npm install
 
 # Build the project
@@ -99,8 +99,8 @@ By contributing to this project, you agree that your contributions will be licen
 
 ## 📞 Contact
 
-For questions or discussions, please contact: contact@devflow.ai
+For questions or discussions, please contact through GitHub Issues.
 
 ---
 
-Thank you for contributing to DevFlow Agent! 🚀
+Thank you for contributing to Personal-Assistant! 🚀

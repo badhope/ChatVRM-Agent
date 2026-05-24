@@ -45,7 +45,7 @@ function resolveHome(p: string): string {
 }
 
 function defaultConfigDir(): string {
-  return path.join(os.homedir(), '.devflow');
+  return path.join(os.homedir(), '.personal-assistant');
 }
 
 export class PluginRegistryStore {

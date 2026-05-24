@@ -73,7 +73,7 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
       modelList = [result.candidates[0]];
     } else {
       printWarning(`平台未找到模型 "${options.model}"，将直接尝试调用`);
-      printInfo('如果调用失败，可以用 devflow chat search <关键词> 搜索可用模型');
+      printInfo('如果调用失败，可以用 personal-assistant chat search <关键词> 搜索可用模型');
       modelList = [options.model];
     }
   } else {

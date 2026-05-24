@@ -22,7 +22,7 @@ sandboxConfigCommand
       if (!validLevels.includes(level as SandboxLevel)) {
         printError(`无效的权限级别: ${level}`);
         console.log(chalk.gray(`  可选级别: ${validLevels.join(', ')}`));
-        console.log(chalk.gray(`  使用 devflow config sandbox-levels 查看详细对比`));
+        console.log(chalk.gray(`  使用 personal-assistant config sandbox-levels 查看详细对比`));
         return;
       }
 
@@ -35,7 +35,7 @@ sandboxConfigCommand
 
     // 交互式选择
     if (!process.stdin.isTTY) {
-      printError('非交互模式请指定级别: devflow config set-sandbox <level>');
+      printError('非交互模式请指定级别: personal-assistant config set-sandbox <level>');
       console.log(chalk.gray(`  可选级别: minimal, conservative, balanced, relaxed, extreme`));
       return;
     }
@@ -150,7 +150,7 @@ sandboxConfigCommand
       console.log();
     });
 
-    console.log(chalk.gray('  使用 devflow config set-sandbox <level> 更改权限级别'));
+    console.log(chalk.gray('  使用 personal-assistant config set-sandbox <level> 更改权限级别'));
     console.log();
   });
 

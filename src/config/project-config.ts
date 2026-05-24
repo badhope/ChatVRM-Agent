@@ -34,8 +34,8 @@ export interface ProjectConfig {
 
 const CONFIG_FILES = [
   'DEVFLOW.md',      // 主配置文件（Markdown格式，易读）
-  '.devflowrc',      // JSON/YAML配置
-  '.devflow/config.json', // 目录级配置
+  '.personal-assistantrc',      // JSON/YAML配置
+  '.personal-assistant/config.json', // 目录级配置
 ];
 
 export class ProjectConfigLoader {
@@ -65,7 +65,7 @@ export class ProjectConfigLoader {
             config.instructions = json.instructions;
           }
         } else {
-          // .devflowrc 格式（YAML-like，简单 key=value）
+          // .personal-assistantrc 格式（YAML-like，简单 key=value）
           for (const line of content.split('\n')) {
             const trimmed = line.trim();
             if (!trimmed || trimmed.startsWith('#')) continue;

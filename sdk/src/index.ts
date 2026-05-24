@@ -1,11 +1,11 @@
 /**
- * @devflow/sdk - DevFlow Agent SDK
+ * @personal-assistant/sdk - Personal Assistant Agent SDK
  *
- * Programmatic API for using DevFlow Agent in other applications.
+ * Programmatic API for using Personal Assistant Agent in other applications.
  *
  * @example
  * ```typescript
- * import { runAgent, parseFile, generateRepoMap, DevFlowError } from '@devflow/sdk';
+ * import { runAgent, parseFile, generateRepoMap, PersonalAssistantError } from '@personal-assistant/sdk';
  *
  * // Run agent
  * const result = await runAgent('Add error handling to the auth module');
@@ -23,7 +23,7 @@
  * try {
  *   await runAgent('Do something');
  * } catch (error) {
- *   if (error instanceof DevFlowError) {
+ *   if (error instanceof PersonalAssistantError) {
  *     console.error(`[${error.code}] ${error.message}`);
  *   }
  * }

@@ -1,4 +1,4 @@
-# DevFlow-Agent 功能完善清单
+# Personal-Assistant 功能完善清单
 
 ## 📊 当前状态总览
 
@@ -203,7 +203,7 @@ try {
 
 #### 5. **配置持久化** 🟡 需要测试
 
-- ✅ 配置已保存到 `~/.devflow/config.json`
+- ✅ 配置已保存到 `~/.personal-assistant/config.json`
 - ⚠️ 首次创建目录有权限问题
 - ⚠️ 配置迁移未实现
 - ⚠️ 多环境配置未实现
@@ -421,11 +421,11 @@ if (process.stdin.isTTY) {
 1. **测试现有功能**
    ```bash
    # 逐个测试命令
-   devflow ai list
-   devflow config list
-   devflow tools list
-   devflow agent status
-   devflow review file <某个文件>
+   personal-assistant ai list
+   personal-assistant config list
+   personal-assistant tools list
+   personal-assistant agent status
+   personal-assistant review file <某个文件>
    ```
 
 2. **修复已知问题**

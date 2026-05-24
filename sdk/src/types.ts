@@ -1,7 +1,7 @@
 /**
- * @devflow/sdk - Public Type Definitions
+ * @personal-assistant/sdk - Public Type Definitions
  *
- * These types define the public API surface of the DevFlow SDK.
+ * These types define the public API surface of the Personal Assistant SDK.
  */
 
 /**
@@ -120,7 +120,7 @@ export interface ActModeConfig {
 }
 
 /**
- * Options for configuring a DevFlow Agent instance.
+ * Options for configuring a Personal Assistant Agent instance.
  */
 export interface AgentOptions {
   /** LLM model to use (e.g., 'claude-3-5-sonnet', 'gpt-4') */
