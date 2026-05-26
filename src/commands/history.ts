@@ -4,9 +4,7 @@ import chalk from 'chalk';
 import { historyManager } from '../history/manager.js';
 import { printHeader, printSection, printSuccess, printError, printInfo } from '../ui/logo.js';
 
-const historyCommand = new Command('history')
-  .alias('h')
-  .description('会话历史管理');
+const historyCommand = new Command('history').alias('h').description('会话历史管理');
 
 // 列出所有历史会话
 historyCommand
@@ -39,7 +37,9 @@ historyCommand
       console.log(`      ${chalk.gray('ID:')} ${session.id.slice(0, 8)}...`);
       console.log(`      ${chalk.gray('消息:')} ${session.messageCount} 条`);
       console.log(`      ${chalk.gray('更新:')} ${date}`);
-      console.log(`      ${chalk.gray('预览:')} ${session.preview.slice(0, 50)}${session.preview.length > 50 ? '...' : ''}`);
+      console.log(
+        `      ${chalk.gray('预览:')} ${session.preview.slice(0, 50)}${session.preview.length > 50 ? '...' : ''}`
+      );
       console.log();
     });
 
@@ -59,7 +59,7 @@ historyCommand
 
     // 查找完整ID
     const sessions = await historyManager.listSessions();
-    const matched = sessions.find(s => s.id.startsWith(sessionId));
+    const matched = sessions.find((s) => s.id.startsWith(sessionId));
 
     if (!matched) {
       printError('未找到该会话');
@@ -88,10 +88,13 @@ historyCommand
     console.log(chalk.bold('  对话内容:\n'));
 
     session.messages.forEach((msg, index) => {
-      const roleColor = msg.role === 'user' ? chalk.cyan : msg.role === 'assistant' ? chalk.green : chalk.gray;
+      const roleColor =
+        msg.role === 'user' ? chalk.cyan : msg.role === 'assistant' ? chalk.green : chalk.gray;
       const roleName = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? 'AI' : '系统';
 
-      console.log(`  ${roleColor(`[${roleName}]`)} ${chalk.gray(new Date(msg.timestamp).toLocaleTimeString('zh-CN'))}`);
+      console.log(
+        `  ${roleColor(`[${roleName}]`)} ${chalk.gray(new Date(msg.timestamp).toLocaleTimeString('zh-CN'))}`
+      );
       console.log(`  ${msg.content.split('\n').join('\n  ')}`);
       console.log();
     });
@@ -108,7 +111,7 @@ historyCommand
     await historyManager.init();
 
     const sessions = await historyManager.listSessions();
-    const matched = sessions.find(s => s.id.startsWith(sessionId));
+    const matched = sessions.find((s) => s.id.startsWith(sessionId));
 
     if (!matched) {
       printError('未找到该会话');
@@ -117,12 +120,14 @@ historyCommand
 
     let shouldDelete = options.force;
     if (!shouldDelete && process.stdin.isTTY) {
-      const { confirm } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'confirm',
-        message: `确定要删除会话 "${matched.title}" 吗？`,
-        default: false
-      }]);
+      const { confirm } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirm',
+          message: `确定要删除会话 "${matched.title}" 吗？`,
+          default: false,
+        },
+      ]);
       shouldDelete = confirm;
     }
 
@@ -142,12 +147,14 @@ historyCommand
 
     let shouldClear = options.force;
     if (!shouldClear && process.stdin.isTTY) {
-      const { confirm } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'confirm',
-        message: '确定要清空所有历史会话吗？此操作不可恢复！',
-        default: false
-      }]);
+      const { confirm } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirm',
+          message: '确定要清空所有历史会话吗？此操作不可恢复！',
+          default: false,
+        },
+      ]);
       shouldClear = confirm;
     }
 
@@ -168,7 +175,7 @@ historyCommand
     await historyManager.init();
 
     const sessions = await historyManager.listSessions();
-    const matched = sessions.find(s => s.id.startsWith(sessionId));
+    const matched = sessions.find((s) => s.id.startsWith(sessionId));
 
     if (!matched) {
       printError('未找到该会话');
@@ -193,14 +200,15 @@ historyCommand
       content += `- 平台: ${session.metadata.provider || '未知'}\n`;
       content += `- 模型: ${session.metadata.model || '未知'}\n\n`;
       content += '## 对话\n\n';
-      session.messages.forEach(msg => {
-        const role = msg.role === 'user' ? '**用户**' : msg.role === 'assistant' ? '**AI**' : '**系统**';
+      session.messages.forEach((msg) => {
+        const role =
+          msg.role === 'user' ? '**用户**' : msg.role === 'assistant' ? '**AI**' : '**系统**';
         content += `${role}:\n${msg.content}\n\n---\n\n`;
       });
     } else {
       content = `会话: ${session.title}\n`;
       content += `创建: ${new Date(session.createdAt).toLocaleString('zh-CN')}\n\n`;
-      session.messages.forEach(msg => {
+      session.messages.forEach((msg) => {
         const role = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? 'AI' : '系统';
         content += `[${role}]\n${msg.content}\n\n`;
       });
@@ -225,9 +233,8 @@ historyCommand
     const limit = parseInt(options.limit, 10) || 10;
 
     // 搜索标题和预览
-    const matched = sessions.filter(s =>
-      s.title.toLowerCase().includes(lower) ||
-      s.preview.toLowerCase().includes(lower)
+    const matched = sessions.filter(
+      (s) => s.title.toLowerCase().includes(lower) || s.preview.toLowerCase().includes(lower)
     );
 
     if (matched.length === 0) {
@@ -238,7 +245,7 @@ historyCommand
     printHeader();
     printSection(`搜索 "${keyword}" (${matched.length} 个结果)`);
 
-    matched.slice(0, limit).forEach(s => {
+    matched.slice(0, limit).forEach((s) => {
       const date = new Date(s.updatedAt).toLocaleString('zh-CN');
       console.log(`  ${chalk.cyan(s.id.slice(0, 8))}  ${chalk.bold(s.title)}`);
       console.log(`    ${chalk.gray(`${date} | ${s.messageCount} 条消息`)}`);

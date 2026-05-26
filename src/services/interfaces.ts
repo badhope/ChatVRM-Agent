@@ -136,12 +136,14 @@ export interface IMemoryManager {
    * 获取最近对话
    * @param limit 返回结果数量限制
    */
-  getRecent(limit?: number): Promise<Array<{
-    input: string;
-    output: string;
-    time: string;
-    skill: string;
-  }>>;
+  getRecent(limit?: number): Promise<
+    Array<{
+      input: string;
+      output: string;
+      time: string;
+      skill: string;
+    }>
+  >;
 
   /** 获取记忆统计 */
   getStats(): Promise<MemoryStats>;
@@ -235,12 +237,14 @@ export interface IGitManager {
   restoreCheckpoint(commitHash: string): Promise<void>;
 
   /** 获取最近的提交历史 */
-  getRecentCommits(limit?: number): Promise<Array<{
-    hash: string;
-    message: string;
-    author: string;
-    date: Date;
-  }>>;
+  getRecentCommits(limit?: number): Promise<
+    Array<{
+      hash: string;
+      message: string;
+      author: string;
+      date: Date;
+    }>
+  >;
 }
 
 // ============================================================

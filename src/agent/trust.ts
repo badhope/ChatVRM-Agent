@@ -95,7 +95,7 @@ export function calculateTrustScore(issues: TrustIssue[]): number {
 
   // 简化：仅需确认的问题扣50分，其他不扣分
   const requiresConfirmation = issues.some(
-    issue => issue.level === TrustLevel.RequireConfirmation
+    (issue) => issue.level === TrustLevel.RequireConfirmation
   );
 
   return requiresConfirmation ? 50 : 100;
@@ -148,7 +148,7 @@ export function generateTrustReport(issues: TrustIssue[]): TrustReport {
 
   // 简化：判断是否需要确认
   const requiresConfirmation = issues.some(
-    issue => issue.level === TrustLevel.RequireConfirmation
+    (issue) => issue.level === TrustLevel.RequireConfirmation
   );
 
   // 统计问题
@@ -165,9 +165,7 @@ export function generateTrustReport(issues: TrustIssue[]): TrustReport {
 
   // 生成详细问题列表
   const details = issues.map((issue, index) => {
-    const levelTag = TRUST_LEVEL_STYLE[issue.level](
-      `[${TRUST_LEVEL_LABEL[issue.level]}]`
-    );
+    const levelTag = TRUST_LEVEL_STYLE[issue.level](`[${TRUST_LEVEL_LABEL[issue.level]}]`);
     const typeTag = ISSUE_TYPE_LABEL[issue.type];
     return `${index + 1}. ${levelTag} ${typeTag} - ${issue.description}\n   建议: ${issue.suggestion}`;
   });
@@ -241,7 +239,7 @@ export function formatTrustOutput(output: string, issues: TrustIssue[]): string 
 
   for (const issue of issues) {
     // 找到对应的匹配模式
-    const matched = DANGEROUS_PATTERNS.find(p => p.description === issue.description);
+    const matched = DANGEROUS_PATTERNS.find((p) => p.description === issue.description);
     if (!matched) continue;
 
     // 重置正则的 lastIndex（因为可能之前 test 过）
@@ -289,7 +287,8 @@ export function formatTrustOutput(output: string, issues: TrustIssue[]): string 
   for (const annotation of annotations) {
     formatted =
       formatted.slice(0, annotation.start) +
-      annotation.prefix + ' ' +
+      annotation.prefix +
+      ' ' +
       formatted.slice(annotation.start, annotation.end) +
       formatted.slice(annotation.end);
   }
@@ -313,7 +312,7 @@ export function formatTrustOutput(output: string, issues: TrustIssue[]): string 
  * @returns 是否需要用户确认
  */
 export function shouldRequireConfirmation(issues: TrustIssue[]): boolean {
-  return issues.some(issue => issue.level === TrustLevel.RequireConfirmation);
+  return issues.some((issue) => issue.level === TrustLevel.RequireConfirmation);
 }
 
 /**
@@ -376,7 +375,10 @@ export async function askUserConfirmation(
     console.log(chalk.cyan('  详细问题:'));
     for (const detail of report.details) {
       // 缩进每个详情行
-      const indented = detail.split('\n').map(line => '  ' + line).join('\n');
+      const indented = detail
+        .split('\n')
+        .map((line) => '  ' + line)
+        .join('\n');
       console.log(indented);
       console.log('');
     }
@@ -388,12 +390,14 @@ export async function askUserConfirmation(
   // 使用 inquirer 让用户确认
   try {
     const message = options?.customMessage || '是否确认继续执行以上操作？';
-    const { confirmed } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'confirmed',
-      message,
-      default: false,
-    }]);
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message,
+        default: false,
+      },
+    ]);
 
     if (confirmed) {
       console.log(chalk.green('  用户已确认，继续执行。'));
@@ -424,7 +428,9 @@ export async function askHighRiskConfirmation(
   confirmText: string = 'CONFIRM'
 ): Promise<boolean> {
   // 简化：直接使用标准确认流程
-  return askUserConfirmation(report, { customMessage: `请输入 "${confirmText}" 以确认执行此操作：` });
+  return askUserConfirmation(report, {
+    customMessage: `请输入 "${confirmText}" 以确认执行此操作：`,
+  });
 }
 
 // ==================== Convenience Functions ====================
@@ -473,11 +479,8 @@ export async function performTrustCheck(
  * @param context - 共享的检测上下文
  * @returns 批量检查结果
  */
-export function batchTrustCheck(
-  outputs: string[],
-  context?: DetectionContext
-): TrustReport[] {
-  return outputs.map(output => {
+export function batchTrustCheck(outputs: string[], context?: DetectionContext): TrustReport[] {
+  return outputs.map((output) => {
     const issues = detectIssues(output, context);
     return generateTrustReport(issues);
   });

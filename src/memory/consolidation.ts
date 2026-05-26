@@ -16,10 +16,10 @@ function getErrorMsg(error: unknown): string {
 
 export interface ConsolidationConfig {
   enabled: boolean;
-  decayFactor: number;              // 每天重要性衰减系数 (0-1, 默认 0.95)
-  consolidationThreshold: number;   // 低于此重要性的记忆被整合 (默认 0.3)
-  maxShortTermMemories: number;     // 强制整合的记忆数量上限 (默认 500)
-  autoConsolidateOnLoad: boolean;   // 加载记忆时自动整合 (默认 true)
+  decayFactor: number; // 每天重要性衰减系数 (0-1, 默认 0.95)
+  consolidationThreshold: number; // 低于此重要性的记忆被整合 (默认 0.3)
+  maxShortTermMemories: number; // 强制整合的记忆数量上限 (默认 500)
+  autoConsolidateOnLoad: boolean; // 加载记忆时自动整合 (默认 true)
 }
 
 export interface ConsolidationResult {
@@ -34,8 +34,8 @@ export interface DecayableMemory {
   id: string;
   importance: number;
   createdAt: Date | string;
-  stability?: number;       // 记忆稳定性 S，越高衰减越慢
-  accessCount?: number;     // 被访问次数
+  stability?: number; // 记忆稳定性 S，越高衰减越慢
+  accessCount?: number; // 被访问次数
   lastAccessedAt?: Date | string;
 }
 
@@ -95,7 +95,10 @@ export class MemoryConsolidator {
    */
   async consolidate(
     memories: DecayableMemory[],
-    memoryManager: { removeMemory: (id: string) => Promise<void>; addSummary: (summary: string, sourceIds: string[]) => Promise<void> },
+    memoryManager: {
+      removeMemory: (id: string) => Promise<void>;
+      addSummary: (summary: string, sourceIds: string[]) => Promise<void>;
+    }
   ): Promise<ConsolidationResult> {
     const result: ConsolidationResult = {
       memoriesConsolidated: 0,
@@ -108,9 +111,7 @@ export class MemoryConsolidator {
     this.applyForgettingCurve(memories);
 
     // 找出低重要性记忆
-    const lowImportance = memories.filter(
-      m => m.importance < this.config.consolidationThreshold,
-    );
+    const lowImportance = memories.filter((m) => m.importance < this.config.consolidationThreshold);
 
     if (lowImportance.length === 0) return result;
 
@@ -121,7 +122,7 @@ export class MemoryConsolidator {
       if (group.length < 2) continue;
 
       result.memoriesConsolidated += group.length;
-      const ids = group.map(m => m.id);
+      const ids = group.map((m) => m.id);
 
       // 生成摘要
       const summary = this.generateSummary(group);
@@ -169,13 +170,15 @@ export class MemoryConsolidator {
    */
   async runConsolidationCycle(memoryDir: string): Promise<ConsolidationResult> {
     const emptyResult: ConsolidationResult = {
-      memoriesConsolidated: 0, memoriesRemoved: 0,
-      summariesCreated: 0, patternsExtracted: 0,
+      memoriesConsolidated: 0,
+      memoriesRemoved: 0,
+      summariesCreated: 0,
+      patternsExtracted: 0,
     };
 
     try {
       const files = await fs.readdir(memoryDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter((f) => f.endsWith('.json'));
 
       // 检查是否需要整合
       if (jsonFiles.length < this.config.maxShortTermMemories) {
@@ -205,7 +208,7 @@ export class MemoryConsolidator {
 
       // 应用遗忘曲线并过滤
       this.applyForgettingCurve(memories);
-      const toRemove = memories.filter(m => m.importance < 0.05);
+      const toRemove = memories.filter((m) => m.importance < 0.05);
 
       // 移除已衰减的记忆
       for (const memory of toRemove) {
@@ -240,14 +243,14 @@ export class MemoryConsolidator {
       group.push(m);
       groups.set(weekKey, group);
     }
-    return [...groups.values()].filter(g => g.length >= 2);
+    return [...groups.values()].filter((g) => g.length >= 2);
   }
 
   /** 生成记忆摘要 */
   private generateSummary(memories: DecayableMemory[]): string {
     const count = memories.length;
     const avgImportance = memories.reduce((s, m) => s + m.importance, 0) / count;
-    const oldest = new Date(Math.min(...memories.map(m => new Date(m.createdAt).getTime())));
+    const oldest = new Date(Math.min(...memories.map((m) => new Date(m.createdAt).getTime())));
     return `[整合摘要] ${count}条记忆, 平均重要性:${avgImportance.toFixed(2)}, 最早:${oldest.toISOString().split('T')[0]}`;
   }
 }

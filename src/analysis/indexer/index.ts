@@ -5,12 +5,7 @@
  */
 
 // Re-export main code-indexer functions (at parent level)
-export {
-  buildCodeIndex,
-  searchIndex,
-  getDefinition,
-  getTypeInfo,
-} from '../code-indexer.js';
+export { buildCodeIndex, searchIndex, getDefinition, getTypeInfo } from '../code-indexer.js';
 
 // Re-export types from indexer submodule (in same directory)
 export type { CodeIndex, IndexEntry, SearchOptions, IndexData } from './types.js';

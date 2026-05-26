@@ -62,7 +62,19 @@ export interface MemoryEntry {
 // ============================================================
 
 /** 所有支持的实体类型 */
-export const ENTITY_TYPES: readonly EntityType[] = ['person', 'project', 'tech', 'concept', 'skill'];
+export const ENTITY_TYPES: readonly EntityType[] = [
+  'person',
+  'project',
+  'tech',
+  'concept',
+  'skill',
+];
 
 /** 所有支持的关系类型 */
-export const RELATIONSHIP_TYPES: readonly RelationshipType[] = ['uses', 'knows', 'likes', 'created', 'related_to'];
+export const RELATIONSHIP_TYPES: readonly RelationshipType[] = [
+  'uses',
+  'knows',
+  'likes',
+  'created',
+  'related_to',
+];

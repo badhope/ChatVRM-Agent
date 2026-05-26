@@ -66,16 +66,19 @@ export interface ImageUrlPart {
  */
 export type MessagePart = TextPart | ImageUrlPart;
 
-export const PROVIDER_INFO: Record<ProviderType, {
-  name: string;
-  displayName: string;
-  description: string;
-  baseUrl: string;
-  requiresApiKey: boolean;
-  freeTier: boolean;
-  models: ModelInfo[];
-  keyPrefix?: string;  // API Key 前缀提示
-}> = {
+export const PROVIDER_INFO: Record<
+  ProviderType,
+  {
+    name: string;
+    displayName: string;
+    description: string;
+    baseUrl: string;
+    requiresApiKey: boolean;
+    freeTier: boolean;
+    models: ModelInfo[];
+    keyPrefix?: string; // API Key 前缀提示
+  }
+> = {
   openai: {
     name: 'openai',
     displayName: 'OpenAI',
@@ -83,7 +86,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://api.openai.com/v1',
     requiresApiKey: true,
     freeTier: false,
-    keyPrefix: 'sk-',  // OpenAI keys start with sk-
+    keyPrefix: 'sk-', // OpenAI keys start with sk-
     models: [
       {
         id: 'gpt-4o',
@@ -92,7 +95,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 4096,
         pricing: { inputPerMillion: 2.5, outputPerMillion: 10, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: true, audio: true }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: true,
+          audio: true,
+        },
       },
       {
         id: 'gpt-4o-mini',
@@ -101,7 +112,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 4096,
         pricing: { inputPerMillion: 0.15, outputPerMillion: 0.6, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'o1-preview',
@@ -110,7 +129,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 32768,
         pricing: { inputPerMillion: 15, outputPerMillion: 60, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'o1-mini',
@@ -119,9 +146,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 65536,
         pricing: { inputPerMillion: 3, outputPerMillion: 12, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   anthropic: {
     name: 'anthropic',
@@ -130,7 +165,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://api.anthropic.com',
     requiresApiKey: true,
     freeTier: false,
-    keyPrefix: 'sk-ant-',  // Anthropic keys start with sk-ant-
+    keyPrefix: 'sk-ant-', // Anthropic keys start with sk-ant-
     models: [
       {
         id: 'claude-sonnet-4-20250514',
@@ -139,7 +174,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 200000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 3, outputPerMillion: 15, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'claude-opus-4-20250514',
@@ -148,9 +191,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 200000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 15, outputPerMillion: 75, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: true, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
+      },
+    ],
   },
   google: {
     name: 'google',
@@ -159,7 +210,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     requiresApiKey: true,
     freeTier: true,
-    keyPrefix: 'AI',  // Google API keys start with AI
+    keyPrefix: 'AI', // Google API keys start with AI
     models: [
       {
         id: 'gemini-3-flash-preview',
@@ -168,7 +219,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 1000000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.15, outputPerMillion: 0.6, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'gemini-3.1-flash-preview',
@@ -177,7 +236,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 1000000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.25, outputPerMillion: 1.5, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'gemini-3.1-pro-preview',
@@ -186,9 +253,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 2000000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 3.5, outputPerMillion: 10.5, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
+      },
+    ],
   },
   siliconflow: {
     name: 'siliconflow',
@@ -197,7 +272,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://api.siliconflow.cn/v1',
     requiresApiKey: true,
     freeTier: true,
-    keyPrefix: 'sk-',  // 硅基流动 keys start with sk-
+    keyPrefix: 'sk-', // 硅基流动 keys start with sk-
     models: [
       {
         id: 'deepseek-ai/DeepSeek-R1',
@@ -206,7 +281,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 4, outputPerMillion: 16, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'deepseek-ai/DeepSeek-V3',
@@ -215,7 +298,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 2, outputPerMillion: 8, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'Qwen/Qwen2.5-72B-Instruct',
@@ -224,7 +315,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 1.2, outputPerMillion: 4.8, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'Qwen/Qwen2.5-Coder-32B-Instruct',
@@ -233,7 +332,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.8, outputPerMillion: 3.2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'meta-llama/Llama-3.3-70B-Instruct',
@@ -242,9 +349,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 1.5, outputPerMillion: 6, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   aliyun: {
     name: 'aliyun',
@@ -253,7 +368,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     requiresApiKey: true,
     freeTier: true,
-    keyPrefix: 'sk-',  // 阿里云百炼 keys start with sk-
+    keyPrefix: 'sk-', // 阿里云百炼 keys start with sk-
     models: [
       // Qwen3.6 系列 (最新)
       {
@@ -263,7 +378,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 4, outputPerMillion: 12, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'qwen3.6-flash',
@@ -272,7 +395,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.5, outputPerMillion: 1, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       // Qwen Max 系列 (旗舰)
       {
@@ -282,7 +413,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 32000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 20, outputPerMillion: 60, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'qwen-max-latest',
@@ -291,7 +430,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 20, outputPerMillion: 60, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       // Qwen Plus 系列
       {
@@ -301,7 +448,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 129024,
         maxOutput: 8192,
         pricing: { inputPerMillion: 2, outputPerMillion: 6, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       // Qwen Turbo 系列 (高性价比)
       {
@@ -311,7 +466,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 1000000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.3, outputPerMillion: 0.6, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'qwen-turbo-latest',
@@ -320,7 +483,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.3, outputPerMillion: 0.6, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       // Qwen Coder 系列 (编程专用)
       {
@@ -330,7 +501,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 2, outputPerMillion: 6, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'qwen-coder-turbo',
@@ -339,7 +518,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.5, outputPerMillion: 1, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       // Qwen Long 系列 (长文本)
       {
@@ -349,7 +536,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 10000000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.5, outputPerMillion: 2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: false, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: false,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       // Qwen VL 系列 (视觉)
       {
@@ -359,7 +554,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 32000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 20, outputPerMillion: 60, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'qwen-vl-plus',
@@ -368,7 +571,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 8, outputPerMillion: 8, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       // Qwen Audio 系列 (语音)
       {
@@ -378,7 +589,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 8000,
         maxOutput: 2048,
         pricing: { inputPerMillion: 4, outputPerMillion: 8, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: false, vision: false, audio: true }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: false,
+          vision: false,
+          audio: true,
+        },
       },
       // Qwen2.5 系列 (开源)
       {
@@ -388,7 +607,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 4, outputPerMillion: 4, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'qwen2.5-32b-instruct',
@@ -397,7 +624,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 2, outputPerMillion: 2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'qwen2.5-14b-instruct',
@@ -406,7 +641,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 1, outputPerMillion: 1, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'qwen2.5-7b-instruct',
@@ -415,7 +658,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.5, outputPerMillion: 0.5, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       // DeepSeek 系列 (阿里云托管)
       {
@@ -425,7 +676,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 4, outputPerMillion: 16, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'deepseek-v3',
@@ -434,7 +693,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 1, outputPerMillion: 2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       // 第三方模型
       {
@@ -444,7 +711,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 50, outputPerMillion: 50, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: false, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: false,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'kimi-k2-8b',
@@ -453,9 +728,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 2, outputPerMillion: 2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: false, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   zhipu: {
     name: 'zhipu',
@@ -464,7 +747,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     requiresApiKey: true,
     freeTier: true,
-    keyPrefix: undefined,  // 智谱没有特定前缀
+    keyPrefix: undefined, // 智谱没有特定前缀
     models: [
       {
         id: 'glm-5.1',
@@ -473,7 +756,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 200000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 6, outputPerMillion: 24, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'glm-5',
@@ -482,7 +773,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 200000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 4, outputPerMillion: 18, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'glm-4.7-flash',
@@ -491,9 +790,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 200000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0, outputPerMillion: 0, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: false, tools: true, thinking: false, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   baidu: {
     name: 'baidu',
@@ -502,7 +809,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop',
     requiresApiKey: true,
     freeTier: true,
-    keyPrefix: undefined,  // 百度使用不同的格式
+    keyPrefix: undefined, // 百度使用不同的格式
     models: [
       {
         id: 'ernie-5.1-preview',
@@ -511,7 +818,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 1, outputPerMillion: 4, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
       },
       {
         id: 'ernie-5.0',
@@ -520,9 +835,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.8, outputPerMillion: 3.2, currency: 'CNY' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: true, vision: true, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: true,
+          vision: true,
+          audio: false,
+        },
+      },
+    ],
   },
   deepseek: {
     name: 'deepseek',
@@ -531,7 +854,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'https://api.deepseek.com/v1',
     requiresApiKey: true,
     freeTier: false,
-    keyPrefix: 'sk-',  // DeepSeek keys start with sk-
+    keyPrefix: 'sk-', // DeepSeek keys start with sk-
     models: [
       {
         id: 'deepseek-reasoner',
@@ -540,7 +863,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.55, outputPerMillion: 2.19, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'deepseek-chat',
@@ -549,9 +880,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 64000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0.27, outputPerMillion: 1.1, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   ollama: {
     name: 'ollama',
@@ -560,7 +899,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'http://127.0.0.1:11434',
     requiresApiKey: false,
     freeTier: true,
-    keyPrefix: undefined,  // 本地无需key
+    keyPrefix: undefined, // 本地无需key
     models: [
       {
         id: 'deepseek-r1:14b',
@@ -569,7 +908,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0, outputPerMillion: 0, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: false, tools: false, thinking: true, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: false,
+          tools: false,
+          thinking: true,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'qwen2.5:14b',
@@ -578,7 +925,15 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0, outputPerMillion: 0, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
       },
       {
         id: 'llama3.2:8b',
@@ -587,9 +942,17 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0, outputPerMillion: 0, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
-      }
-    ]
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
   },
   lmstudio: {
     name: 'lmstudio',
@@ -598,7 +961,7 @@ export const PROVIDER_INFO: Record<ProviderType, {
     baseUrl: 'http://127.0.0.1:1234/v1',
     requiresApiKey: false,
     freeTier: true,
-    keyPrefix: undefined,  // 本地无需key
+    keyPrefix: undefined, // 本地无需key
     models: [
       {
         id: 'loaded-model',
@@ -607,8 +970,16 @@ export const PROVIDER_INFO: Record<ProviderType, {
         contextWindow: 128000,
         maxOutput: 8192,
         pricing: { inputPerMillion: 0, outputPerMillion: 0, currency: 'USD' },
-        capabilities: { chat: true, stream: true, embed: true, tools: true, thinking: false, vision: false, audio: false }
-      }
-    ]
-  }
+        capabilities: {
+          chat: true,
+          stream: true,
+          embed: true,
+          tools: true,
+          thinking: false,
+          vision: false,
+          audio: false,
+        },
+      },
+    ],
+  },
 };

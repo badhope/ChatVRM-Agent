@@ -20,7 +20,7 @@ export function tokenize(text: string): string[] {
   const tokens: string[] = [];
   // 英文词
   const englishWords = text.match(/[a-zA-Z0-9]+/g);
-  if (englishWords) tokens.push(...englishWords.map(w => w.toLowerCase()));
+  if (englishWords) tokens.push(...englishWords.map((w) => w.toLowerCase()));
   // 中文字符提取 2-4 字子串
   const chineseChars = text.match(/[\u4e00-\u9fa5]+/g);
   if (chineseChars) {

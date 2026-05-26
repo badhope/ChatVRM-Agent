@@ -20,11 +20,7 @@ import { parseFiles } from './engine.js';
 import { extractSymbols } from './symbols.js';
 import { buildDependencyGraph } from './dependency-graph.js';
 import { rankSymbols } from './importance-ranker.js';
-import {
-  createTokenBudget,
-  estimateTokens,
-  formatFileMap,
-} from './token-budget.js';
+import { createTokenBudget, estimateTokens, formatFileMap } from './token-budget.js';
 import { globMatch, matchesAnyGlob } from '../utils/glob.js';
 import {
   collectSourceFiles,
@@ -63,13 +59,23 @@ export interface RepoMapResult {
  */
 function detectEntryPoints(filePaths: string[]): string[] {
   const entryPatterns = new Set([
-    'index.ts', 'index.js', 'index.mts', 'index.cts',
-    'main.ts', 'main.js',
-    'app.ts', 'app.js',
-    'cli.ts', 'cli.js',
-    'server.ts', 'server.js',
-    'index.py', 'main.py', 'app.py',
-    '__init__.py', '__main__.py',
+    'index.ts',
+    'index.js',
+    'index.mts',
+    'index.cts',
+    'main.ts',
+    'main.js',
+    'app.ts',
+    'app.js',
+    'cli.ts',
+    'cli.js',
+    'server.ts',
+    'server.js',
+    'index.py',
+    'main.py',
+    'app.py',
+    '__init__.py',
+    '__main__.py',
   ]);
 
   return filePaths.filter((fp) => {
@@ -118,7 +124,14 @@ export async function generateRepoMap(
 
   /** Repo Map 只关注的符号类型 */
   const REPO_MAP_KINDS = new Set([
-    'function', 'class', 'interface', 'type', 'enum', 'method', 'module', 'namespace',
+    'function',
+    'class',
+    'interface',
+    'type',
+    'enum',
+    'method',
+    'module',
+    'namespace',
   ]);
 
   for (const [filePath, result] of parseResults) {

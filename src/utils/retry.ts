@@ -14,7 +14,13 @@ export interface RetryConfig {
   maxDelay: number;
 }
 
-export type ErrorCategory = 'rate_limit' | 'auth' | 'server' | 'timeout' | 'invalid_request' | 'unknown';
+export type ErrorCategory =
+  | 'rate_limit'
+  | 'auth'
+  | 'server'
+  | 'timeout'
+  | 'invalid_request'
+  | 'unknown';
 
 // ------------------------------------------------------------------
 // Error classification (unchanged)
@@ -36,7 +42,12 @@ export function classifyError(error: Error | Response): ErrorCategory {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     if (message.includes('rate limit') || message.includes('429')) return 'rate_limit';
-    if (message.includes('unauthorized') || message.includes('401') || message.includes('invalid key')) return 'auth';
+    if (
+      message.includes('unauthorized') ||
+      message.includes('401') ||
+      message.includes('invalid key')
+    )
+      return 'auth';
     if (message.includes('timeout') || message.includes('timed out')) return 'timeout';
     if (message.includes('500') || message.includes('server error')) return 'server';
     if (message.includes('400') || message.includes('bad request')) return 'invalid_request';
@@ -56,7 +67,7 @@ export function shouldRetry(error: Error | Response): boolean {
  * Sleep for the given number of milliseconds.
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ------------------------------------------------------------------
@@ -74,7 +85,7 @@ export function sleep(ms: number): Promise<void> {
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   config: RetryConfig,
-  shouldRetryFn: (error: Error) => boolean = shouldRetry as (e: Error) => boolean,
+  shouldRetryFn: (error: Error) => boolean = shouldRetry as (e: Error) => boolean
 ): Promise<T> {
   return pRetry(fn, {
     retries: config.maxRetries - 1,
@@ -101,7 +112,7 @@ export async function retryWithBackoff<T>(
 export async function retryStreamWithBackoff(
   fn: () => Promise<Response>,
   config: RetryConfig,
-  shouldRetryFn: (error: Error) => boolean = shouldRetry as (e: Error) => boolean,
+  shouldRetryFn: (error: Error) => boolean = shouldRetry as (e: Error) => boolean
 ): Promise<Response> {
   return pRetry(fn, {
     retries: config.maxRetries - 1,

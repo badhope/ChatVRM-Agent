@@ -12,7 +12,11 @@ import {
   registerCommandToRegistry,
   getAllCommandsFromRegistry,
 } from './slash-commands/registry.js';
-import type { SlashCommand, SlashCommandContext, SlashCommandResult } from './slash-commands/types.js';
+import type {
+  SlashCommand,
+  SlashCommandContext,
+  SlashCommandResult,
+} from './slash-commands/types.js';
 
 // 重新导出类型
 export type {

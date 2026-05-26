@@ -42,12 +42,30 @@ const kebabPattern = /^[a-z][a-z0-9-]*$/;
 
 export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
   {
-    name: 'basic-tool', description: 'Simple plugin that registers a single tool for the agent',
-    category: 'tool', tags: ['tool', 'starter', 'beginner'],
+    name: 'basic-tool',
+    description: 'Simple plugin that registers a single tool for the agent',
+    category: 'tool',
+    tags: ['tool', 'starter', 'beginner'],
     variables: [
-      { name: 'pluginName', description: 'Plugin name in kebab-case', default: 'my-tool', required: true, pattern: kebabPattern },
-      { name: 'toolName', description: 'Tool name shown to the agent', default: 'do_thing', required: true },
-      { name: 'description', description: 'What the tool does', default: 'Performs a useful action', required: true },
+      {
+        name: 'pluginName',
+        description: 'Plugin name in kebab-case',
+        default: 'my-tool',
+        required: true,
+        pattern: kebabPattern,
+      },
+      {
+        name: 'toolName',
+        description: 'Tool name shown to the agent',
+        default: 'do_thing',
+        required: true,
+      },
+      {
+        name: 'description',
+        description: 'What the tool does',
+        default: 'Performs a useful action',
+        required: true,
+      },
     ],
     files: {
       'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","tool"]}`,
@@ -56,11 +74,24 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
     },
   },
   {
-    name: 'multi-tool', description: 'Plugin that registers multiple related tools',
-    category: 'tool', tags: ['tool', 'multi', 'advanced'],
+    name: 'multi-tool',
+    description: 'Plugin that registers multiple related tools',
+    category: 'tool',
+    tags: ['tool', 'multi', 'advanced'],
     variables: [
-      { name: 'pluginName', description: 'Plugin name in kebab-case', default: 'my-toolkit', required: true, pattern: kebabPattern },
-      { name: 'description', description: 'Toolkit description', default: 'A collection of related tools', required: true },
+      {
+        name: 'pluginName',
+        description: 'Plugin name in kebab-case',
+        default: 'my-toolkit',
+        required: true,
+        pattern: kebabPattern,
+      },
+      {
+        name: 'description',
+        description: 'Toolkit description',
+        default: 'A collection of related tools',
+        required: true,
+      },
     ],
     files: {
       'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","tools"]}`,
@@ -68,12 +99,30 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
     },
   },
   {
-    name: 'provider', description: 'LLM provider plugin for connecting to a custom model endpoint',
-    category: 'provider', tags: ['provider', 'llm', 'ai'],
+    name: 'provider',
+    description: 'LLM provider plugin for connecting to a custom model endpoint',
+    category: 'provider',
+    tags: ['provider', 'llm', 'ai'],
     variables: [
-      { name: 'pluginName', description: 'Provider name in kebab-case', default: 'custom-provider', required: true, pattern: kebabPattern },
-      { name: 'endpoint', description: 'Base URL for the model API', default: 'https://api.example.com/v1', required: true },
-      { name: 'modelName', description: 'Model identifier', default: 'custom-model', required: true },
+      {
+        name: 'pluginName',
+        description: 'Provider name in kebab-case',
+        default: 'custom-provider',
+        required: true,
+        pattern: kebabPattern,
+      },
+      {
+        name: 'endpoint',
+        description: 'Base URL for the model API',
+        default: 'https://api.example.com/v1',
+        required: true,
+      },
+      {
+        name: 'modelName',
+        description: 'Model identifier',
+        default: 'custom-model',
+        required: true,
+      },
     ],
     files: {
       'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"LLM provider for {{modelName}}","main":"index.js","keywords":["personal-assistant","provider"]}`,
@@ -81,11 +130,24 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
     },
   },
   {
-    name: 'workflow', description: 'Workflow automation plugin with configurable pipeline steps',
-    category: 'workflow', tags: ['workflow', 'automation', 'pipeline'],
+    name: 'workflow',
+    description: 'Workflow automation plugin with configurable pipeline steps',
+    category: 'workflow',
+    tags: ['workflow', 'automation', 'pipeline'],
     variables: [
-      { name: 'pluginName', description: 'Workflow name in kebab-case', default: 'my-workflow', required: true, pattern: kebabPattern },
-      { name: 'description', description: 'Workflow description', default: 'Automated multi-step workflow', required: true },
+      {
+        name: 'pluginName',
+        description: 'Workflow name in kebab-case',
+        default: 'my-workflow',
+        required: true,
+        pattern: kebabPattern,
+      },
+      {
+        name: 'description',
+        description: 'Workflow description',
+        default: 'Automated multi-step workflow',
+        required: true,
+      },
     ],
     files: {
       'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","workflow"]}`,
@@ -93,11 +155,24 @@ export const BUILT_IN_TEMPLATES: PluginTemplate[] = [
     },
   },
   {
-    name: 'ui-extension', description: 'UI customization plugin for extending the Personal Assistant interface',
-    category: 'ui', tags: ['ui', 'theme', 'extension'],
+    name: 'ui-extension',
+    description: 'UI customization plugin for extending the Personal Assistant interface',
+    category: 'ui',
+    tags: ['ui', 'theme', 'extension'],
     variables: [
-      { name: 'pluginName', description: 'Extension name in kebab-case', default: 'my-theme', required: true, pattern: kebabPattern },
-      { name: 'description', description: 'UI extension description', default: 'Custom UI theme and display tweaks', required: true },
+      {
+        name: 'pluginName',
+        description: 'Extension name in kebab-case',
+        default: 'my-theme',
+        required: true,
+        pattern: kebabPattern,
+      },
+      {
+        name: 'description',
+        description: 'UI extension description',
+        default: 'Custom UI theme and display tweaks',
+        required: true,
+      },
     ],
     files: {
       'manifest.json': `{"name":"{{pluginName}}","version":"0.1.0","description":"{{description}}","main":"index.js","keywords":["personal-assistant","ui","theme"]}`,
@@ -116,9 +191,15 @@ export class TemplateManager {
     for (const tpl of BUILT_IN_TEMPLATES) this.templates.set(tpl.name, tpl);
   }
 
-  registerTemplate(template: PluginTemplate): void { this.templates.set(template.name, template); }
-  unregisterTemplate(name: string): boolean { return this.templates.delete(name); }
-  getTemplate(name: string): PluginTemplate | undefined { return this.templates.get(name); }
+  registerTemplate(template: PluginTemplate): void {
+    this.templates.set(template.name, template);
+  }
+  unregisterTemplate(name: string): boolean {
+    return this.templates.delete(name);
+  }
+  getTemplate(name: string): PluginTemplate | undefined {
+    return this.templates.get(name);
+  }
 
   listTemplates(options?: { category?: string }): PluginTemplate[] {
     const all = Array.from(this.templates.values());
@@ -139,24 +220,36 @@ export class TemplateManager {
     const tpl = this.templates.get(name);
     if (!tpl) throw new Error(`Template "${name}" not found`);
     const vars = { ...variables };
-    for (const v of tpl.variables) { if (!(v.name in vars)) vars[v.name] = v.default; }
+    for (const v of tpl.variables) {
+      if (!(v.name in vars)) vars[v.name] = v.default;
+    }
     const resolved: Record<string, string> = {};
-    for (const [filename, content] of Object.entries(tpl.files)) resolved[filename] = this.resolveVariables(content, vars);
+    for (const [filename, content] of Object.entries(tpl.files))
+      resolved[filename] = this.resolveVariables(content, vars);
     return resolved;
   }
 
-  validateVariables(name: string, variables: Record<string, string>): { valid: boolean; errors: string[] } {
+  validateVariables(
+    name: string,
+    variables: Record<string, string>
+  ): { valid: boolean; errors: string[] } {
     const tpl = this.templates.get(name);
     if (!tpl) return { valid: false, errors: [`Template "${name}" not found`] };
     const errors: string[] = [];
     for (const v of tpl.variables) {
-      if (v.required && !variables[v.name] && !v.default) errors.push(`Required variable "${v.name}" is missing`);
-      if (v.pattern && variables[v.name] && !v.pattern.test(variables[v.name])) errors.push(`Variable "${v.name}" does not match pattern`);
+      if (v.required && !variables[v.name] && !v.default)
+        errors.push(`Required variable "${v.name}" is missing`);
+      if (v.pattern && variables[v.name] && !v.pattern.test(variables[v.name]))
+        errors.push(`Variable "${v.name}" does not match pattern`);
     }
     return { valid: errors.length === 0, errors };
   }
 
-  async instantiate(name: string, outputDir: string, variables: Record<string, string>): Promise<TemplateInstance> {
+  async instantiate(
+    name: string,
+    outputDir: string,
+    variables: Record<string, string>
+  ): Promise<TemplateInstance> {
     const validation = this.validateVariables(name, variables);
     if (!validation.valid) throw new Error(`Validation failed: ${validation.errors.join('; ')}`);
     const resolved = this.preview(name, variables);
@@ -177,7 +270,10 @@ export class TemplateManager {
         try {
           const raw = await fs.readFile(path.join(this.customTemplatesDir, entry.name), 'utf-8');
           const tpl = JSON.parse(raw) as PluginTemplate;
-          if (tpl.name && tpl.files) { this.templates.set(tpl.name, tpl); count++; }
+          if (tpl.name && tpl.files) {
+            this.templates.set(tpl.name, tpl);
+            count++;
+          }
         } catch (error) {
           // Skip invalid template files
         }
@@ -190,7 +286,11 @@ export class TemplateManager {
 
   async saveCustomTemplate(template: PluginTemplate): Promise<void> {
     await fs.mkdir(this.customTemplatesDir, { recursive: true });
-    await fs.writeFile(path.join(this.customTemplatesDir, `${template.name}.json`), JSON.stringify(template, null, 2), 'utf-8');
+    await fs.writeFile(
+      path.join(this.customTemplatesDir, `${template.name}.json`),
+      JSON.stringify(template, null, 2),
+      'utf-8'
+    );
     this.templates.set(template.name, template);
   }
 }

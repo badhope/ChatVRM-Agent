@@ -16,9 +16,9 @@ export type EdgeAttributes = Record<string, unknown>;
  * 边对象
  */
 export interface Edge {
-  v: string;  // 起始节点
-  w: string;  // 目标节点
-  name?: string;  // 边名称（可选）
+  v: string; // 起始节点
+  w: string; // 目标节点
+  name?: string; // 边名称（可选）
 }
 
 /**
@@ -232,10 +232,7 @@ export class GraphWrapper {
    * @param weightFunc 权重函数，默认边权重为 1
    * @returns 每个节点到源节点的最短距离和前驱
    */
-  dijkstra(
-    source: string,
-    weightFunc?: (e: Edge) => number,
-  ): Record<string, DijkstraResult> {
+  dijkstra(source: string, weightFunc?: (e: Edge) => number): Record<string, DijkstraResult> {
     const weight = weightFunc ?? ((): number => 1);
     const result = alg.dijkstra(this.graph, source, weight) as Record<string, DijkstraInfo>;
 
@@ -257,11 +254,7 @@ export class GraphWrapper {
    * @param weightFunc 权重函数，默认边权重为 1
    * @returns 最短路径节点列表，不存在则返回空数组
    */
-  shortestPath(
-    from: string,
-    to: string,
-    weightFunc?: (e: Edge) => number,
-  ): string[] {
+  shortestPath(from: string, to: string, weightFunc?: (e: Edge) => number): string[] {
     if (!this.hasNode(from) || !this.hasNode(to)) return [];
     if (from === to) return [from];
 
@@ -350,7 +343,11 @@ export class GraphWrapper {
   /**
    * 导出为 JSON 格式
    */
-  toJSON(): { nodes: { v: string; value: unknown }[]; edges: { v: string; w: string; value: unknown }[]; options: { directed: boolean; multigraph: boolean; compound: boolean } } {
+  toJSON(): {
+    nodes: { v: string; value: unknown }[];
+    edges: { v: string; w: string; value: unknown }[];
+    options: { directed: boolean; multigraph: boolean; compound: boolean };
+  } {
     const nodeEntries: { v: string; value: unknown }[] = [];
     const edgeEntries: { v: string; w: string; value: unknown }[] = [];
 
@@ -377,7 +374,11 @@ export class GraphWrapper {
    * 从 JSON 格式导入
    * @param json JSON 数据
    */
-  static fromJSON(json: { nodes: { v: string; value: unknown }[]; edges: { v: string; w: string; value: unknown }[]; options: { directed: boolean; multigraph: boolean; compound: boolean } }): GraphWrapper {
+  static fromJSON(json: {
+    nodes: { v: string; value: unknown }[];
+    edges: { v: string; w: string; value: unknown }[];
+    options: { directed: boolean; multigraph: boolean; compound: boolean };
+  }): GraphWrapper {
     const { options, nodes, edges } = json;
     const wrapper = new GraphWrapper(options.directed, options.compound);
 

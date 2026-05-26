@@ -70,7 +70,7 @@ export class CompressionService extends BaseService {
 4. 关键的技术细节和参数
 
 对话历史：
-${toCompress.map(m => `[${m.role}]: ${m.content}`).join('\n')}
+${toCompress.map((m) => `[${m.role}]: ${m.content}`).join('\n')}
 
 请用简洁的中文总结（不超过${maxSummaryTokens}字）：`;
 
@@ -97,23 +97,19 @@ ${toCompress.map(m => `[${m.role}]: ${m.content}`).join('\n')}
         summary: response.content,
         originalMessages: messages.length,
         compressedMessages: keepRecent + 1,
-        tokensSaved: Math.round(
-          toCompress.reduce((sum, m) => sum + m.content.length / 4, 0)
-        ),
+        tokensSaved: Math.round(toCompress.reduce((sum, m) => sum + m.content.length / 4, 0)),
       };
     } catch (error) {
       // LLM 压缩失败时，使用简单截断作为降级方案
       const fallbackSummary = toCompress
-        .map(m => `[${m.role}]: ${(m.content || '').substring(0, 100)}`)
+        .map((m) => `[${m.role}]: ${(m.content || '').substring(0, 100)}`)
         .join('\n');
 
       return {
         summary: `[压缩降级] 以下为截断的早期对话摘要:\n${fallbackSummary}`,
         originalMessages: messages.length,
         compressedMessages: keepRecent + 1,
-        tokensSaved: Math.round(
-          toCompress.reduce((sum, m) => sum + m.content.length / 4, 0) * 0.7
-        ),
+        tokensSaved: Math.round(toCompress.reduce((sum, m) => sum + m.content.length / 4, 0) * 0.7),
       };
     }
   }
@@ -124,14 +120,8 @@ ${toCompress.map(m => `[${m.role}]: ${m.content}`).join('\n')}
    * @param threshold token 阈值（默认 6000）
    * @returns 是否需要压缩
    */
-  shouldCompress(
-    messages: Array<{ role: string; content: string }>,
-    threshold?: number
-  ): boolean {
-    const totalTokens = messages.reduce(
-      (sum, m) => sum + m.content.length / 4,
-      0
-    );
+  shouldCompress(messages: Array<{ role: string; content: string }>, threshold?: number): boolean {
+    const totalTokens = messages.reduce((sum, m) => sum + m.content.length / 4, 0);
     return totalTokens > (threshold || 6000);
   }
 }

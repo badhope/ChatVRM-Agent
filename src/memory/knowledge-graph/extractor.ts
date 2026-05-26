@@ -5,39 +5,177 @@ import type { EntityType, RelationshipType, Entity, Relationship, MemoryEntry } 
 // ============================================================
 
 const TECH_KEYWORDS: string[] = [
-  'JavaScript', 'TypeScript', 'Python', 'Rust', 'Go', 'Java', 'C++', 'C#',
-  'Ruby', 'PHP', 'Swift', 'Kotlin', 'Dart', 'Scala', 'Haskell', 'Elixir',
-  'React', 'Vue', 'Angular', 'Svelte', 'Next.js', 'Nuxt', 'Gatsby',
-  'Node.js', 'Deno', 'Bun', 'Express', 'Koa', 'Fastify', 'NestJS',
-  'Docker', 'Kubernetes', 'K8s', 'Terraform', 'Ansible',
-  'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Elasticsearch',
-  'GraphQL', 'REST', 'gRPC', 'WebSocket',
-  'Git', 'GitHub', 'GitLab', 'Bitbucket',
-  'AWS', 'Azure', 'GCP', 'Vercel', 'Netlify', 'Cloudflare',
-  'Linux', 'Ubuntu', 'Debian', 'CentOS', 'Alpine',
-  'TailwindCSS', 'Bootstrap', 'Sass', 'Less', 'CSS', 'HTML',
-  'Webpack', 'Vite', 'esbuild', 'Rollup', 'Turbopack',
-  'Jest', 'Vitest', 'Mocha', 'Cypress', 'Playwright',
-  'TensorFlow', 'PyTorch', 'OpenCV', 'Pandas', 'NumPy',
-  'Flutter', 'React Native', 'Electron', 'Tauri',
-  'Nginx', 'Apache', 'Caddy', 'Traefik',
-  'RabbitMQ', 'Kafka', 'Zookeeper', 'Consul',
-  'Elasticsearch', 'Logstash', 'Kibana', 'Prometheus', 'Grafana',
-  'OAuth', 'JWT', 'SAML', 'SSO', 'LDAP',
-  'CI/CD', 'GitHub Actions', 'Jenkins', 'Travis CI', 'CircleCI',
-  'Figma', 'Sketch', 'Adobe XD',
-  'Lua', 'Perl', 'R', 'MATLAB', 'Shell', 'Bash', 'PowerShell',
-  'Zig', 'Carbon', 'Nim', 'V', 'Crystal', 'Julia',
-  'SolidJS', 'Qwik', 'Astro', 'Remix', 'SolidStart',
-  'tRPC', 'Prisma', 'Drizzle', 'TypeORM', 'Sequelize',
-  'Supabase', 'Firebase', 'Appwrite', 'PocketBase',
-  'Hono', 'Fastify', 'Axum', 'Actix', 'Spring',
-  'Django', 'Flask', 'FastAPI', 'Rails', 'Laravel', 'Phoenix',
-  'Redis', 'Memcached', 'Cassandra', 'DynamoDB', 'CockroachDB',
-  'Neo4j', 'ArangoDB', 'InfluxDB', 'TimescaleDB',
-  'WebSocket', 'SSE', 'Socket.io', 'MQTT',
-  'OpenAI', 'Anthropic', 'LangChain', 'LlamaIndex',
-  'MCP', 'Claude', 'GPT', 'BERT', 'Transformer',
+  'JavaScript',
+  'TypeScript',
+  'Python',
+  'Rust',
+  'Go',
+  'Java',
+  'C++',
+  'C#',
+  'Ruby',
+  'PHP',
+  'Swift',
+  'Kotlin',
+  'Dart',
+  'Scala',
+  'Haskell',
+  'Elixir',
+  'React',
+  'Vue',
+  'Angular',
+  'Svelte',
+  'Next.js',
+  'Nuxt',
+  'Gatsby',
+  'Node.js',
+  'Deno',
+  'Bun',
+  'Express',
+  'Koa',
+  'Fastify',
+  'NestJS',
+  'Docker',
+  'Kubernetes',
+  'K8s',
+  'Terraform',
+  'Ansible',
+  'PostgreSQL',
+  'MySQL',
+  'MongoDB',
+  'Redis',
+  'SQLite',
+  'Elasticsearch',
+  'GraphQL',
+  'REST',
+  'gRPC',
+  'WebSocket',
+  'Git',
+  'GitHub',
+  'GitLab',
+  'Bitbucket',
+  'AWS',
+  'Azure',
+  'GCP',
+  'Vercel',
+  'Netlify',
+  'Cloudflare',
+  'Linux',
+  'Ubuntu',
+  'Debian',
+  'CentOS',
+  'Alpine',
+  'TailwindCSS',
+  'Bootstrap',
+  'Sass',
+  'Less',
+  'CSS',
+  'HTML',
+  'Webpack',
+  'Vite',
+  'esbuild',
+  'Rollup',
+  'Turbopack',
+  'Jest',
+  'Vitest',
+  'Mocha',
+  'Cypress',
+  'Playwright',
+  'TensorFlow',
+  'PyTorch',
+  'OpenCV',
+  'Pandas',
+  'NumPy',
+  'Flutter',
+  'React Native',
+  'Electron',
+  'Tauri',
+  'Nginx',
+  'Apache',
+  'Caddy',
+  'Traefik',
+  'RabbitMQ',
+  'Kafka',
+  'Zookeeper',
+  'Consul',
+  'Elasticsearch',
+  'Logstash',
+  'Kibana',
+  'Prometheus',
+  'Grafana',
+  'OAuth',
+  'JWT',
+  'SAML',
+  'SSO',
+  'LDAP',
+  'CI/CD',
+  'GitHub Actions',
+  'Jenkins',
+  'Travis CI',
+  'CircleCI',
+  'Figma',
+  'Sketch',
+  'Adobe XD',
+  'Lua',
+  'Perl',
+  'R',
+  'MATLAB',
+  'Shell',
+  'Bash',
+  'PowerShell',
+  'Zig',
+  'Carbon',
+  'Nim',
+  'V',
+  'Crystal',
+  'Julia',
+  'SolidJS',
+  'Qwik',
+  'Astro',
+  'Remix',
+  'SolidStart',
+  'tRPC',
+  'Prisma',
+  'Drizzle',
+  'TypeORM',
+  'Sequelize',
+  'Supabase',
+  'Firebase',
+  'Appwrite',
+  'PocketBase',
+  'Hono',
+  'Fastify',
+  'Axum',
+  'Actix',
+  'Spring',
+  'Django',
+  'Flask',
+  'FastAPI',
+  'Rails',
+  'Laravel',
+  'Phoenix',
+  'Redis',
+  'Memcached',
+  'Cassandra',
+  'DynamoDB',
+  'CockroachDB',
+  'Neo4j',
+  'ArangoDB',
+  'InfluxDB',
+  'TimescaleDB',
+  'WebSocket',
+  'SSE',
+  'Socket.io',
+  'MQTT',
+  'OpenAI',
+  'Anthropic',
+  'LangChain',
+  'LlamaIndex',
+  'MCP',
+  'Claude',
+  'GPT',
+  'BERT',
+  'Transformer',
 ];
 
 /** 导出技术关键词供外部使用 */
@@ -96,7 +234,8 @@ export function extractEntities(memories: MemoryEntry[]): Array<{
   label: string;
   attributes?: Record<string, string>;
 }> {
-  const entities: Array<{ type: EntityType; label: string; attributes?: Record<string, string> }> = [];
+  const entities: Array<{ type: EntityType; label: string; attributes?: Record<string, string> }> =
+    [];
   const processedEntities = new Set<string>();
 
   for (const memory of memories) {
@@ -159,14 +298,19 @@ export function extractEntities(memories: MemoryEntry[]): Array<{
  */
 export function extractRelationships(
   memories: MemoryEntry[],
-  entities: Array<{ type: EntityType; label: string }>,
+  entities: Array<{ type: EntityType; label: string }>
 ): Array<{
   fromLabel: string;
   toLabel: string;
   type: RelationshipType;
   weight: number;
 }> {
-  const relationships: Array<{ fromLabel: string; toLabel: string; type: RelationshipType; weight: number }> = [];
+  const relationships: Array<{
+    fromLabel: string;
+    toLabel: string;
+    type: RelationshipType;
+    weight: number;
+  }> = [];
   const processedRelationships = new Set<string>();
 
   // 构建实体查找集合
@@ -209,7 +353,12 @@ export function extractRelationships(
         if (currentUserLabel) {
           const relKey = `${currentUserLabel}:likes:${target}`;
           if (!processedRelationships.has(relKey)) {
-            relationships.push({ fromLabel: currentUserLabel, toLabel: target, type: 'likes', weight: 0.7 });
+            relationships.push({
+              fromLabel: currentUserLabel,
+              toLabel: target,
+              type: 'likes',
+              weight: 0.7,
+            });
             processedRelationships.add(relKey);
           }
         }
@@ -233,7 +382,12 @@ export function extractRelationships(
         if (currentUserLabel) {
           const relKey = `${currentUserLabel}:uses:${target}`;
           if (!processedRelationships.has(relKey)) {
-            relationships.push({ fromLabel: currentUserLabel, toLabel: target, type: 'uses', weight: 0.6 });
+            relationships.push({
+              fromLabel: currentUserLabel,
+              toLabel: target,
+              type: 'uses',
+              weight: 0.6,
+            });
             processedRelationships.add(relKey);
           }
         }
@@ -256,7 +410,12 @@ export function extractRelationships(
         if (currentUserLabel) {
           const relKey = `${currentUserLabel}:created:${projectName}`;
           if (!processedRelationships.has(relKey)) {
-            relationships.push({ fromLabel: currentUserLabel, toLabel: projectName, type: 'created', weight: 0.8 });
+            relationships.push({
+              fromLabel: currentUserLabel,
+              toLabel: projectName,
+              type: 'created',
+              weight: 0.8,
+            });
             processedRelationships.add(relKey);
           }
         }
@@ -278,7 +437,12 @@ export function extractRelationships(
         if (currentUserLabel) {
           const relKey = `${currentUserLabel}:knows:${target}`;
           if (!processedRelationships.has(relKey)) {
-            relationships.push({ fromLabel: currentUserLabel, toLabel: target, type: 'knows', weight: 0.6 });
+            relationships.push({
+              fromLabel: currentUserLabel,
+              toLabel: target,
+              type: 'knows',
+              weight: 0.6,
+            });
             processedRelationships.add(relKey);
           }
         }

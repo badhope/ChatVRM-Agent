@@ -23,7 +23,7 @@ import type { ToolResult } from '../core/types.js';
 
 import { TaskCoordinator } from './task-coordinator.js';
 import { ContextManager } from '../context-manager.js';
-import { KnowledgeGraph } from '../../memory/knowledgeGraph.js';
+import { KnowledgeGraph } from '../../memory/knowledge-graph.js';
 import { DecisionReflector } from '../decision-reflector.js';
 import { ExperienceStore, type Experience } from '../experience-store.js';
 import { PersonalityManager } from '../personality.js';
@@ -125,11 +125,12 @@ export class AgentServiceFactory implements IAgentServiceFactory {
         );
 
         return {
-          content: reflection.failures.length > 0
-            ? `步骤反思: ${reflection.failures.join('; ')}`
-            : `步骤完成: ${step.description}`,
+          content:
+            reflection.failures.length > 0
+              ? `步骤反思: ${reflection.failures.join('; ')}`
+              : `步骤完成: ${step.description}`,
           corrections: reflection.failures.length,
-          improvements: reflection.improvements.map(i => i.recommendation),
+          improvements: reflection.improvements.map((i) => i.recommendation),
           overallRating: reflection.overallRating,
         };
       },
@@ -141,11 +142,12 @@ export class AgentServiceFactory implements IAgentServiceFactory {
         );
 
         return {
-          content: reflection.successes.length > 0
-            ? `任务成功: ${reflection.successes.join('; ')}`
-            : `任务反思: ${reflection.failures.join('; ')}`,
+          content:
+            reflection.successes.length > 0
+              ? `任务成功: ${reflection.successes.join('; ')}`
+              : `任务反思: ${reflection.failures.join('; ')}`,
           corrections: reflection.failures.length,
-          improvements: reflection.improvements.map(i => i.recommendation),
+          improvements: reflection.improvements.map((i) => i.recommendation),
           overallRating: reflection.overallRating,
         };
       },
@@ -155,7 +157,7 @@ export class AgentServiceFactory implements IAgentServiceFactory {
           task.userInput,
           task.result ?? ''
         );
-        return reflection.improvements.map(i => i.recommendation);
+        return reflection.improvements.map((i) => i.recommendation);
       },
     };
   }
@@ -170,9 +172,13 @@ export class AgentServiceFactory implements IAgentServiceFactory {
     return {
       learnFromTask: async (task: Task, reflection: ReflectionResult): Promise<ExperienceEntry> => {
         const emotionalTone: Experience['emotionalTone'] =
-          reflection.overallRating >= 0.8 ? 'excited' :
-          reflection.overallRating >= 0.5 ? 'confident' :
-          reflection.overallRating >= 0.3 ? 'neutral' : 'cautious';
+          reflection.overallRating >= 0.8
+            ? 'excited'
+            : reflection.overallRating >= 0.5
+              ? 'confident'
+              : reflection.overallRating >= 0.3
+                ? 'neutral'
+                : 'cautious';
 
         const experience: Experience = {
           id: `exp-${task.id}`,
@@ -240,13 +246,19 @@ export class AgentServiceFactory implements IAgentServiceFactory {
     return {
       buildContext: async (userInput: string, maxTokens: number) => {
         await cm.addMessage({ role: 'user', content: userInput });
-        return cm.getContext().map(m => m.content).join('\n');
+        return cm
+          .getContext()
+          .map((m) => m.content)
+          .join('\n');
       },
       addToolResult: async (toolName: string, result: string, success: boolean) => {
         await cm.addToolResult(toolName, result, success);
       },
       getContext: () => {
-        return cm.getContext().map(m => m.content).join('\n');
+        return cm
+          .getContext()
+          .map((m) => m.content)
+          .join('\n');
       },
       clearContext: () => {
         cm.clear();

@@ -8,8 +8,7 @@ import { getErrorMessage } from '../utils/error-handling.js';
 
 const SNIPPETS_DIR = path.join(os.homedir(), '.personal-assistant', 'snippets');
 
-export const snippetCommand = new Command('snippet')
-  .description('代码片段管理（保存/搜索/插入）');
+export const snippetCommand = new Command('snippet').description('代码片段管理（保存/搜索/插入）');
 
 snippetCommand
   .command('save <name>')
@@ -32,11 +31,13 @@ snippetCommand
     }
 
     if (!code) {
-      const answer = await inquirer.prompt([{
-        type: 'editor',
-        name: 'code',
-        message: '输入代码片段（保存后按 Esc 退出）',
-      }]);
+      const answer = await inquirer.prompt([
+        {
+          type: 'editor',
+          name: 'code',
+          message: '输入代码片段（保存后按 Esc 退出）',
+        },
+      ]);
       code = answer.code;
     }
 

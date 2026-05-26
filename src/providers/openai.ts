@@ -1,5 +1,14 @@
 import { BaseProvider } from '../base.js';
-import type { ChatParams, ChatResponse, StreamChunk, ProviderConfig, Message, ImageContent, TextContent, ProviderType } from '../types.js';
+import type {
+  ChatParams,
+  ChatResponse,
+  StreamChunk,
+  ProviderConfig,
+  Message,
+  ImageContent,
+  TextContent,
+  ProviderType,
+} from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
 import { CONNECTION_TIMEOUT_MS } from '../constants/index.js';
 
@@ -78,7 +87,7 @@ export class OpenAIProvider extends BaseProvider {
   constructor(
     providerType: ProviderType = 'openai',
     config: ProviderConfig,
-    providerInfo: typeof PROVIDER_INFO[ProviderType] = PROVIDER_INFO.openai
+    providerInfo: (typeof PROVIDER_INFO)[ProviderType] = PROVIDER_INFO.openai
   ) {
     super(providerType, config, providerInfo);
   }
@@ -95,7 +104,7 @@ export class OpenAIProvider extends BaseProvider {
       stream: false,
     };
 
-    const response = await this.retryWithBackoff(() => 
+    const response = await this.retryWithBackoff(() =>
       this.makeRequest<OpenAIResponse>('/chat/completions', body)
     );
 
@@ -180,12 +189,12 @@ export class OpenAIProvider extends BaseProvider {
 
           for (const line of lines) {
             if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
-            
+
             if (line.startsWith('data: ')) {
               try {
                 const data: OpenAIStreamResponse = JSON.parse(line.slice(6));
                 const delta = data.choices[0]?.delta;
-                
+
                 if (delta?.content) {
                   yield {
                     content: delta.content,
@@ -201,8 +210,9 @@ export class OpenAIProvider extends BaseProvider {
                     usage: {
                       promptTokens: data.usage.prompt_tokens || 0,
                       completionTokens: data.usage.completion_tokens || 0,
-                      totalTokens: (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0),
-                    }
+                      totalTokens:
+                        (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0),
+                    },
                   };
                 }
               } catch {
@@ -248,12 +258,12 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   private convertMessages(messages: Message[]): OpenAIMessage[] {
-    return messages.map(msg => {
+    return messages.map((msg) => {
       // 处理多模态内容
       if (Array.isArray(msg.content)) {
-        const hasImage = msg.content.some(c => typeof c === 'object' && c.type === 'image_url');
+        const hasImage = msg.content.some((c) => typeof c === 'object' && c.type === 'image_url');
         if (hasImage) {
-          const content: Array<OpenAITextPart | OpenAIImagePart> = msg.content.map(c => {
+          const content: Array<OpenAITextPart | OpenAIImagePart> = msg.content.map((c) => {
             if (typeof c === 'object' && c.type === 'text') {
               return { type: 'text' as const, text: (c as TextContent).text };
             } else if (typeof c === 'object' && c.type === 'image_url') {
@@ -269,13 +279,15 @@ export class OpenAIProvider extends BaseProvider {
         // 纯文本数组，合并为单个字符串
         return {
           role: msg.role,
-          content: msg.content.map(c => typeof c === 'object' && c.type === 'text' ? (c as TextContent).text : '').join('')
+          content: msg.content
+            .map((c) => (typeof c === 'object' && c.type === 'text' ? (c as TextContent).text : ''))
+            .join(''),
         };
       }
       // 字符串内容
       return {
         role: msg.role,
-        content: typeof msg.content === 'string' ? msg.content : String(msg.content)
+        content: typeof msg.content === 'string' ? msg.content : String(msg.content),
       };
     });
   }

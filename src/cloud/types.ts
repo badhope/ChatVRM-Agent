@@ -6,18 +6,18 @@
 export interface SyncConfig {
   enabled: boolean;
   provider: 'local' | 'gist' | 'custom';
-  gistId?: string;           // GitHub Gist ID
-  gistToken?: string;        // GitHub token for Gist
-  customEndpoint?: string;   // Custom sync server URL
-  customToken?: string;      // Auth token for custom server
-  syncInterval?: number;     // minutes, default 5
-  lastSyncAt?: string;       // ISO timestamp
+  gistId?: string; // GitHub Gist ID
+  gistToken?: string; // GitHub token for Gist
+  customEndpoint?: string; // Custom sync server URL
+  customToken?: string; // Auth token for custom server
+  syncInterval?: number; // minutes, default 5
+  lastSyncAt?: string; // ISO timestamp
 }
 
 export interface SyncData {
-  version: string;           // schema version
-  deviceId: string;          // unique device identifier
-  timestamp: string;         // ISO timestamp
+  version: string; // schema version
+  deviceId: string; // unique device identifier
+  timestamp: string; // ISO timestamp
   config: Record<string, unknown>;
   memory?: {
     conversations: unknown[];

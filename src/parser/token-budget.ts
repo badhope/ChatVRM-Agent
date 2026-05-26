@@ -147,9 +147,7 @@ export function formatFileMap(
   source: string,
   rootDir?: string
 ): string {
-  const displayPath = rootDir
-    ? path.relative(rootDir, filePath)
-    : filePath;
+  const displayPath = rootDir ? path.relative(rootDir, filePath) : filePath;
 
   const lines: string[] = [displayPath];
 

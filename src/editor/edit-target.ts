@@ -59,7 +59,10 @@ function extractLines(source: string, startLine: number, endLine: number): strin
  * Find the line range of an exact content match in the source.
  * Returns 1-based line numbers.
  */
-function findContentRange(source: string, content: string): { startLine: number; endLine: number } | null {
+function findContentRange(
+  source: string,
+  content: string
+): { startLine: number; endLine: number } | null {
   const sourceLines = source.split('\n');
   const searchLines = content.split('\n');
 
@@ -76,11 +79,11 @@ function findContentRange(source: string, content: string): { startLine: number;
   }
 
   // Try normalized whitespace match
-  const normalizedSearch = searchLines.map(l => l.trim()).join('\n');
+  const normalizedSearch = searchLines.map((l) => l.trim()).join('\n');
   for (let i = 0; i <= sourceLines.length - searchLines.length; i++) {
     const candidate = sourceLines
       .slice(i, i + searchLines.length)
-      .map(l => l.trim())
+      .map((l) => l.trim())
       .join('\n');
     if (candidate === normalizedSearch) {
       return { startLine: i + 1, endLine: i + searchLines.length };
@@ -94,7 +97,10 @@ function findContentRange(source: string, content: string): { startLine: number;
  * Find the line range of a regex pattern match in the source.
  * Returns 1-based line numbers.
  */
-function findPatternRange(source: string, pattern: RegExp): { startLine: number; endLine: number } | null {
+function findPatternRange(
+  source: string,
+  pattern: RegExp
+): { startLine: number; endLine: number } | null {
   const match = source.match(pattern);
   if (!match || match.index === undefined) return null;
 
@@ -141,7 +147,7 @@ export async function locateEditTarget(
 
       // Filter by symbol kind if specified
       if (options.symbolKind) {
-        matches = matches.filter(s => s.kind === options.symbolKind);
+        matches = matches.filter((s) => s.kind === options.symbolKind);
       }
 
       if (matches.length > 0) {

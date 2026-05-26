@@ -56,9 +56,7 @@ export class PluginRegistryStore {
   constructor(configDir?: string) {
     const dir = configDir ? resolveHome(configDir) : defaultConfigDir();
     this.filePath = path.join(dir, 'plugin-registry.json');
-    this.sources = [
-      { name: 'local', localPath: this.filePath },
-    ];
+    this.sources = [{ name: 'local', localPath: this.filePath }];
   }
 
   async load(): Promise<void> {
@@ -104,10 +102,7 @@ export class PluginRegistryStore {
     return this.entries.size - before;
   }
 
-  search(
-    query: string,
-    options?: { category?: string; limit?: number },
-  ): RegistryEntry[] {
+  search(query: string, options?: { category?: string; limit?: number }): RegistryEntry[] {
     const q = query.toLowerCase();
     const cat = options?.category;
     const limit = options?.limit ?? 50;
@@ -183,17 +178,12 @@ export class PluginRegistryStore {
 
   getRecent(limit: number = 10): RegistryEntry[] {
     return Array.from(this.entries.values())
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, limit);
   }
 
   getByCategory(category: string): RegistryEntry[] {
-    return Array.from(this.entries.values()).filter(
-      (e) => e.category === category,
-    );
+    return Array.from(this.entries.values()).filter((e) => e.category === category);
   }
 }
 

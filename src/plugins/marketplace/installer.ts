@@ -47,20 +47,30 @@ function defaultConfigDir(): string {
 
 export class PluginInstaller {
   getInstallDir(global?: boolean): string {
-    return global
-      ? path.join(defaultConfigDir(), 'plugins')
-      : path.resolve('./plugins');
+    return global ? path.join(defaultConfigDir(), 'plugins') : path.resolve('./plugins');
   }
 
   async install(name: string, options?: InstallOptions): Promise<InstallResult> {
     const entry = registryStore.get(name);
     if (!entry) {
-      return { name, version: '', installedPath: '', success: false, error: `Plugin "${name}" not found in registry` };
+      return {
+        name,
+        version: '',
+        installedPath: '',
+        success: false,
+        error: `Plugin "${name}" not found in registry`,
+      };
     }
     const version = options?.version ?? entry.version;
     const versionInfo = entry.versions.find((v) => v.version === version);
     if (!versionInfo) {
-      return { name, version, installedPath: '', success: false, error: `Version "${version}" not found for "${name}"` };
+      return {
+        name,
+        version,
+        installedPath: '',
+        success: false,
+        error: `Version "${version}" not found for "${name}"`,
+      };
     }
     const installDir = this.getInstallDir(options?.global);
     const targetPath = path.join(installDir, name);
@@ -68,7 +78,13 @@ export class PluginInstaller {
       if (!options?.force) {
         try {
           await fs.access(targetPath);
-          return { name, version, installedPath: targetPath, success: false, error: `Plugin "${name}" is already installed. Use --force to overwrite.` };
+          return {
+            name,
+            version,
+            installedPath: targetPath,
+            success: false,
+            error: `Plugin "${name}" is already installed. Use --force to overwrite.`,
+          };
         } catch (error) {
           // Proceed with installation
         }
@@ -99,18 +115,36 @@ export class PluginInstaller {
   async update(name: string, global?: boolean): Promise<UpdateResult> {
     const entry = registryStore.get(name);
     if (!entry) {
-      return { name, oldVersion: '', newVersion: '', updated: false, error: `Plugin "${name}" not found in registry` };
+      return {
+        name,
+        oldVersion: '',
+        newVersion: '',
+        updated: false,
+        error: `Plugin "${name}" not found in registry`,
+      };
     }
     const currentVersion = await this.getInstalledVersion(name, global);
     if (!currentVersion) {
-      return { name, oldVersion: '', newVersion: '', updated: false, error: `Plugin "${name}" is not installed` };
+      return {
+        name,
+        oldVersion: '',
+        newVersion: '',
+        updated: false,
+        error: `Plugin "${name}" is not installed`,
+      };
     }
     if (currentVersion === entry.version) {
       return { name, oldVersion: currentVersion, newVersion: currentVersion, updated: false };
     }
     const result = await this.install(name, { version: entry.version, global, force: true });
     if (!result.success) {
-      return { name, oldVersion: currentVersion, newVersion: entry.version, updated: false, error: result.error };
+      return {
+        name,
+        oldVersion: currentVersion,
+        newVersion: entry.version,
+        updated: false,
+        error: result.error,
+      };
     }
     return { name, oldVersion: currentVersion, newVersion: entry.version, updated: true };
   }
@@ -134,7 +168,9 @@ export class PluginInstaller {
     }
   }
 
-  async listInstalled(global?: boolean): Promise<{ name: string; version: string; path: string }[]> {
+  async listInstalled(
+    global?: boolean
+  ): Promise<{ name: string; version: string; path: string }[]> {
     const installDir = this.getInstallDir(global);
     const results: { name: string; version: string; path: string }[] = [];
     try {
@@ -142,9 +178,16 @@ export class PluginInstaller {
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         try {
-          const raw = await fs.readFile(path.join(installDir, entry.name, 'manifest.json'), 'utf-8');
+          const raw = await fs.readFile(
+            path.join(installDir, entry.name, 'manifest.json'),
+            'utf-8'
+          );
           const manifest = JSON.parse(raw);
-          results.push({ name: manifest.name ?? entry.name, version: manifest.version ?? 'unknown', path: path.join(installDir, entry.name) });
+          results.push({
+            name: manifest.name ?? entry.name,
+            version: manifest.version ?? 'unknown',
+            path: path.join(installDir, entry.name),
+          });
         } catch (error) {
           // Skip invalid plugin directories
         }
@@ -159,7 +202,11 @@ export class PluginInstaller {
     const sources = registryStore.getSources();
     const localSource = sources.find((s) => s.name === 'local');
     if (localSource?.localPath) {
-      return path.join(path.dirname(resolveHome(localSource.localPath)), 'plugin-sources', entry.name);
+      return path.join(
+        path.dirname(resolveHome(localSource.localPath)),
+        'plugin-sources',
+        entry.name
+      );
     }
     return path.join(defaultConfigDir(), 'plugin-sources', entry.name);
   }

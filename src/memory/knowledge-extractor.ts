@@ -53,19 +53,13 @@ const IDENTITY_PATTERNS = [
 ];
 
 /** 基本使用关系模式 */
-const USAGE_PATTERNS = [
-  /(?:使用|用了|在用|正在用|采用)\s*([^\s,，。.!！?？]+)/g,
-];
+const USAGE_PATTERNS = [/(?:使用|用了|在用|正在用|采用)\s*([^\s,，。.!！?？]+)/g];
 
 /** 基本偏好关系模式 */
-const PREFERENCE_PATTERNS = [
-  /(?:喜欢|偏好|常用|最爱)\s*([^\s,，。.!！?？]+)/g,
-];
+const PREFERENCE_PATTERNS = [/(?:喜欢|偏好|常用|最爱)\s*([^\s,，。.!！?？]+)/g];
 
 /** 基本项目提及模式 */
-const PROJECT_PATTERNS = [
-  /(?:项目叫|项目名为|项目名是)\s*([^\s,，。.!！?？]+)/g,
-];
+const PROJECT_PATTERNS = [/(?:项目叫|项目名为|项目名是)\s*([^\s,，。.!！?？]+)/g];
 
 /**
  * 根据名称推断实体类型（轻量版）
@@ -155,7 +149,12 @@ export class KnowledgeExtractor {
       }
     };
 
-    const addRelation = (from: string, type: RelationshipType, to: string, weight: number): void => {
+    const addRelation = (
+      from: string,
+      type: RelationshipType,
+      to: string,
+      weight: number
+    ): void => {
       const key = `${from}:${type}:${to}`;
       if (!seenRelations.has(key)) {
         relationships.push({ fromLabel: from, toLabel: to, type, weight });

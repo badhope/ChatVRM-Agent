@@ -20,7 +20,7 @@ export async function streamChat(
   messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string }>,
   modelId: string,
   temperature: number,
-  maxTokens: number,
+  maxTokens: number
 ): Promise<string> {
   let fullContent = '';
 
@@ -68,8 +68,8 @@ export interface ResolvedProvider {
  */
 export function resolveProvider(): ResolvedProvider | null {
   const defaultProvider = configManager.getDefaultProvider();
-  const configuredProviders = PROVIDER_TYPE_LIST.filter(type =>
-    !PROVIDER_INFO[type].requiresApiKey || configManager.getApiKey(type)
+  const configuredProviders = PROVIDER_TYPE_LIST.filter(
+    (type) => !PROVIDER_INFO[type].requiresApiKey || configManager.getApiKey(type)
   );
 
   let providerType: ProviderType;

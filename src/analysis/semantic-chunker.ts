@@ -17,10 +17,7 @@ import { buildChunks } from './chunker/chunk-builder.js';
 /**
  * Split a single file into semantically meaningful chunks.
  */
-export async function chunkFile(
-  filePath: string,
-  options?: ChunkOptions
-): Promise<CodeChunk[]> {
+export async function chunkFile(filePath: string, options?: ChunkOptions): Promise<CodeChunk[]> {
   const parseResult = await parseFile(filePath);
   if (!parseResult) return [];
 
@@ -66,10 +63,7 @@ export async function chunkFiles(
 /**
  * Retrieve a chunk by its unique ID.
  */
-export function getChunkById(
-  chunks: Map<string, CodeChunk[]>,
-  id: string
-): CodeChunk | null {
+export function getChunkById(chunks: Map<string, CodeChunk[]>, id: string): CodeChunk | null {
   for (const fileChunks of chunks.values()) {
     for (const chunk of fileChunks) {
       if (chunk.id === id) return chunk;
@@ -125,5 +119,5 @@ export function findRelevantChunks(
     return a.chunk.startLine - b.chunk.startLine;
   });
 
-  return scored.slice(0, maxResults).map(s => s.chunk);
+  return scored.slice(0, maxResults).map((s) => s.chunk);
 }

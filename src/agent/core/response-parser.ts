@@ -100,7 +100,10 @@ export function parseToolCall(response: string): ParseResult<ToolCall> {
   }
 
   // 提取参数
-  const args = (jsonData.args || jsonData.arguments || jsonData.params || {}) as Record<string, unknown>;
+  const args = (jsonData.args || jsonData.arguments || jsonData.params || {}) as Record<
+    string,
+    unknown
+  >;
 
   // 提取推理（可选）
   const reasoning = jsonData.reasoning || jsonData.reason || jsonData.thought;
@@ -119,11 +122,7 @@ export function parseToolCall(response: string): ParseResult<ToolCall> {
  * Type guard to check if a value looks like a tool call object.
  */
 function isToolCallLike(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -185,9 +184,7 @@ export function parseMultipleToolCalls(response: string): ParseResult<ToolCall[]
       continue;
     }
 
-    const toolName = item.tool ||
-                     item.toolName ||
-                     item.name;
+    const toolName = item.tool || item.toolName || item.name;
 
     if (!toolName) {
       errors.push(`第 ${i + 1} 项缺少工具名称`);
@@ -201,12 +198,8 @@ export function parseMultipleToolCalls(response: string): ParseResult<ToolCall[]
 
     toolCalls.push({
       tool: String(toolName),
-      args: (item.args ||
-             item.arguments ||
-             {}) as Record<string, unknown>,
-      reasoning: String(item.reasoning ||
-                       item.reason ||
-                       ''),
+      args: (item.args || item.arguments || {}) as Record<string, unknown>,
+      reasoning: String(item.reasoning || item.reason || ''),
     });
   }
 
@@ -286,7 +279,7 @@ export function parseIntent(response: string): string {
 
   // 回退：从文本中提取第一个有效单词作为意图
   const cleanText = response.toLowerCase().replace(/[^a-z\s-]/g, '');
-  const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+  const words = cleanText.split(/\s+/).filter((w) => w.length > 0);
 
   if (words.length > 0) {
     return words[0];
@@ -367,7 +360,7 @@ export function validateResponseFields(
     };
   }
 
-  const missingFields = requiredFields.filter(field => !(field in jsonData));
+  const missingFields = requiredFields.filter((field) => !(field in jsonData));
 
   return {
     valid: missingFields.length === 0,

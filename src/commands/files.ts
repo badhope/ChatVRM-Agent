@@ -1,11 +1,20 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { readFile, writeFile, listDirectory, searchInDirectory, getFileTree, getFileInfo, deleteFile, createDirectory, copyFile, moveFile } from '../files/manager.js';
+import {
+  readFile,
+  writeFile,
+  listDirectory,
+  searchInDirectory,
+  getFileTree,
+  getFileInfo,
+  deleteFile,
+  createDirectory,
+  copyFile,
+  moveFile,
+} from '../files/manager.js';
 import { printHeader, printSection, printSuccess, printError, printInfo } from '../ui/logo.js';
 
-const filesCommand = new Command('files')
-  .alias('f')
-  .description('文件操作');
+const filesCommand = new Command('files').alias('f').description('文件操作');
 
 // 读取文件
 filesCommand
@@ -41,23 +50,31 @@ filesCommand
   .argument('[content]', '文件内容')
   .option('-c, --content <content>', '文件内容（替代参数方式）')
   .option('-a, --append', '追加模式', false)
-  .action(async (filePath: string, content: string | undefined, options: { content?: string; append: boolean }) => {
-    const writeContent = options.content || content;
-    if (!writeContent) {
-      printError('请提供文件内容');
-      return;
-    }
+  .action(
+    async (
+      filePath: string,
+      content: string | undefined,
+      options: { content?: string; append: boolean }
+    ) => {
+      const writeContent = options.content || content;
+      if (!writeContent) {
+        printError('请提供文件内容');
+        return;
+      }
 
-    const result = options.append
-      ? await (await import('../files/manager.js')).appendFile(filePath, writeContent)
-      : await writeFile(filePath, writeContent);
+      const result = options.append
+        ? await (await import('../files/manager.js')).appendFile(filePath, writeContent)
+        : await writeFile(filePath, writeContent);
 
-    if (result.success) {
-      printSuccess(`文件已${options.append ? '追加' : '写入'}: ${filePath} (${result.size} bytes)`);
-    } else {
-      printError(result.error || '写入失败');
+      if (result.success) {
+        printSuccess(
+          `文件已${options.append ? '追加' : '写入'}: ${filePath} (${result.size} bytes)`
+        );
+      } else {
+        printError(result.error || '写入失败');
+      }
     }
-  });
+  );
 
 // 列出目录
 filesCommand

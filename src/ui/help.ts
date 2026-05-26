@@ -15,7 +15,7 @@ function isHelpTopic(value: HelpTopic | typeof GO_BACK_SENTINEL): value is HelpT
 }
 
 async function showHelpLevel(topics: HelpTopic[], title: string): Promise<HelpTopic | null> {
-  const choices = topics.map(t => ({
+  const choices = topics.map((t) => ({
     name: t.description ? `${t.title}  ${chalk.gray(t.description)}` : t.title,
     value: t as HelpTopic | typeof GO_BACK_SENTINEL,
     short: t.title,
@@ -28,14 +28,16 @@ async function showHelpLevel(topics: HelpTopic[], title: string): Promise<HelpTo
   });
 
   try {
-    const answers = await inquirer.prompt([{
-      type: 'list',
-      name: 'topic',
-      message: chalk.bold.cyan(title),
-      choices,
-      pageSize: 15,
-      loop: false,
-    }]);
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'topic',
+        message: chalk.bold.cyan(title),
+        choices,
+        pageSize: 15,
+        loop: false,
+      },
+    ]);
 
     const result = (answers as { topic: HelpTopic | typeof GO_BACK_SENTINEL }).topic;
     return isHelpTopic(result) ? result : null;
@@ -102,16 +104,18 @@ export async function interactiveHelp(): Promise<void> {
 
     showContent(selected);
 
-    const { action } = await inquirer.prompt([{
-      type: 'list',
-      name: 'action',
-      message: '接下来',
-      choices: [
-        { name: '\u2190 返回上级目录', value: 'back' },
-        { name: '\u2190 返回帮助首页', value: 'home' },
-        { name: '\u2715 退出帮助', value: 'exit' },
-      ],
-    }]);
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: '接下来',
+        choices: [
+          { name: '\u2190 返回上级目录', value: 'back' },
+          { name: '\u2190 返回帮助首页', value: 'home' },
+          { name: '\u2715 退出帮助', value: 'exit' },
+        ],
+      },
+    ]);
 
     if (action === 'exit') {
       return;

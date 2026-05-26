@@ -25,10 +25,21 @@ export interface Logger {
 // ============================================================
 
 const REDACT_PATHS = [
-  'apiKey', 'api_key', 'API_KEY', 'secret', 'SECRET',
-  'password', 'PASSWORD', 'token', 'TOKEN',
-  'accessToken', 'access_token', 'refreshToken',
-  'privateKey', 'private_key', 'credential',
+  'apiKey',
+  'api_key',
+  'API_KEY',
+  'secret',
+  'SECRET',
+  'password',
+  'PASSWORD',
+  'token',
+  'TOKEN',
+  'accessToken',
+  'access_token',
+  'refreshToken',
+  'privateKey',
+  'private_key',
+  'credential',
 ].map((f) => `req.*.${f}`);
 
 // ============================================================
@@ -44,24 +55,27 @@ const REDACT_PATHS = [
 function createPinoInstance(bindings: LogContext = {}): pino.Logger {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  return pino({
-    level: process.env.DEBUG ? 'debug' : 'info',
-    redact: {
-      paths: REDACT_PATHS,
-      censor: '[REDACTED]',
-    },
-    transport: isProduction
-      ? undefined
-      : {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
-            ignore: 'pid,hostname',
+  return pino(
+    {
+      level: process.env.DEBUG ? 'debug' : 'info',
+      redact: {
+        paths: REDACT_PATHS,
+        censor: '[REDACTED]',
+      },
+      transport: isProduction
+        ? undefined
+        : {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+              ignore: 'pid,hostname',
+            },
           },
-        },
-    ...(Object.keys(bindings).length > 0 ? { base: undefined } : {}),
-  }, pino.destination(1));
+      ...(Object.keys(bindings).length > 0 ? { base: undefined } : {}),
+    },
+    pino.destination(1)
+  );
 }
 
 /**
@@ -79,7 +93,7 @@ class PinoLoggerAdapter implements Logger {
 
   private normalizeArgs(
     context: LogContext | string,
-    message?: string,
+    message?: string
   ): [obj: Record<string, unknown>, msg: string] {
     if (typeof context === 'string') {
       return [{}, context];

@@ -1,5 +1,13 @@
 import { BaseProvider } from '../base.js';
-import type { ChatParams, ChatResponse, StreamChunk, ProviderConfig, Message, ImageContent, TextContent } from '../types.js';
+import type {
+  ChatParams,
+  ChatResponse,
+  StreamChunk,
+  ProviderConfig,
+  Message,
+  ImageContent,
+  TextContent,
+} from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
 import { CONNECTION_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../constants/index.js';
 
@@ -224,8 +232,10 @@ export class AnthropicProvider extends BaseProvider {
                     usage: {
                       promptTokens: event.message.usage.input_tokens || 0,
                       completionTokens: event.message.usage.output_tokens || 0,
-                      totalTokens: (event.message.usage.input_tokens || 0) + (event.message.usage.output_tokens || 0),
-                    }
+                      totalTokens:
+                        (event.message.usage.input_tokens || 0) +
+                        (event.message.usage.output_tokens || 0),
+                    },
                   };
                 }
               } catch {
@@ -284,10 +294,10 @@ export class AnthropicProvider extends BaseProvider {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) return [];
-      const data = await response.json() as AnthropicModelsResponse;
+      const data = (await response.json()) as AnthropicModelsResponse;
       // Anthropic 返回 { data: [{ id: "claude-xxx", ... }] }
       const models = data.data || [];
-      return models.map(m => m.id).sort();
+      return models.map((m) => m.id).sort();
     } catch {
       return [];
     }
@@ -302,9 +312,9 @@ export class AnthropicProvider extends BaseProvider {
         systemMessage = typeof msg.content === 'string' ? msg.content : String(msg.content);
       } else if (Array.isArray(msg.content)) {
         // 处理多模态内容
-        const hasImage = msg.content.some(c => typeof c === 'object' && c.type === 'image_url');
+        const hasImage = msg.content.some((c) => typeof c === 'object' && c.type === 'image_url');
         if (hasImage) {
-          const content: Array<AnthropicTextBlock | AnthropicImageBlock> = msg.content.map(c => {
+          const content: Array<AnthropicTextBlock | AnthropicImageBlock> = msg.content.map((c) => {
             if (typeof c === 'object' && c.type === 'text') {
               return { type: 'text' as const, text: (c as TextContent).text };
             } else if (typeof c === 'object' && c.type === 'image_url') {
@@ -318,8 +328,8 @@ export class AnthropicProvider extends BaseProvider {
                     source: {
                       type: 'base64' as const,
                       media_type: matches[1],
-                      data: matches[2]
-                    }
+                      data: matches[2],
+                    },
                   };
                 }
               }
@@ -331,7 +341,7 @@ export class AnthropicProvider extends BaseProvider {
         } else {
           // 纯文本数组，合并为单个字符串
           const text = msg.content
-            .map(c => typeof c === 'object' && c.type === 'text' ? (c as TextContent).text : '')
+            .map((c) => (typeof c === 'object' && c.type === 'text' ? (c as TextContent).text : ''))
             .join('');
           result.push({
             role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -349,7 +359,10 @@ export class AnthropicProvider extends BaseProvider {
     return { system: systemMessage, messages: result };
   }
 
-  private async makeAnthropicRequest<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+  private async makeAnthropicRequest<T>(
+    endpoint: string,
+    body: Record<string, unknown>
+  ): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
 
     const response = await fetch(url, {
@@ -370,7 +383,10 @@ export class AnthropicProvider extends BaseProvider {
     return response.json() as Promise<T>;
   }
 
-  private async makeAnthropicStreamRequest(endpoint: string, body: Record<string, unknown>): Promise<Response> {
+  private async makeAnthropicStreamRequest(
+    endpoint: string,
+    body: Record<string, unknown>
+  ): Promise<Response> {
     const url = `${this.getBaseUrl()}${endpoint}`;
 
     const response = await fetch(url, {

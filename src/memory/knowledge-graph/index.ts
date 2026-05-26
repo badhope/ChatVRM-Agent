@@ -3,10 +3,7 @@
 // ============================================================
 
 // 导出类型和常量
-export {
-  ENTITY_TYPES,
-  RELATIONSHIP_TYPES,
-} from './types.js';
+export { ENTITY_TYPES, RELATIONSHIP_TYPES } from './types.js';
 export type {
   EntityType,
   RelationshipType,
@@ -28,7 +25,4 @@ export {
 } from './extractor.js';
 
 // 导出路径查找器
-export {
-  findPath,
-  findAllConnected,
-} from './pathfinder.js';
+export { findPath, findAllConnected } from './pathfinder.js';

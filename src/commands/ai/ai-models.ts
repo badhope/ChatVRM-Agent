@@ -29,9 +29,9 @@ async function showAllModels() {
 
   const allModels: ModelDisplay[] = [];
 
-  PROVIDER_TYPE_LIST.forEach(type => {
+  PROVIDER_TYPE_LIST.forEach((type) => {
     const info = PROVIDER_INFO[type];
-    info.models.forEach(model => {
+    info.models.forEach((model) => {
       const capabilities: string[] = [];
       if (model.capabilities.chat) capabilities.push('聊天');
       if (model.capabilities.stream) capabilities.push('流式');
@@ -46,23 +46,25 @@ async function showAllModels() {
         name: model.name,
         inputPrice: model.pricing.inputPerMillion,
         outputPrice: model.pricing.outputPerMillion,
-        capabilities
+        capabilities,
       });
     });
   });
 
   allModels.sort((a, b) => a.inputPrice - b.inputPrice);
 
-  console.log(chalk.bold('\n  平台              模型                    输入$/M      输出$/M    能力'));
+  console.log(
+    chalk.bold('\n  平台              模型                    输入$/M      输出$/M    能力')
+  );
   console.log(chalk.gray('  ' + '─'.repeat(80)));
 
-  allModels.forEach(model => {
+  allModels.forEach((model) => {
     console.log(
       `  ${model.providerName.padEnd(16)}` +
-      `${model.name.padEnd(22)}` +
-      `$${model.inputPrice.toFixed(2).padEnd(10)}` +
-      `$${model.outputPrice.toFixed(2).padEnd(10)}` +
-      `${model.capabilities.join(', ')}`
+        `${model.name.padEnd(22)}` +
+        `$${model.inputPrice.toFixed(2).padEnd(10)}` +
+        `$${model.outputPrice.toFixed(2).padEnd(10)}` +
+        `${model.capabilities.join(', ')}`
     );
   });
 
@@ -78,17 +80,19 @@ async function showModelInfo() {
   if (!providerChoice || providerChoice === '__back__') return;
 
   const info = PROVIDER_INFO[providerChoice as ProviderType];
-  const { modelId } = await inquirer.prompt([{
-    type: 'list',
-    name: 'modelId',
-    message: '选择模型：',
-    choices: info.models.map(m => ({
-      name: `${m.name} (${m.pricing.inputPerMillion}$/M)`,
-      value: m.id
-    }))
-  }]);
+  const { modelId } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'modelId',
+      message: '选择模型：',
+      choices: info.models.map((m) => ({
+        name: `${m.name} (${m.pricing.inputPerMillion}$/M)`,
+        value: m.id,
+      })),
+    },
+  ]);
 
-  const model = info.models.find(m => m.id === modelId);
+  const model = info.models.find((m) => m.id === modelId);
   if (!model) return;
 
   printHeader();
@@ -99,8 +103,12 @@ async function showModelInfo() {
   console.log(`  ${chalk.bold('平台:')} ${chalk.cyan(info.displayName)}`);
 
   console.log(`\n  ${chalk.bold('💰 定价:')}`);
-  console.log(`     输入: $${chalk.yellow(model.pricing.inputPerMillion)} ${model.pricing.currency}/百万Token`);
-  console.log(`     输出: $${chalk.yellow(model.pricing.outputPerMillion)} ${model.pricing.currency}/百万Token`);
+  console.log(
+    `     输入: $${chalk.yellow(model.pricing.inputPerMillion)} ${model.pricing.currency}/百万Token`
+  );
+  console.log(
+    `     输出: $${chalk.yellow(model.pricing.outputPerMillion)} ${model.pricing.currency}/百万Token`
+  );
 
   console.log(`\n  ${chalk.bold('📊 参数:')}`);
   console.log(`     上下文窗口: ${chalk.cyan(model.contextWindow.toLocaleString())} tokens`);
@@ -118,8 +126,7 @@ async function showModelInfo() {
   await waitForEnter();
 }
 
-export const aiModelsCommand = new Command('model')
-  .description('模型管理');
+export const aiModelsCommand = new Command('model').description('模型管理');
 
 aiModelsCommand
   .command('list')

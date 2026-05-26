@@ -17,11 +17,11 @@ import chalk from 'chalk';
  * 从 NEGLIGIBLE 到 CRITICAL 递增，级别越高风险越大
  */
 export enum RiskLevel {
-  NEGLIGIBLE = 'negligible',   // 可忽略（读操作）
-  LOW = 'low',                 // 低风险（创建新文件）
-  MEDIUM = 'medium',           // 中风险（修改现有文件）
-  HIGH = 'high',               // 高风险（修改配置文件/系统文件）
-  CRITICAL = 'critical',       // 危险（删除文件/批量修改）
+  NEGLIGIBLE = 'negligible', // 可忽略（读操作）
+  LOW = 'low', // 低风险（创建新文件）
+  MEDIUM = 'medium', // 中风险（修改现有文件）
+  HIGH = 'high', // 高风险（修改配置文件/系统文件）
+  CRITICAL = 'critical', // 危险（删除文件/批量修改）
 }
 
 // ==================== 风险级别工具常量 ====================
@@ -93,25 +93,75 @@ export const RISK_RULES: Array<{
   { pattern: /.*/, action: ['delete'], risk: RiskLevel.CRITICAL, reason: '删除文件' },
 
   // 系统文件 - 高风险（修改或删除时）
-  { pattern: /(\/etc\/|\/usr\/|\/bin\/|\/sbin\/|C:\\Windows|C:\\Program)/i, action: ['modify', 'delete'], risk: RiskLevel.CRITICAL, reason: '系统关键文件' },
+  {
+    pattern: /(\/etc\/|\/usr\/|\/bin\/|\/sbin\/|C:\\Windows|C:\\Program)/i,
+    action: ['modify', 'delete'],
+    risk: RiskLevel.CRITICAL,
+    reason: '系统关键文件',
+  },
 
   // 配置文件 - 高风险（修改或删除时）
-  { pattern: /\.(json|yaml|yml|toml|ini|conf|cfg|env)$/i, action: ['modify', 'delete'], risk: RiskLevel.HIGH, reason: '配置文件修改' },
+  {
+    pattern: /\.(json|yaml|yml|toml|ini|conf|cfg|env)$/i,
+    action: ['modify', 'delete'],
+    risk: RiskLevel.HIGH,
+    reason: '配置文件修改',
+  },
 
   // node_modules - 低风险（可恢复）
-  { pattern: /node_modules/, action: ['modify', 'delete'], risk: RiskLevel.LOW, reason: '依赖目录，可恢复' },
+  {
+    pattern: /node_modules/,
+    action: ['modify', 'delete'],
+    risk: RiskLevel.LOW,
+    reason: '依赖目录，可恢复',
+  },
 
   // .git 目录 - 高风险（修改或删除时）
-  { pattern: /\.git/, action: ['modify', 'delete'], risk: RiskLevel.CRITICAL, reason: 'Git 版本控制目录' },
+  {
+    pattern: /\.git/,
+    action: ['modify', 'delete'],
+    risk: RiskLevel.CRITICAL,
+    reason: 'Git 版本控制目录',
+  },
 
   // shell 命令 - 根据内容评估
-  { pattern: /rm\s+-rf|del\s+\/s/i, action: ['shell'], risk: RiskLevel.CRITICAL, reason: '强制删除命令' },
-  { pattern: /DROP\s+TABLE|TRUNCATE/i, action: ['shell'], risk: RiskLevel.CRITICAL, reason: '数据库破坏性命令' },
+  {
+    pattern: /rm\s+-rf|del\s+\/s/i,
+    action: ['shell'],
+    risk: RiskLevel.CRITICAL,
+    reason: '强制删除命令',
+  },
+  {
+    pattern: /DROP\s+TABLE|TRUNCATE/i,
+    action: ['shell'],
+    risk: RiskLevel.CRITICAL,
+    reason: '数据库破坏性命令',
+  },
   { pattern: /sudo|admin/i, action: ['shell'], risk: RiskLevel.HIGH, reason: '需要管理员权限' },
-  { pattern: /npm\s+install|yarn|pnpm/i, action: ['shell'], risk: RiskLevel.LOW, reason: '包安装命令' },
-  { pattern: /npm\s+run|yarn\s+run/i, action: ['shell'], risk: RiskLevel.LOW, reason: '脚本运行命令' },
-  { pattern: /git\s+(commit|push|merge|rebase)/i, action: ['shell'], risk: RiskLevel.MEDIUM, reason: 'Git 写操作' },
-  { pattern: /docker\s+(build|run|push)/i, action: ['shell'], risk: RiskLevel.MEDIUM, reason: 'Docker 操作' },
+  {
+    pattern: /npm\s+install|yarn|pnpm/i,
+    action: ['shell'],
+    risk: RiskLevel.LOW,
+    reason: '包安装命令',
+  },
+  {
+    pattern: /npm\s+run|yarn\s+run/i,
+    action: ['shell'],
+    risk: RiskLevel.LOW,
+    reason: '脚本运行命令',
+  },
+  {
+    pattern: /git\s+(commit|push|merge|rebase)/i,
+    action: ['shell'],
+    risk: RiskLevel.MEDIUM,
+    reason: 'Git 写操作',
+  },
+  {
+    pattern: /docker\s+(build|run|push)/i,
+    action: ['shell'],
+    risk: RiskLevel.MEDIUM,
+    reason: 'Docker 操作',
+  },
 ];
 
 // ==================== 风险评估函数 ====================

@@ -1,127 +1,208 @@
 # Personal-Assistant
 
-**Personal-Assistant** — 一个强大的个人 AI 助手 CLI 工具。
+**Personal-Assistant** — A powerful personal AI assistant CLI tool.
 
-## 🌟 核心特性
+## 🌟 Key Features
 
-### AI 能力
-- **10+ AI 平台** — OpenAI、Anthropic、Google、DeepSeek、硅基流动、阿里云百炼、智谱AI、百度千帆、Ollama、LM Studio
-- **智能模型搜索** — 自动从平台 API 搜索匹配模型
-- **自动切换** — 模型失败时自动尝试下一个
-- **流式响应** — 实时显示 AI 输出
-- **熔断保护** — 内置 Circuit Breaker，自动隔离故障平台
+### AI Capabilities
+- **10+ AI Platforms** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow, Alibaba Bailian, Zhipu AI, Baidu Qianfan, Ollama, LM Studio
+- **Smart Model Search** — Automatically search and match models from platform APIs
+- **Auto-fallback** — Automatically try next model when one fails
+- **Streaming Responses** — Real-time AI output display
+- **Circuit Breaker** — Built-in circuit breaker for automatic platform isolation
 
-### 聊天功能
-- **会话管理** — 完整的对话历史管理
-- **本地存储** — 数据持久化到本地
-- **多轮对话** — 支持上下文连贯的对话
+### Chat Features
+- **Conversation Management** — Complete conversation history management
+- **Local Storage** — Data persistence to local disk
+- **Multi-turn Dialogue** — Support for context-aware conversations
 
-### 开发工具
-- **内置工具** — Shell、文件操作、HTTP、JSON、文本处理等
-- **记忆系统** — 上下文记忆、知识图谱、RAG 检索
+### Development Tools
+- **Built-in Tools** — Shell, file operations, HTTP, JSON, text processing, etc.
+- **Memory System** — Context memory, knowledge graph, RAG retrieval
 
-### 信任机制
-- **信任评估** — 自动执行 / 需要确认
-- **危险检测** — 自动识别破坏性操作、敏感信息
+### Trust & Safety
+- **Trust Assessment** — Auto-execute / require confirmation
+- **Risk Detection** — Automatic detection of destructive operations and sensitive information
 
-## 📦 安装
+### 🎯 Architecture Features
+- **Domain-Driven Design (DDD)** — Clean architecture with four layers
+- **Type-Safe** — Full TypeScript with strict type checking
+- **Test Coverage** — 484+ comprehensive tests passing
+- **Clean Code** — Prettier, ESLint, and Git hooks
 
-### 从 GitHub 安装
+## 📦 Installation
+
+### From GitHub
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 全局链接（可选）
+# Global link (optional)
 npm link
 ```
 
-要求 Node.js >= 18.0.0 < 23.0.0
+Requirement: Node.js >= 18.0.0 < 23.0.0
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
 ```bash
-# 1. 配置 API Key
+# 1. Configure API Key
 personal-assistant config provider set-key aliyun sk-xxxxx
 personal-assistant config set-default aliyun
 
-# 2. 开始聊天
-personal-assistant chat ask "你好，介绍一下你自己"
+# 2. Start chatting
+personal-assistant chat ask "Hello, introduce yourself"
 
-# 3. 交互式多轮对话
+# 3. Interactive multi-turn dialogue
 personal-assistant chat start
 ```
 
-## ⚙️ 命令参考
+## ⚙️ Command Reference
 
-### 聊天命令
+### Chat Commands
 ```bash
-personal-assistant chat start           # 交互式多轮对话
-personal-assistant chat ask <问题>       # 单轮快速提问
-personal-assistant chat models -p aliyun    # 列出平台模型
+personal-assistant chat start           # Interactive multi-turn dialogue
+personal-assistant chat ask <question>       # Single round quick question
+personal-assistant chat models -p aliyun    # List platform models
 ```
 
-### 配置命令
+### Configuration Commands
 ```bash
-personal-assistant config init            # 交互式配置向导
-personal-assistant config list            # 查看所有配置
-personal-assistant config provider set-key <平台> <API Key>
-personal-assistant config set-default <平台>
-personal-assistant config test <平台>   # 测试平台连接
+personal-assistant config init            # Interactive configuration wizard
+personal-assistant config list            # View all configuration
+personal-assistant config provider set-key <platform> <API Key>
+personal-assistant config set-default <platform>
+personal-assistant config test <platform>   # Test platform connection
 ```
 
-### 工具命令
+### Tools Commands
 ```bash
-personal-assistant tools list          # 列出所有工具
+personal-assistant tools list          # List all tools
 ```
 
-## 📁 项目结构
+### Development Commands
+```bash
+npm run build              # Build project
+npm run dev               # Watch mode development
+npm run test              # Run all tests
+npm run lint              # Run ESLint
+npm run format            # Run Prettier
+npm run test:coverage     # Test with coverage report
+```
+
+## 🏗️ Project Structure
 
 ```
 Personal-Assistant/
-├── src/                    # 源代码
-│   ├── cli.ts             # CLI 入口
-│   ├── commands/           # CLI 命令
-│   ├── providers/         # AI 平台适配器
-│   ├── agent/            # Agent 系统
-│   ├── memory/          # 记忆系统
-│   ├── tools/            # 工具系统
-│   ├── config/           # 配置管理
-│   └── utils/            # 工具函数
-├── dist/                   # 编译输出
-├── packages/               # 包
-├── plugins/               # 插件
+├── src/                    # Source code
+│   ├── cli.ts             # CLI entry point
+│   ├── commands/           # CLI commands
+│   ├── providers/         # AI platform adapters
+│   ├── agent/            # Agent system (DDD architecture)
+│   │   ├── domain/       # Domain layer (business logic)
+│   │   │   ├── models/   # Domain models
+│   │   │   ├── services/ # Domain services
+│   │   │   └── repositories/ # Repository interfaces
+│   │   ├── application/  # Application layer (use cases)
+│   │   │   ├── services/ # Application services
+│   │   │   └── dtos/     # Data Transfer Objects
+│   │   ├── infrastructure/ # Infrastructure layer
+│   │   │   ├── repositories/ # Repository implementations
+│   │   │   └── state-machines/ # State machines
+│   │   └── interfaces/   # Interface layer (controllers)
+│   ├── memory/          # Memory system
+│   ├── tools/            # Tools system
+│   ├── config/           # Configuration management
+│   └── utils/            # Utility functions
+├── dist/                   # Compiled output
+├── docs/                   # Documentation
+├── plugins/               # Plugins
 ├── sdk/                   # SDK
-└── vscode/               # VSCode 扩展
+└── vscode/               # VSCode extension
 ```
 
-## 🔒 支持的 AI 平台
+## 🧪 Testing
 
-| 平台 | 类型 | API 格式 |
-|------|------|---------|
-| OpenAI | 云端 | OpenAI |
-| Anthropic | 云端 | Anthropic |
-| Google Gemini | 云端 | Google |
-| DeepSeek | 云端 | OpenAI 兼容 |
-| 硅基流动 | 云端 | OpenAI 兼容 |
-| 阿里云百炼 | 云端 | OpenAI 兼容 |
-| 智谱AI | 云端 | OpenAI 兼容 |
-| 百度千帆 | 云端 | 自定义 |
-| Ollama | 本地 | Ollama |
-| LM Studio | 本地 | OpenAI 兼容 |
+```bash
+npm run test          # Run all tests
+npm run test:unit     # Run only unit tests
+npm run test:integration # Run integration tests
+npm run test:watch    # Watch mode for development
+npm run test:coverage # Test with coverage report
+npm run test:ui       # Vitest UI for interactive testing
+```
 
-## 📜 许可证
+## 📁 Architecture Documentation
+
+Complete architecture documentation is available in the [docs/](docs/) directory:
+
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Detailed architecture overview
+- [FINAL_ARCHITECTURE_SUMMARY.md](docs/FINAL_ARCHITECTURE_SUMMARY.md) — Full migration summary
+- [CODE_STRUCTURE_ANALYSIS.md](docs/CODE_STRUCTURE_ANALYSIS.md) — Code structure analysis
+- [PERFORMANCE_MONITORING.md](docs/PERFORMANCE_MONITORING.md) — Performance monitoring setup
+
+## 🔒 Supported AI Platforms
+
+| Platform | Type | API Format |
+|----------|------|------------|
+| OpenAI | Cloud | OpenAI |
+| Anthropic | Cloud | Anthropic |
+| Google Gemini | Cloud | Google |
+| DeepSeek | Cloud | OpenAI Compatible |
+| SiliconFlow | Cloud | OpenAI Compatible |
+| Alibaba Bailian | Cloud | OpenAI Compatible |
+| Zhipu AI | Cloud | OpenAI Compatible |
+| Baidu Qianfan | Cloud | Custom |
+| Ollama | Local | Ollama |
+| LM Studio | Local | OpenAI Compatible |
+
+## 💻 Development
+
+### Code Quality
+- **Prettier** — Auto code formatting
+- **ESLint** — Code linting with TypeScript support
+- **Husky** — Git hooks for pre-commit checks
+- **Lint-Staged** — Run linters on staged files
+
+### Architecture Philosophy
+- **Domain-Driven Design (DDD)**
+- **Clean Architecture**
+- **Dependency Inversion**
+- **Testability First**
+
+### Building from Source
+
+```bash
+# Clone
+git clone https://github.com/badhope/Personal-Assistant.git
+cd Personal-Assistant
+
+# Install
+npm install
+
+# Build
+npm run build
+
+# Test
+npm run test
+
+# Development
+npm run dev
+```
+
+## 📜 License
 
 MIT License
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎贡献！详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ---
 
-**Personal-Assistant** — 你的智能个人 AI 助手
+**Personal-Assistant** — Your Smart Personal AI Assistant

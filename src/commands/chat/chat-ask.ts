@@ -22,7 +22,10 @@ export interface AskQuestionOptions {
  * 快速提问的核心函数
  * 可从 cli.ts 的顶层 ask 命令或 chat ask 子命令调用
  */
-export async function askQuestion(message: string, options: AskQuestionOptions = {}): Promise<void> {
+export async function askQuestion(
+  message: string,
+  options: AskQuestionOptions = {}
+): Promise<void> {
   const providerType = resolveProvider(options);
   if (!providerType) return;
   if (!checkApiKey(providerType)) return;
@@ -35,9 +38,12 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
   if (memoryConfig.enabled && memoryConfig.autoRecall) {
     const memoryResults = await memoryManager.recall(message, 5);
     if (memoryResults.length > 0) {
-      const memoryContext = memoryResults.map(r =>
-        `[${new Date(r.interaction.timestamp).toLocaleString('zh-CN')}]\n用户: ${r.interaction.input}\nAI: ${r.interaction.output.slice(0, 300)}`
-      ).join('\n---\n');
+      const memoryContext = memoryResults
+        .map(
+          (r) =>
+            `[${new Date(r.interaction.timestamp).toLocaleString('zh-CN')}]\n用户: ${r.interaction.input}\nAI: ${r.interaction.output.slice(0, 300)}`
+        )
+        .join('\n---\n');
       messages.push({
         role: 'system',
         content: `以下是用户之前与你的对话记忆，请参考这些上下文来回答当前问题：\n\n${memoryContext}\n\n请基于以上记忆上下文回答用户的新问题。如果用户问到了之前提过的信息（如名字、偏好等），请直接使用记忆中的信息。`,
@@ -55,7 +61,7 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
   // 确定模型列表
   let modelList: string[];
   if (options.fallbackOrder) {
-    modelList = options.fallbackOrder.split(',').map(m => m.trim());
+    modelList = options.fallbackOrder.split(',').map((m) => m.trim());
   } else if (options.model) {
     const spinner = createSpinner(`搜索模型 "${options.model}"...`);
     const result = await provider.findModel(options.model);
@@ -67,7 +73,9 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
       }
       modelList = [result.exact];
     } else if (result.candidates.length > 0) {
-      printWarning(`未找到精确匹配 "${options.model}"，找到 ${result.candidates.length} 个相似模型:`);
+      printWarning(
+        `未找到精确匹配 "${options.model}"，找到 ${result.candidates.length} 个相似模型:`
+      );
       result.candidates.forEach((c, i) => console.log(chalk.gray(`  ${i + 1}. ${c}`)));
       printInfo(`使用第一个: ${result.candidates[0]}，或用 --model 指定完整ID`);
       modelList = [result.candidates[0]];
@@ -85,9 +93,9 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
   if (enableFallback && modelList.length === 1) {
     const currentModel = modelList[0];
     const fallbackModels = platformModels
-      .filter(m => m.id !== currentModel)
+      .filter((m) => m.id !== currentModel)
       .sort((a, b) => a.pricing.inputPerMillion - b.pricing.inputPerMillion)
-      .map(m => m.id);
+      .map((m) => m.id);
     modelList = [currentModel, ...fallbackModels];
   }
 
@@ -96,7 +104,7 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
 
   for (let i = 0; i < modelList.length; i++) {
     const modelId = modelList[i];
-    const modelInfo = platformModels.find(m => m.id === modelId);
+    const modelInfo = platformModels.find((m) => m.id === modelId);
 
     if (i > 0) {
       printWarning(`模型 ${modelList[i - 1]} 失败，尝试切换到: ${modelInfo?.name || modelId}`);
@@ -147,10 +155,12 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
         console.log(response.content);
 
         if (response.usage) {
-          console.log(chalk.gray(
-            `\n>> Token：${response.usage.totalTokens} ` +
-            `| 成本：$${response.cost?.totalCost.toFixed(4) || '0.0000'}`
-          ));
+          console.log(
+            chalk.gray(
+              `\n>> Token：${response.usage.totalTokens} ` +
+                `| 成本：$${response.cost?.totalCost.toFixed(4) || '0.0000'}`
+            )
+          );
         }
         if (i > 0) {
           console.log(chalk.gray(`\n💡 提示: 使用 --model ${modelId} 可直接指定此模型`));
@@ -158,14 +168,16 @@ export async function askQuestion(message: string, options: AskQuestionOptions =
 
         // 静默保存到记忆（需要配置开启）
         if (memoryConfig.enabled) {
-          memoryManager.rememberChat({
-            input: message,
-            output: response.content,
-            provider: providerType,
-            model: modelId,
-          }).catch((error) => {
-            logger.debug({ error }, 'Failed to remember chat');
-          });
+          memoryManager
+            .rememberChat({
+              input: message,
+              output: response.content,
+              provider: providerType,
+              model: modelId,
+            })
+            .catch((error) => {
+              logger.debug({ error }, 'Failed to remember chat');
+            });
         }
 
         return;
@@ -195,7 +207,18 @@ export const chatAskCommand = new Command('ask')
   .option('--no-stream', '禁用流式输出，等待完整响应')
   .option('-f, --fallback', '启用自动切换：模型失败时自动尝试下一个模型', false)
   .option('--fallback-order <models>', '自定义切换顺序（逗号分隔的模型ID）')
-  .action(async (message: string, options: { provider?: string; model?: string; stream?: boolean; fallback?: boolean; fallbackOrder?: string }) => {
-    await configManager.init();
-    await askQuestion(message, options);
-  });
+  .action(
+    async (
+      message: string,
+      options: {
+        provider?: string;
+        model?: string;
+        stream?: boolean;
+        fallback?: boolean;
+        fallbackOrder?: string;
+      }
+    ) => {
+      await configManager.init();
+      await askQuestion(message, options);
+    }
+  );

@@ -341,14 +341,9 @@ export class DependencyGraph {
  * @param tsConfigPath - Optional path to tsconfig.json
  * @returns A DependencyGraph instance
  */
-export function buildDependencyGraph(
-  filePaths: string[],
-  tsConfigPath?: string
-): DependencyGraph {
+export function buildDependencyGraph(filePaths: string[], tsConfigPath?: string): DependencyGraph {
   // Create or get project
-  const project = tsConfigPath
-    ? createProject(tsConfigPath)
-    : getProject();
+  const project = tsConfigPath ? createProject(tsConfigPath) : getProject();
 
   // Add files to project
   for (const filePath of filePaths) {
@@ -360,9 +355,11 @@ export function buildDependencyGraph(
   }
 
   // Get source files that exist in the project
-  const sourceFiles = project.getSourceFiles().filter(sf =>
-    filePaths.some(fp => path.normalize(fp) === path.normalize(sf.getFilePath()))
-  );
+  const sourceFiles = project
+    .getSourceFiles()
+    .filter((sf) =>
+      filePaths.some((fp) => path.normalize(fp) === path.normalize(sf.getFilePath()))
+    );
 
   return new DependencyGraph().build(sourceFiles);
 }

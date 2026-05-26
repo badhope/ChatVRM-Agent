@@ -6,7 +6,13 @@
  */
 
 // Language utilities (still used for multi-language support)
-export { initLanguages, getLanguageByExtension, getLanguageByFilePath, getRegisteredLanguages, getLanguage } from './languages.js';
+export {
+  initLanguages,
+  getLanguageByExtension,
+  getLanguageByFilePath,
+  getRegisteredLanguages,
+  getLanguage,
+} from './languages.js';
 export type { SupportedLanguage, LanguageInfo } from './languages.js';
 
 // Parser engine (tree-sitter based for multi-language)
@@ -21,7 +27,13 @@ export type { CodeSymbol, SymbolKind } from './symbols.js';
 export { parseCache } from './cache.js';
 
 // ts-morph Project singleton
-export { getProject, createProject, resetProject, addSourceFiles, normalizeFilePath } from './ts-morph-project.js';
+export {
+  getProject,
+  createProject,
+  resetProject,
+  addSourceFiles,
+  normalizeFilePath,
+} from './ts-morph-project.js';
 
 // Dependency graph (ts-morph based)
 export { DependencyGraph, buildDependencyGraph } from './dependency-graph.js';
@@ -32,7 +44,12 @@ export { ImportanceRanker, rankSymbols, getRankedSymbols } from './importance-ra
 export type { SymbolImportance, ImportanceRankerOptions } from './importance-ranker.js';
 
 // Token budget
-export { createTokenBudget, estimateTokens, formatSymbolEntry, formatFileMap } from './token-budget.js';
+export {
+  createTokenBudget,
+  estimateTokens,
+  formatSymbolEntry,
+  formatFileMap,
+} from './token-budget.js';
 export type { TokenBudget } from './token-budget.js';
 
 // Repo map generator

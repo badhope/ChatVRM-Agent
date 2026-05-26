@@ -57,7 +57,9 @@ export async function startInteractiveChat(options: StartChatOptions = {}): Prom
   if (!modelId) return;
 
   printSuccess(`使用 ${PROVIDER_INFO[providerType].displayName} / ${modelId}`);
-  console.log(chalk.gray('  提示: 输入 /help 查看命令，! 执行 shell 命令，Ctrl+C 退出（自动保存）\n'));
+  console.log(
+    chalk.gray('  提示: 输入 /help 查看命令，! 执行 shell 命令，Ctrl+C 退出（自动保存）\n')
+  );
 
   const context = await initializeChatContext(providerType, modelId, options.resumeMessages);
   await runChatLoop(context);
@@ -77,8 +79,8 @@ async function selectProvider(providerOption?: string): Promise<ProviderType | n
   }
 
   const defaultProvider = configManager.getDefaultProvider();
-  const configuredProviders = PROVIDER_TYPE_LIST.filter(type =>
-    !PROVIDER_INFO[type].requiresApiKey || configManager.getApiKey(type)
+  const configuredProviders = PROVIDER_TYPE_LIST.filter(
+    (type) => !PROVIDER_INFO[type].requiresApiKey || configManager.getApiKey(type)
   );
 
   if (configuredProviders.length === 0) {
@@ -93,15 +95,17 @@ async function selectProvider(providerOption?: string): Promise<ProviderType | n
   }
 
   if (process.stdin.isTTY) {
-    const answer = await inquirer.prompt([{
-      type: 'list',
-      name: 'provider',
-      message: '选择AI平台:',
-      choices: configuredProviders.map(type => ({
-        name: `${PROVIDER_INFO[type].displayName} (${type})`,
-        value: type
-      }))
-    }]);
+    const answer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'provider',
+        message: '选择AI平台:',
+        choices: configuredProviders.map((type) => ({
+          name: `${PROVIDER_INFO[type].displayName} (${type})`,
+          value: type,
+        })),
+      },
+    ]);
     return answer.provider;
   }
 
@@ -112,7 +116,10 @@ async function selectProvider(providerOption?: string): Promise<ProviderType | n
 /**
  * 选择模型
  */
-async function selectModel(providerType: ProviderType, modelOption?: string): Promise<string | null> {
+async function selectModel(
+  providerType: ProviderType,
+  modelOption?: string
+): Promise<string | null> {
   const providerConfig = configManager.getProviderConfig(providerType);
   const info = PROVIDER_INFO[providerType];
   const defaultModel = providerConfig.defaultModel || info.models[0]?.id;
@@ -124,16 +131,18 @@ async function selectModel(providerType: ProviderType, modelOption?: string): Pr
     return info.models[0]?.id || 'unknown';
   }
 
-  const { model } = await inquirer.prompt([{
-    type: 'list',
-    name: 'model',
-    message: '选择模型:',
-    default: defaultModel,
-    choices: info.models.map(m => ({
-      name: `${m.name} ($${m.pricing.inputPerMillion}/M tokens)`,
-      value: m.id
-    }))
-  }]);
+  const { model } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'model',
+      message: '选择模型:',
+      default: defaultModel,
+      choices: info.models.map((m) => ({
+        name: `${m.name} ($${m.pricing.inputPerMillion}/M tokens)`,
+        value: m.id,
+      })),
+    },
+  ]);
 
   return model;
 }
@@ -213,7 +222,16 @@ function injectPersonalityPrompt(
  * 运行对话循环
  */
 async function runChatLoop(context: ChatContext): Promise<void> {
-  const { messages, sessionId, emotionalState, provider, modelId, chatParams, memoryConfig, providerType } = context;
+  const {
+    messages,
+    sessionId,
+    emotionalState,
+    provider,
+    modelId,
+    chatParams,
+    memoryConfig,
+    providerType,
+  } = context;
 
   try {
     while (true) {
@@ -249,12 +267,14 @@ async function runChatLoop(context: ChatContext): Promise<void> {
  * 获取用户输入
  */
 async function getUserInput(): Promise<string> {
-  const { input } = await inquirer.prompt([{
-    type: 'input',
-    name: 'input',
-    message: chalk.cyan('你:'),
-    validate: (v: string) => v.trim() !== '' || '请输入内容'
-  }]);
+  const { input } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'input',
+      message: chalk.cyan('你:'),
+      validate: (v: string) => v.trim() !== '' || '请输入内容',
+    },
+  ]);
   return input.trim();
 }
 
@@ -269,7 +289,9 @@ async function handleSlashCommand(userInput: string, context: ChatContext): Prom
     messages,
     modelId,
     providerType,
-    setModel: (newModel: string) => { context.modelId = newModel; },
+    setModel: (newModel: string) => {
+      context.modelId = newModel;
+    },
     setProvider: () => {},
   });
 
@@ -312,7 +334,10 @@ async function handleBashCommand(
 
     messages.push(
       { role: 'user', content: `![bash] ${command}` },
-      { role: 'assistant', content: `[命令执行结果]\n${stdout || '(无输出)'}${stderr ? '\n' + stderr : ''}` }
+      {
+        role: 'assistant',
+        content: `[命令执行结果]\n${stdout || '(无输出)'}${stderr ? '\n' + stderr : ''}`,
+      }
     );
   } catch (error: unknown) {
     console.log(chalk.red(`命令执行失败: ${getErrorMessage(error)}`));
@@ -323,7 +348,16 @@ async function handleBashCommand(
  * 处理用户输入
  */
 async function processUserInput(userInput: string, context: ChatContext): Promise<void> {
-  const { messages, sessionId, emotionalState, provider, modelId, chatParams, memoryConfig, providerType } = context;
+  const {
+    messages,
+    sessionId,
+    emotionalState,
+    provider,
+    modelId,
+    chatParams,
+    memoryConfig,
+    providerType,
+  } = context;
 
   // 记忆召回
   if (memoryConfig.enabled && memoryConfig.autoRecall) {
@@ -343,7 +377,7 @@ async function processUserInput(userInput: string, context: ChatContext): Promis
     setCurrentSession(sessionId, messages);
 
     // 显示保存提示
-    const nonSystemCount = messages.filter(m => m.role !== 'system').length;
+    const nonSystemCount = messages.filter((m) => m.role !== 'system').length;
     if (nonSystemCount % 10 === 0 && nonSystemCount > 0) {
       console.log(chalk.dim('  💾 对话已自动保存'));
     }
@@ -355,14 +389,16 @@ async function processUserInput(userInput: string, context: ChatContext): Promis
 
     // 保存记忆
     if (memoryConfig.enabled) {
-      memoryManager.rememberChat({
-        input: userInput,
-        output: fullContent,
-        provider: providerType,
-        model: modelId,
-      }).catch((error) => {
-        logger.debug({ error }, 'Failed to remember chat');
-      });
+      memoryManager
+        .rememberChat({
+          input: userInput,
+          output: fullContent,
+          provider: providerType,
+          model: modelId,
+        })
+        .catch((error) => {
+          logger.debug({ error }, 'Failed to remember chat');
+        });
     }
   } catch (error: unknown) {
     handleAIError(error);
@@ -380,13 +416,16 @@ async function injectMemoryContext(
   const memoryResults = await memoryManager.recall(userInput, 5);
   if (memoryResults.length === 0) return;
 
-  const memoryContext = memoryResults.map(r =>
-    `[${new Date(r.interaction.timestamp).toLocaleString('zh-CN')}]\n用户: ${r.interaction.input}\nAI: ${r.interaction.output.slice(0, 300)}`
-  ).join('\n---\n');
+  const memoryContext = memoryResults
+    .map(
+      (r) =>
+        `[${new Date(r.interaction.timestamp).toLocaleString('zh-CN')}]\n用户: ${r.interaction.input}\nAI: ${r.interaction.output.slice(0, 300)}`
+    )
+    .join('\n---\n');
 
   // 移除旧记忆
-  const memorySysIdx = messages.findIndex(m =>
-    m.role === 'system' && m.content.startsWith('以下是用户之前与你的对话记忆')
+  const memorySysIdx = messages.findIndex(
+    (m) => m.role === 'system' && m.content.startsWith('以下是用户之前与你的对话记忆')
   );
   if (memorySysIdx !== -1) messages.splice(memorySysIdx, 1);
 
@@ -420,8 +459,8 @@ function injectEmotionalContext(
   const emotionalContext = emotionalState.getEmotionalContext();
   if (!emotionalContext) return;
 
-  const emotionSysIdx = messages.findIndex(m =>
-    m.role === 'system' && m.content.startsWith('[当前情绪状态]')
+  const emotionSysIdx = messages.findIndex(
+    (m) => m.role === 'system' && m.content.startsWith('[当前情绪状态]')
   );
   if (emotionSysIdx !== -1) messages.splice(emotionSysIdx, 1);
 
@@ -465,7 +504,8 @@ async function streamAIResponse(
 function handleAIError(error: unknown): void {
   const errMsg = getErrorMessage(error);
   printError(`\n  请求失败: ${errMsg}`);
-  if (errMsg.includes('401')) printInfo('  API Key 可能无效，请运行: personal-assistant config set-key <平台> <apiKey>');
+  if (errMsg.includes('401'))
+    printInfo('  API Key 可能无效，请运行: personal-assistant config set-key <平台> <apiKey>');
   else if (errMsg.includes('429')) printInfo('  请求频率过高，请稍后重试');
   else if (errMsg.includes('timeout')) printInfo('  请求超时，请检查网络');
   console.log();
@@ -482,7 +522,8 @@ async function compressMessagesIfNeeded(
   try {
     const { CompressionService } = await import('../../services/compression-service.js');
     const adapterFactory: IProviderFactory = {
-      getDefaultProvider: () => provider as unknown as import('../../services/interfaces.js').ILLMProvider,
+      getDefaultProvider: () =>
+        provider as unknown as import('../../services/interfaces.js').ILLMProvider,
       getProvider: () => provider as unknown as import('../../services/interfaces.js').ILLMProvider,
       listAvailableProviders: () => [providerType],
       isProviderAvailable: () => true,
@@ -494,13 +535,13 @@ async function compressMessagesIfNeeded(
 
     if (!compressionService.shouldCompress(messages)) return;
 
-    const nonSystemMessages = messages.filter(m => m.role !== 'system');
+    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
     const result = await compressionService.compressMessages(nonSystemMessages);
 
     if (!result.summary) return;
 
-    const systemMsgs = messages.filter(m => m.role === 'system');
-    const recentMsgs = messages.filter(m => m.role !== 'system').slice(-4);
+    const systemMsgs = messages.filter((m) => m.role === 'system');
+    const recentMsgs = messages.filter((m) => m.role !== 'system').slice(-4);
 
     messages.length = 0;
     messages.push(...systemMsgs);
@@ -510,9 +551,11 @@ async function compressMessagesIfNeeded(
     });
     messages.push(...recentMsgs);
 
-    console.log(chalk.dim(
-      `\n  对话已自动压缩 (${result.originalMessages}条→${messages.length}条, 节省~${result.tokensSaved} tokens)\n`
-    ));
+    console.log(
+      chalk.dim(
+        `\n  对话已自动压缩 (${result.originalMessages}条→${messages.length}条, 节省~${result.tokensSaved} tokens)\n`
+      )
+    );
   } catch (error) {
     console.log(chalk.dim('  ⚠️ 自动压缩失败，回退到简单截断'));
     console.warn('对话压缩失败:', error instanceof Error ? error.message : String(error));

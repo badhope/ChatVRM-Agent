@@ -49,7 +49,7 @@ interface RelationEdgeAttrs {
 export class KnowledgeGraph {
   private storagePath: string;
   private graph: GraphWrapper;
-  private entities: Record<string, Entity> = {};  // 用于快速查找
+  private entities: Record<string, Entity> = {}; // 用于快速查找
   private initialized = false;
   private initLock = new AsyncLock();
   private saveLock = new AsyncLock();
@@ -57,7 +57,7 @@ export class KnowledgeGraph {
 
   constructor() {
     this.storagePath = path.join(MEMORY_DIR, 'knowledge.json');
-    this.graph = new GraphWrapper(true);  // 有向图
+    this.graph = new GraphWrapper(true); // 有向图
   }
 
   /** 初始化：创建目录并加载已有数据 */
@@ -130,13 +130,13 @@ export class KnowledgeGraph {
   async addEntity(
     type: EntityType,
     label: string,
-    attributes?: Record<string, string>,
+    attributes?: Record<string, string>
   ): Promise<Entity> {
     return this.stateLock.acquire(async () => {
       await this.init();
 
       const existing = Object.values(this.entities).find(
-        (e) => e.type === type && e.label === label,
+        (e) => e.type === type && e.label === label
       );
       if (existing) {
         if (attributes) Object.assign(existing.attributes, attributes);
@@ -172,7 +172,7 @@ export class KnowledgeGraph {
     fromId: string,
     toId: string,
     type: RelationshipType,
-    weight = 0.5,
+    weight = 0.5
   ): Promise<Relationship> {
     return this.stateLock.acquire(async () => {
       await this.init();
@@ -183,7 +183,10 @@ export class KnowledgeGraph {
       // 检查是否已存在相同关系
       const existingAttrs = this.graph.getEdgeAttrs<RelationEdgeAttrs>(fromId, toId);
       if (existingAttrs?.relationship && existingAttrs.relationship.type === type) {
-        existingAttrs.relationship.weight = Math.min(1, Math.max(existingAttrs.relationship.weight, weight));
+        existingAttrs.relationship.weight = Math.min(
+          1,
+          Math.max(existingAttrs.relationship.weight, weight)
+        );
         const updatedAttrs: Record<string, unknown> = { relationship: existingAttrs.relationship };
         this.graph.setEdgeAttrs(fromId, toId, updatedAttrs);
         await this.save();
@@ -208,7 +211,7 @@ export class KnowledgeGraph {
   /** 获取与指定实体相关的实体 */
   async getRelatedEntities(
     entityId: string,
-    type?: RelationshipType,
+    type?: RelationshipType
   ): Promise<Array<{ entity: Entity; relationship: Relationship }>> {
     await this.init();
 
@@ -313,7 +316,7 @@ export class KnowledgeGraph {
 
   /** 从记忆记录中自动提取实体和关系 */
   async extractFromMemory(
-    memories: MemoryEntry[],
+    memories: MemoryEntry[]
   ): Promise<{ entitiesAdded: number; relationshipsAdded: number }> {
     return this.stateLock.acquire(async () => {
       await this.init();
@@ -336,7 +339,11 @@ export class KnowledgeGraph {
     await this.init();
 
     const entityByType: Record<EntityType, number> = {
-      person: 0, project: 0, tech: 0, concept: 0, skill: 0,
+      person: 0,
+      project: 0,
+      tech: 0,
+      concept: 0,
+      skill: 0,
     };
     for (const entity of Object.values(this.entities)) {
       entityByType[entity.type]++;
@@ -344,7 +351,11 @@ export class KnowledgeGraph {
 
     const relationships = this.getAllRelationshipsFromGraph();
     const relationshipByType: Record<RelationshipType, number> = {
-      uses: 0, knows: 0, likes: 0, created: 0, related_to: 0,
+      uses: 0,
+      knows: 0,
+      likes: 0,
+      created: 0,
+      related_to: 0,
     };
     for (const rel of relationships) {
       relationshipByType[rel.type]++;

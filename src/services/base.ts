@@ -32,7 +32,7 @@ export abstract class BaseService {
   protected createContext(): ServiceContext {
     return {
       requestId: crypto.randomUUID(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
@@ -44,10 +44,7 @@ export abstract class BaseService {
    * @returns 函数执行结果
    * @throws 重新抛出原始错误
    */
-  protected async withErrorHandling<T>(
-    operation: string,
-    fn: () => Promise<T>
-  ): Promise<T> {
+  protected async withErrorHandling<T>(operation: string, fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
     } catch (error) {

@@ -1,10 +1,14 @@
 /**
- * Editor 角色 - 编辑者模式
+ * LLM Code Editor - LLM 驱动的代码编辑器
  *
  * 根据 Architect 的方案执行具体的代码修改。
  * 使用快速编码模型，注重执行效率。
  *
  * 学习自 Aider 的 Architect/Editor 双模型分工模式。
+ *
+ * 注意：这与 `src/editor/` 模块不同！
+ * - 本模块：使用 LLM 进行智能编辑（高层）
+ * - src/editor/：底层代码编辑工具（低层）
  */
 
 import type { Message } from '../types.js';
@@ -39,7 +43,7 @@ export interface EditorResult {
 }
 
 /** Editor 系统提示词 */
-const EDITOR_SYSTEM_PROMPT = `你是一位高效的代码编辑者。你的职责是：
+const EDITOR_SYSTEM_PROMPT = `你是一位高效的代码编辑器。你的职责是：
 1. 根据架构师的方案，执行具体的代码修改
 2. 确保修改的正确性和完整性
 3. 保持代码风格的一致性
@@ -75,11 +79,11 @@ const EDITOR_SYSTEM_PROMPT = `你是一位高效的代码编辑者。你的职�
 （简要描述完成的修改）`;
 
 /**
- * Editor 执行修改
+ * LLM Code Editor 执行修改
  * @param architectResult Architect 的分析结果
  * @param config 可选的 LLM 配置（建议使用快速编码模型）
  */
-export async function editorExecute(
+export async function llmEditorExecute(
   architectResult: ArchitectResult,
   config?: ReasonerConfig
 ): Promise<EditorResult> {
@@ -98,7 +102,7 @@ ${architectResult.filesToModify.join(', ')}
 ${architectResult.filesToCreate.join(', ')}
 
 ### 风险提示
-${architectResult.risks.map(r => `- ${r}`).join('\n')}
+${architectResult.risks.map((r) => `- ${r}`).join('\n')}
 
 请根据以上方案，执行具体的代码修改。`;
 
@@ -108,8 +112,8 @@ ${architectResult.risks.map(r => `- ${r}`).join('\n')}
   ];
 
   const response = await callLLM(messages, {
-    temperature: 0.1,  // 极低温度保证代码精确
-    maxTokens: 8192,   // 代码输出可能很长
+    temperature: 0.1, // 极低温度保证代码精确
+    maxTokens: 8192, // 代码输出可能很长
     ...config,
   });
 
@@ -140,10 +144,11 @@ function parseEditorResponse(response: string): EditorResult {
   }
 
   // 提取 REPLACE 操作（搜索替换）
-  const replaceRegex = /### REPLACE:\s*(.+?)\s*\n<<<SEARCH>>>\n([\s\S]*?)<<<REPLACE>>>\n([\s\S]*?)<<<END>>>/g;
+  const replaceRegex =
+    /### REPLACE:\s*(.+?)\s*\n<<<SEARCH>>>\n([\s\S]*?)<<<REPLACE>>>\n([\s\S]*?)<<<END>>>/g;
   while ((match = replaceRegex.exec(response)) !== null) {
     const m = match;
-    const existingOp = result.operations.find(op => op.filePath === m[1].trim());
+    const existingOp = result.operations.find((op) => op.filePath === m[1].trim());
     if (existingOp && existingOp.type === 'modify') {
       existingOp.searchReplace?.push({ search: m[2], replace: m[3] });
     } else {
@@ -161,10 +166,11 @@ function parseEditorResponse(response: string): EditorResult {
   if (issuesMatch) {
     const issueText = issuesMatch[1].trim();
     if (issueText && issueText !== '无' && issueText !== 'None') {
-      result.issues = issueText.split('\n')
-        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
-        .map(line => line.replace(/^[-•]\s*/, '').trim())
-        .filter(i => i.length > 0);
+      result.issues = issueText
+        .split('\n')
+        .filter((line) => line.trim().startsWith('-') || line.trim().startsWith('•'))
+        .map((line) => line.replace(/^[-•]\s*/, '').trim())
+        .filter((i) => i.length > 0);
     }
     if (result.issues.length > 0) {
       result.success = false;
@@ -179,3 +185,6 @@ function parseEditorResponse(response: string): EditorResult {
 
   return result;
 }
+
+// 保持向后兼容性导出
+export { llmEditorExecute as editorExecute };

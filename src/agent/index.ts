@@ -73,10 +73,7 @@ export {
 } from './core/response-parser.js';
 
 // ==================== Main Core ====================
-export {
-  AgentExecutor,
-  runAgentTask,
-} from './core.js';
+export { AgentExecutor, runAgentTask } from './core.js';
 
 // Re-export types from core for convenience
 export type { TaskStep as AgentTaskStep, Task as AgentTask } from './types.js';
@@ -91,12 +88,7 @@ export { planTask } from './task-planner.js';
 export { executeStep } from './core/tool-executor.js';
 
 // ==================== Reasoner ====================
-export {
-  reasonStep,
-  reasonWithSelfCorrection,
-  generateCode,
-  analyzeCode,
-} from './reasoner.js';
+export { reasonStep, reasonWithSelfCorrection, generateCode, analyzeCode } from './reasoner.js';
 
 // ==================== Trust System ====================
 export {
@@ -158,11 +150,18 @@ export { EmotionalStateManager } from './emotional-state.js';
 // ==================== Change Control ====================
 export { ChangeControlManager } from './change-control.js';
 
-// ==================== Utilities ====================
+// ==================== Dual Model (Architect/Editor) ====================
+export { runDualModel, type DualModelConfig, type DualModelResult } from './dual-model.js';
+export { architectAnalyze, type ArchitectResult } from './architect.js';
 export {
-  parseToolArgsFromAI,
-  generateSummary,
-} from './agent-utils.js';
+  llmEditorExecute,
+  editorExecute, // 向后兼容
+  type EditorResult,
+  type EditOperation,
+} from './llm-code-editor.js';
+
+// ==================== Utilities ====================
+export { parseToolArgsFromAI, generateSummary } from './agent-utils.js';
 
 // ==================== Version ====================
 export const AGENT_MODULE_VERSION = '2.1.0';

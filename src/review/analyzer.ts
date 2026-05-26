@@ -35,7 +35,10 @@ export class CodeAnalyzer {
         eslintIssues = await this.rulesEngine.analyze(filePath);
       } catch (error) {
         // ESLint 失败时回退到快速规则检测
-        logger.debug({ error: error instanceof Error ? error.message : String(error), filePath }, 'ESLint analysis failed, falling back to quick check');
+        logger.debug(
+          { error: error instanceof Error ? error.message : String(error), filePath },
+          'ESLint analysis failed, falling back to quick check'
+        );
         eslintIssues = ReviewRulesEngine.quickCheck(content, filePath);
       }
     } else {
@@ -50,7 +53,7 @@ export class CodeAnalyzer {
 
     // 合并去重
     const allIssues = [...eslintIssues];
-    const existingRules = new Set(eslintIssues.map(i => `${i.ruleId}-${i.line}`));
+    const existingRules = new Set(eslintIssues.map((i) => `${i.ruleId}-${i.line}`));
 
     for (const issue of aiIssues) {
       const key = `${issue.ruleId}-${issue.line}`;
@@ -77,9 +80,9 @@ export class CodeAnalyzer {
       issues: limitedIssues,
       summary: {
         total: limitedIssues.length,
-        errors: limitedIssues.filter(i => i.severity === 'error').length,
-        warnings: limitedIssues.filter(i => i.severity === 'warning').length,
-        infos: limitedIssues.filter(i => i.severity === 'info').length,
+        errors: limitedIssues.filter((i) => i.severity === 'error').length,
+        warnings: limitedIssues.filter((i) => i.severity === 'warning').length,
+        infos: limitedIssues.filter((i) => i.severity === 'info').length,
       },
       metrics: {
         lines: metrics.lines,
@@ -100,8 +103,14 @@ export class CodeAnalyzer {
   async analyzeDirectory(dirPath: string, options: ReviewOptions = {}): Promise<ReviewResult[]> {
     const results: ReviewResult[] = [];
     const ignorePatterns = options.ignorePatterns || [
-      'node_modules', 'dist', '.git', 'coverage',
-      '__pycache__', '.next', 'build', 'out'
+      'node_modules',
+      'dist',
+      '.git',
+      'coverage',
+      '__pycache__',
+      '.next',
+      'build',
+      'out',
     ];
 
     const walkDir = async (currentDir: string): Promise<void> => {
@@ -117,10 +126,29 @@ export class CodeAnalyzer {
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).slice(1).toLowerCase();
           const codeExtensions = [
-            'js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs',
-            'py', 'java', 'go', 'rs', 'cpp', 'c',
-            'cs', 'php', 'rb', 'swift', 'kt',
-            'html', 'css', 'json', 'yaml', 'yml', 'md'
+            'js',
+            'ts',
+            'jsx',
+            'tsx',
+            'mjs',
+            'cjs',
+            'py',
+            'java',
+            'go',
+            'rs',
+            'cpp',
+            'c',
+            'cs',
+            'php',
+            'rb',
+            'swift',
+            'kt',
+            'html',
+            'css',
+            'json',
+            'yaml',
+            'yml',
+            'md',
           ];
 
           if (codeExtensions.includes(ext)) {
@@ -131,7 +159,13 @@ export class CodeAnalyzer {
               }
             } catch (error) {
               // 跳过无法读取的文件
-              logger.debug({ error: error instanceof Error ? error.message : String(error), filePath: fullPath }, 'Skipping unreadable file');
+              logger.debug(
+                {
+                  error: error instanceof Error ? error.message : String(error),
+                  filePath: fullPath,
+                },
+                'Skipping unreadable file'
+              );
             }
           }
         }
@@ -164,7 +198,10 @@ export class CodeAnalyzer {
  * @param options 分析选项
  * @returns 审查结果
  */
-export async function analyzeCode(filePath: string, options: ReviewOptions = {}): Promise<ReviewResult> {
+export async function analyzeCode(
+  filePath: string,
+  options: ReviewOptions = {}
+): Promise<ReviewResult> {
   const analyzer = new CodeAnalyzer(process.cwd());
   return analyzer.analyzeFile(filePath, options);
 }

@@ -25,8 +25,4 @@ export type { Review, ReviewStats } from './reviews.js';
 
 // Templates exports
 export { TemplateManager, templateManager, BUILT_IN_TEMPLATES } from './templates.js';
-export type {
-  PluginTemplate,
-  TemplateVariable,
-  TemplateInstance,
-} from './templates.js';
+export type { PluginTemplate, TemplateVariable, TemplateInstance } from './templates.js';

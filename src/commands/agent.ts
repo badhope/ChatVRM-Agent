@@ -1,6 +1,13 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { printHeader, printSection, printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  printWarning,
+} from '../ui/logo.js';
 import { printSteps, printKeyValue } from '../ui/display.js';
 import { runAgentTask, intentRecognizer, type TaskStep } from '../agent/core.js';
 import { runDualModel } from '../agent/dual-model.js';
@@ -10,8 +17,7 @@ import { agentTrustCommand } from './agent/agent-trust.js';
 import { agentRiskCommand } from './agent/agent-risk.js';
 import type { ProviderType } from '../types.js';
 
-const agentCommand = new Command('agent')
-  .description('Agent 核心循环 - 智能理解、规划、执行任务');
+const agentCommand = new Command('agent').description('Agent 核心循环 - 智能理解、规划、执行任务');
 
 // personal-assistant agent run <任务> - 执行智能任务
 agentCommand
@@ -29,34 +35,35 @@ agentCommand
   .option('--editor-model <model>', 'Editor 使用的模型（快速编码模型）')
   .option('-y, --yes', '跳过确认直接执行', false)
   .option('--plan-first', '先规划后执行（Plan/Act 模式）', false)
-  .action(async (task: string, options: {
-    provider: string;
-    model?: string;
-    verbose: boolean;
-    plan?: boolean;
-    ai?: boolean;
-    architect?: boolean;
-    architectModel?: string;
-    editorModel?: string;
-    yes?: boolean;
-    planFirst?: boolean;
-  }) => {
-    try {
-      printHeader();
-      printSection('>> Agent 任务执行');
-      console.log(chalk.gray(`  任务: ${task}\n`));
+  .action(
+    async (
+      task: string,
+      options: {
+        provider: string;
+        model?: string;
+        verbose: boolean;
+        plan?: boolean;
+        ai?: boolean;
+        architect?: boolean;
+        architectModel?: string;
+        editorModel?: string;
+        yes?: boolean;
+        planFirst?: boolean;
+      }
+    ) => {
+      try {
+        printHeader();
+        printSection('>> Agent 任务执行');
+        console.log(chalk.gray(`  任务: ${task}\n`));
 
-      // 初始化配置
-      await configManager.init();
+        // 初始化配置
+        await configManager.init();
 
-      // === 双模型模式 ===
-      if (options.architect) {
-        console.log(chalk.cyan('  🏗️  双模型模式: Architect + Editor\n'));
+        // === 双模型模式 ===
+        if (options.architect) {
+          console.log(chalk.cyan('  🏗️  双模型模式: Architect + Editor\n'));
 
-        const result = await runDualModel(
-          task,
-          undefined,
-          {
+          const result = await runDualModel(task, undefined, {
             architect: {
               provider: options.provider as ProviderType,
               model: options.architectModel,
@@ -70,90 +77,111 @@ agentCommand
               maxTokens: 8192,
             },
             skipConfirmation: options.yes,
-          }
+          });
+
+          console.log();
+          printKeyValue([
+            { key: '耗时', value: `${result.durationMs}ms` },
+            { key: 'Architect 复杂度', value: `${result.architect.complexity}/5` },
+            { key: 'Editor 操作数', value: String(result.editor.operations.length) },
+            {
+              key: '状态',
+              value: result.editor.success ? chalk.green('成功') : chalk.yellow('有问题'),
+            },
+          ]);
+          return;
+        }
+
+        // === Plan/Act 模式 ===
+        if (options.planFirst) {
+          console.log(chalk.cyan('  📋 Plan/Act 模式: 先规划后执行\n'));
+
+          const result = await runPlanAct(task, {
+            llm: {
+              provider: options.provider as ProviderType,
+              model: options.model,
+            },
+            autoApprove: options.yes,
+          });
+
+          console.log();
+          printKeyValue([
+            { key: '总耗时', value: `${result.totalDurationMs}ms` },
+            { key: 'Plan', value: result.plan ? `${result.plan.estimatedSteps} 个步骤` : '跳过' },
+            {
+              key: 'Act',
+              value: result.act
+                ? result.act.allSuccess
+                  ? chalk.green('成功')
+                  : chalk.yellow('部分失败')
+                : '未执行',
+            },
+          ]);
+          return;
+        }
+
+        // === 标准单模型模式 ===
+
+        // 意图识别
+        const intent = intentRecognizer.recognizeSync(task);
+        console.log(
+          chalk.cyan(
+            `  🎯 识别意图: ${chalk.bold(intent.intent)} (置信度: ${(intent.confidence * 100).toFixed(0)}%)`
+          )
+        );
+        if (intent.suggestedTools.length > 0) {
+          console.log(chalk.gray(`  🛠️  建议工具: ${intent.suggestedTools.join(', ')}`));
+        }
+        console.log();
+
+        const steps: TaskStep[] = [];
+
+        // 执行任务
+        const result = await runAgentTask(
+          task,
+          // 步骤变化回调（记录步骤状态）
+          (step) => {
+            steps[step.id - 1] = step;
+          },
+          // 输出回调（内部已输出，无需重复）
+          undefined
         );
 
+        // 显示结果
         console.log();
-        printKeyValue([
-          { key: '耗时', value: `${result.durationMs}ms` },
-          { key: 'Architect 复杂度', value: `${result.architect.complexity}/5` },
-          { key: 'Editor 操作数', value: String(result.editor.operations.length) },
-          { key: '状态', value: result.editor.success ? chalk.green('成功') : chalk.yellow('有问题') },
-        ]);
-        return;
-      }
-
-      // === Plan/Act 模式 ===
-      if (options.planFirst) {
-        console.log(chalk.cyan('  📋 Plan/Act 模式: 先规划后执行\n'));
-
-        const result = await runPlanAct(task, {
-          llm: {
-            provider: options.provider as ProviderType,
-            model: options.model,
-          },
-          autoApprove: options.yes,
-        });
-
-        console.log();
-        printKeyValue([
-          { key: '总耗时', value: `${result.totalDurationMs}ms` },
-          { key: 'Plan', value: result.plan ? `${result.plan.estimatedSteps} 个步骤` : '跳过' },
-          { key: 'Act', value: result.act ? (result.act.allSuccess ? chalk.green('成功') : chalk.yellow('部分失败')) : '未执行' },
-        ]);
-        return;
-      }
-
-      // === 标准单模型模式 ===
-
-      // 意图识别
-      const intent = intentRecognizer.recognizeSync(task);
-      console.log(chalk.cyan(`  🎯 识别意图: ${chalk.bold(intent.intent)} (置信度: ${(intent.confidence * 100).toFixed(0)}%)`));
-      if (intent.suggestedTools.length > 0) {
-        console.log(chalk.gray(`  🛠️  建议工具: ${intent.suggestedTools.join(', ')}`));
-      }
-      console.log();
-
-      const steps: TaskStep[] = [];
-
-      // 执行任务
-      const result = await runAgentTask(task,
-        // 步骤变化回调（记录步骤状态）
-        (step) => {
-          steps[step.id - 1] = step;
-        },
-        // 输出回调（内部已输出，无需重复）
-        undefined
-      );
-
-      // 显示结果
-      console.log();
-      if (result.status === 'completed') {
-        printSuccess('任务执行完成');
-      } else if (result.status === 'failed') {
-        printError('任务执行失败');
-        if (result.result) {
-          console.log(chalk.red(`  原因: ${result.result}`));
+        if (result.status === 'completed') {
+          printSuccess('任务执行完成');
+        } else if (result.status === 'failed') {
+          printError('任务执行失败');
+          if (result.result) {
+            console.log(chalk.red(`  原因: ${result.result}`));
+          }
+        } else {
+          printWarning('任务执行部分完成');
         }
-      } else {
-        printWarning('任务执行部分完成');
-      }
 
-      // 步骤摘要
-      if (!options.verbose && steps.length > 0) {
-        printSection('>> 执行步骤');
-        const displaySteps = steps.filter(Boolean).map(s => ({
-          step: s.id,
-          title: s.description,
-          status: (s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : 'pending') as 'pending' | 'running' | 'done' | 'error',
-          detail: s.result ? s.result.slice(0, 50) : s.error,
-        }));
-        printSteps(displaySteps);
+        // 步骤摘要
+        if (!options.verbose && steps.length > 0) {
+          printSection('>> 执行步骤');
+          const displaySteps = steps.filter(Boolean).map((s) => ({
+            step: s.id,
+            title: s.description,
+            status: (s.status === 'done'
+              ? 'done'
+              : s.status === 'running'
+                ? 'running'
+                : s.status === 'error'
+                  ? 'error'
+                  : 'pending') as 'pending' | 'running' | 'done' | 'error',
+            detail: s.result ? s.result.slice(0, 50) : s.error,
+          }));
+          printSteps(displaySteps);
+        }
+      } catch (error) {
+        printError(`任务执行失败: ${error instanceof Error ? error.message : String(error)}`);
       }
-    } catch (error) {
-      printError(`任务执行失败: ${error instanceof Error ? error.message : String(error)}`);
     }
-  });
+  );
 
 // personal-assistant agent intent <描述> - 测试意图识别
 agentCommand
@@ -170,7 +198,10 @@ agentCommand
       { key: '输入描述', value: description, highlight: true },
       { key: '识别意图', value: result.intent, highlight: true },
       { key: '置信度', value: `${(result.confidence * 100).toFixed(0)}%` },
-      { key: '建议工具', value: result.suggestedTools.length > 0 ? result.suggestedTools.join(', ') : '无' },
+      {
+        key: '建议工具',
+        value: result.suggestedTools.length > 0 ? result.suggestedTools.join(', ') : '无',
+      },
     ]);
   });
 

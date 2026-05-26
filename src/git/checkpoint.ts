@@ -104,8 +104,7 @@ export class CheckpointManager {
     // 再从文件加载
     await this.loadCheckpoints();
 
-    return Array.from(this.checkpoints.values())
-      .sort((a, b) => b.createdAt - a.createdAt);
+    return Array.from(this.checkpoints.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   /**
@@ -131,7 +130,12 @@ export class CheckpointManager {
    */
   private async loadFromGit(): Promise<void> {
     try {
-      const result = await this.git.exec(['tag', '-l', 'personal-assistant-cp-*', '--format=%(refname:short)|%(objectname:short)|%(contents)']);
+      const result = await this.git.exec([
+        'tag',
+        '-l',
+        'personal-assistant-cp-*',
+        '--format=%(refname:short)|%(objectname:short)|%(contents)',
+      ]);
       const stdout = typeof result === 'string' ? result : '';
       if (!stdout) return;
 
@@ -185,7 +189,10 @@ export class CheckpointManager {
       const data = JSON.stringify(Array.from(this.checkpoints.values()), null, 2);
       await fs.writeFile(CHECKPOINT_FILE, data, 'utf-8');
     } catch (error) {
-      gitLogger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to save checkpoints');
+      gitLogger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Failed to save checkpoints'
+      );
     }
   }
 }

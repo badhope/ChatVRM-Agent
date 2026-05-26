@@ -62,14 +62,7 @@ import {
 } from './change-control/approval.js';
 
 // Re-export 风险规则模块的公共接口
-export {
-  RiskLevel,
-  RISK_LEVEL_WEIGHT,
-  RISK_LEVEL_LABEL,
-  RISK_LEVEL_STYLE,
-  RISK_RULES,
-  assessRisk,
-};
+export { RiskLevel, RISK_LEVEL_WEIGHT, RISK_LEVEL_LABEL, RISK_LEVEL_STYLE, RISK_RULES, assessRisk };
 
 // Re-export 备份模块的公共接口
 export { backupFile, createSnapshot, rollback };
@@ -112,10 +105,7 @@ export class ChangeControlManager {
    * @param target - 操作目标
    * @returns 创建的变更记录
    */
-  recordChange(
-    action: ChangeRecord['action'],
-    target: string
-  ): ChangeRecord {
+  recordChange(action: ChangeRecord['action'], target: string): ChangeRecord {
     const assessment = assessFileRisk(action, target);
 
     const record: ChangeRecord = {
@@ -139,10 +129,10 @@ export class ChangeControlManager {
     const style = getRiskStyle(assessment.risk);
     console.log(
       chalk.dim(`[变更记录] `) +
-      `${style(`[${getRiskLabel(assessment.risk)}]`)} ` +
-      `${chalk.cyan(action)} ` +
-      chalk.dim(target) +
-      (assessment.reason ? chalk.dim(` (${assessment.reason})`) : '')
+        `${style(`[${getRiskLabel(assessment.risk)}]`)} ` +
+        `${chalk.cyan(action)} ` +
+        chalk.dim(target) +
+        (assessment.reason ? chalk.dim(` (${assessment.reason})`) : '')
     );
 
     return record;
@@ -290,8 +280,8 @@ export class ChangeControlManager {
 
       console.log(
         chalk.dim(`[变更控制] `) +
-        chalk.green('操作执行成功') +
-        chalk.dim(` [${record.id.slice(0, 8)}]`)
+          chalk.green('操作执行成功') +
+          chalk.dim(` [${record.id.slice(0, 8)}]`)
       );
 
       return { success: true, result, record };
@@ -301,8 +291,8 @@ export class ChangeControlManager {
 
       console.log(
         chalk.dim(`[变更控制] `) +
-        chalk.red('操作执行失败') +
-        chalk.dim(`: ${errorMessage} [${record.id.slice(0, 8)}]`)
+          chalk.red('操作执行失败') +
+          chalk.dim(`: ${errorMessage} [${record.id.slice(0, 8)}]`)
       );
 
       return { success: false, record };

@@ -17,7 +17,15 @@ export interface CodeChunk {
   /** The actual code text */
   content: string;
   /** Chunk type */
-  type: 'function' | 'class' | 'interface' | 'module' | 'block' | 'import-section' | 'comment-section' | 'other';
+  type:
+    | 'function'
+    | 'class'
+    | 'interface'
+    | 'module'
+    | 'block'
+    | 'import-section'
+    | 'comment-section'
+    | 'other';
   /** Symbol name if applicable */
   name?: string;
   /** Function/class signature */
@@ -78,11 +86,7 @@ export const IMPORT_TYPES = new Set([
 ]);
 
 /** Comment node types */
-export const COMMENT_TYPES = new Set([
-  'comment',
-  'block_comment',
-  'line_comment',
-]);
+export const COMMENT_TYPES = new Set(['comment', 'block_comment', 'line_comment']);
 
 // ============================================================================
 // Type Mapping
@@ -91,10 +95,7 @@ export const COMMENT_TYPES = new Set([
 /**
  * Map a tree-sitter node type to a CodeChunk type.
  */
-export function nodeTypeToChunkType(
-  nodeType: string,
-  symbolKind?: SymbolKind
-): CodeChunk['type'] {
+export function nodeTypeToChunkType(nodeType: string, symbolKind?: SymbolKind): CodeChunk['type'] {
   if (IMPORT_TYPES.has(nodeType)) return 'import-section';
   if (COMMENT_TYPES.has(nodeType)) return 'comment-section';
   if (symbolKind === 'function' || symbolKind === 'method') return 'function';
@@ -111,28 +112,28 @@ export function nodeTypeToChunkType(
  */
 export const CHUNK_TYPE_MAP: Record<string, CodeChunk['type']> = {
   // Import types
-  'import_statement': 'import-section',
-  'import_declaration': 'import-section',
-  'import_from_statement': 'import-section',
+  import_statement: 'import-section',
+  import_declaration: 'import-section',
+  import_from_statement: 'import-section',
   // Comment types
-  'comment': 'comment-section',
-  'block_comment': 'comment-section',
-  'line_comment': 'comment-section',
+  comment: 'comment-section',
+  block_comment: 'comment-section',
+  line_comment: 'comment-section',
   // Declarations - these need symbolKind for accurate mapping
-  'function_declaration': 'function',
-  'function_expression': 'function',
-  'generator_function_declaration': 'function',
-  'method_definition': 'function',
-  'arrow_function': 'function',
-  'class_declaration': 'class',
-  'abstract_class_declaration': 'class',
-  'class_definition': 'class',
-  'interface_declaration': 'interface',
-  'type_alias_declaration': 'other',
-  'enum_declaration': 'other',
-  'lexical_declaration': 'other',
-  'variable_declaration': 'other',
-  'export_statement': 'other',
-  'export_default_declaration': 'other',
-  'export_named_declaration': 'other',
+  function_declaration: 'function',
+  function_expression: 'function',
+  generator_function_declaration: 'function',
+  method_definition: 'function',
+  arrow_function: 'function',
+  class_declaration: 'class',
+  abstract_class_declaration: 'class',
+  class_definition: 'class',
+  interface_declaration: 'interface',
+  type_alias_declaration: 'other',
+  enum_declaration: 'other',
+  lexical_declaration: 'other',
+  variable_declaration: 'other',
+  export_statement: 'other',
+  export_default_declaration: 'other',
+  export_named_declaration: 'other',
 };

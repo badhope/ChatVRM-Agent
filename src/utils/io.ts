@@ -7,7 +7,7 @@ export function waitForEnter(message: string = '\n按回车键继续...'): Promi
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
     rl.question(message, () => {
       rl.close();

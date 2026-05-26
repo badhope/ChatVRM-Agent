@@ -9,18 +9,17 @@ import { getErrorMessage } from '../../utils/error-handling.js';
 
 function validatePath(filePath: string): string {
   const resolved = path.resolve(filePath);
-  
+
   // Unix system paths
   const unixBlocked = ['/etc', '/usr', '/bin', '/sbin', '/var', '/sys', '/proc', '/boot', '/dev'];
-  
+
   // Windows system paths
   const windowsBlocked = ['C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)'];
-  
+
   // Select blocked paths based on platform
-  const allBlocked = process.platform === 'win32' 
-    ? [...windowsBlocked, ...unixBlocked]
-    : [...unixBlocked];
-  
+  const allBlocked =
+    process.platform === 'win32' ? [...windowsBlocked, ...unixBlocked] : [...unixBlocked];
+
   for (const dir of allBlocked) {
     const separator = process.platform === 'win32' ? '\\' : '/';
     if (resolved.startsWith(dir + separator) || resolved === dir) {
@@ -35,20 +34,44 @@ function validatePath(filePath: string): string {
 export const readFileTool: ToolDefinition = {
   name: 'read_file',
   description: '读取文件内容',
-  parameters: [
-    { name: 'path', type: 'string', description: '文件路径', required: true },
-  ],
+  parameters: [{ name: 'path', type: 'string', description: '文件路径', required: true }],
   execute: async (args) => {
     try {
       const safePath = validatePath(args.path);
       const stat = await fs.stat(safePath);
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
       if (stat.size > MAX_FILE_SIZE) {
-        return { success: false, output: '', error: `文件过大: ${stat.size} bytes (最大 ${MAX_FILE_SIZE} bytes)` };
+        return {
+          success: false,
+          output: '',
+          error: `文件过大: ${stat.size} bytes (最大 ${MAX_FILE_SIZE} bytes)`,
+        };
       }
       const ext = safePath.toLowerCase();
-      const binaryExts = ['.png','.jpg','.jpeg','.gif','.webp','.ico','.svg','.woff','.woff2','.ttf','.eot','.zip','.tar','.gz','.7z','.pdf','.exe','.dll','.so','.dylib','.node'];
-      if (binaryExts.some(b => ext.endsWith(b))) {
+      const binaryExts = [
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.ico',
+        '.svg',
+        '.woff',
+        '.woff2',
+        '.ttf',
+        '.eot',
+        '.zip',
+        '.tar',
+        '.gz',
+        '.7z',
+        '.pdf',
+        '.exe',
+        '.dll',
+        '.so',
+        '.dylib',
+        '.node',
+      ];
+      if (binaryExts.some((b) => ext.endsWith(b))) {
         return { success: false, output: '', error: '不支持读取二进制文件' };
       }
       const content = await fs.readFile(safePath, 'utf-8');
@@ -93,22 +116,30 @@ export const searchFilesTool: ToolDefinition = {
         cwd: args.path,
         ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
       });
-      
+
       // Validate regex pattern for potential ReDoS
       const MAX_PATTERN_LENGTH = 100;
       if (args.pattern.length > MAX_PATTERN_LENGTH) {
-        return { success: false, output: '', error: `Regex pattern too long (max ${MAX_PATTERN_LENGTH} characters)` };
+        return {
+          success: false,
+          output: '',
+          error: `Regex pattern too long (max ${MAX_PATTERN_LENGTH} characters)`,
+        };
       }
       // Check for nested quantifiers that can cause ReDoS
       if (/\+|\*/.test(args.pattern) && /\([^)]*[+*][^)]*\)[+*]/.test(args.pattern)) {
-        return { success: false, output: '', error: 'Regex pattern contains potentially dangerous nested quantifiers' };
+        return {
+          success: false,
+          output: '',
+          error: 'Regex pattern contains potentially dangerous nested quantifiers',
+        };
       }
-      
+
       const regex = new RegExp(args.pattern, 'gi');
       const results: string[] = [];
-      const MAX_RESULTS = 200;     // 最大结果数
+      const MAX_RESULTS = 200; // 最大结果数
       const MAX_FILE_SIZE = 1024 * 1024; // 最大读取文件大小 1MB
-      const MAX_LINE_LENGTH = 200;  // 最大行长度
+      const MAX_LINE_LENGTH = 200; // 最大行长度
       let totalMatches = 0;
 
       for (const file of files.slice(0, 100)) {
@@ -151,17 +182,21 @@ export const searchFilesTool: ToolDefinition = {
 export const listDirTool: ToolDefinition = {
   name: 'list_dir',
   description: '列出目录内容',
-  parameters: [
-    { name: 'path', type: 'string', description: '目录路径', required: true },
-  ],
+  parameters: [{ name: 'path', type: 'string', description: '目录路径', required: true }],
   execute: async (args) => {
     try {
       const safePath = validatePath(args.path);
       const entries = await fs.readdir(safePath, { withFileTypes: true });
-      const content = entries.map(e => {
-        const type = e.isDirectory() ? '\uD83D\uDCC1' : e.isFile() ? '\uD83D\uDCC4' : '\uD83D\uDD17';
-        return `${type} ${e.name}`;
-      }).join('\n');
+      const content = entries
+        .map((e) => {
+          const type = e.isDirectory()
+            ? '\uD83D\uDCC1'
+            : e.isFile()
+              ? '\uD83D\uDCC4'
+              : '\uD83D\uDD17';
+          return `${type} ${e.name}`;
+        })
+        .join('\n');
       return { success: true, output: content };
     } catch (error: unknown) {
       return { success: false, output: '', error: `列出目录失败: ${getErrorMessage(error)}` };
@@ -186,7 +221,7 @@ export const fileTreeTool: ToolDefinition = {
       let result = '';
       const entries = await fs.readdir(currentPath, { withFileTypes: true });
       const sorted = entries
-        .filter(e => !ignore.includes(e.name) && !e.name.startsWith('.'))
+        .filter((e) => !ignore.includes(e.name) && !e.name.startsWith('.'))
         .sort((a, b) => {
           if (a.isDirectory() && !b.isDirectory()) return -1;
           if (!a.isDirectory() && b.isDirectory()) return 1;
@@ -200,7 +235,11 @@ export const fileTreeTool: ToolDefinition = {
         const childPrefix = isLast ? '    ' : '\u2502   ';
         if (entry.isDirectory()) {
           result += `${prefix}${connector}\uD83D\uDCC1 ${entry.name}\n`;
-          result += await buildTree(path.join(currentPath, entry.name), prefix + childPrefix, depth + 1);
+          result += await buildTree(
+            path.join(currentPath, entry.name),
+            prefix + childPrefix,
+            depth + 1
+          );
         } else {
           result += `${prefix}${connector}\uD83D\uDCC4 ${entry.name}\n`;
         }
@@ -217,9 +256,7 @@ export const fileTreeTool: ToolDefinition = {
 export const fileInfoTool: ToolDefinition = {
   name: 'file_info',
   description: '获取文件详细信息',
-  parameters: [
-    { name: 'path', type: 'string', description: '文件路径', required: true },
-  ],
+  parameters: [{ name: 'path', type: 'string', description: '文件路径', required: true }],
   execute: async (args) => {
     try {
       // === 添加路径验证 ===
@@ -246,7 +283,12 @@ export const deleteFileTool: ToolDefinition = {
   parameters: [
     { name: 'path', type: 'string', description: '文件或目录路径', required: true },
     { name: 'recursive', type: 'boolean', description: '是否递归删除目录', required: false },
-    { name: 'confirm', type: 'boolean', description: '确认删除（必须为true才能执行）', required: false },
+    {
+      name: 'confirm',
+      type: 'boolean',
+      description: '确认删除（必须为true才能执行）',
+      required: false,
+    },
   ],
   execute: async (args) => {
     try {

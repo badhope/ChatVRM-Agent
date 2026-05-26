@@ -109,7 +109,9 @@ const DEFAULT_ENTRY_PATTERNS = [
  */
 export class ImportanceRanker {
   private project;
-  private options: Required<Omit<ImportanceRankerOptions, 'tsConfigPath'>> & { tsConfigPath?: string };
+  private options: Required<Omit<ImportanceRankerOptions, 'tsConfigPath'>> & {
+    tsConfigPath?: string;
+  };
 
   /**
    * Create a new ImportanceRanker instance.
@@ -319,7 +321,12 @@ export class ImportanceRanker {
   }
 
   // Analysis methods for different symbol kinds
-  private analyzeFunction(func: FunctionDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeFunction(
+    func: FunctionDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = func.getName();
     if (!name) return null;
 
@@ -347,7 +354,12 @@ export class ImportanceRanker {
     };
   }
 
-  private analyzeClass(cls: ClassDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeClass(
+    cls: ClassDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = cls.getName();
     if (!name) return null;
 
@@ -376,7 +388,12 @@ export class ImportanceRanker {
     };
   }
 
-  private analyzeInterface(iface: InterfaceDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeInterface(
+    iface: InterfaceDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = iface.getName();
     if (!name) return null;
 
@@ -396,7 +413,14 @@ export class ImportanceRanker {
 
     return {
       symbol: codeSymbol,
-      score: this.calculateScore(referenceCount, isExported, isEntry, 'interface', implementationCount, 0),
+      score: this.calculateScore(
+        referenceCount,
+        isExported,
+        isEntry,
+        'interface',
+        implementationCount,
+        0
+      ),
       referenceCount,
       isExported,
       isEntry,
@@ -405,7 +429,12 @@ export class ImportanceRanker {
     };
   }
 
-  private analyzeTypeAlias(typeAlias: TypeAliasDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeTypeAlias(
+    typeAlias: TypeAliasDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = typeAlias.getName();
     if (!name) return null;
 
@@ -433,7 +462,12 @@ export class ImportanceRanker {
     };
   }
 
-  private analyzeEnum(enm: EnumDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeEnum(
+    enm: EnumDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = enm.getName();
     if (!name) return null;
 
@@ -461,7 +495,12 @@ export class ImportanceRanker {
     };
   }
 
-  private analyzeVariable(variable: VariableDeclaration, filePath: string, isEntry: boolean, exportedNames: Set<string>): SymbolImportance | null {
+  private analyzeVariable(
+    variable: VariableDeclaration,
+    filePath: string,
+    isEntry: boolean,
+    exportedNames: Set<string>
+  ): SymbolImportance | null {
     const name = variable.getName();
     if (!name) return null;
 
@@ -523,9 +562,7 @@ export function rankSymbols(
  * @param options - Ranking options
  * @returns Map of symbol name to SymbolImportance
  */
-export function getRankedSymbols(
-  options?: ImportanceRankerOptions
-): Map<string, SymbolImportance> {
+export function getRankedSymbols(options?: ImportanceRankerOptions): Map<string, SymbolImportance> {
   const ranker = new ImportanceRanker(options);
   return ranker.getRankedSymbols();
 }

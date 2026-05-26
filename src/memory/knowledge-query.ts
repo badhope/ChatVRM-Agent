@@ -24,7 +24,7 @@ export function getRelated(
   entities: Record<string, Entity>,
   relationships: Relationship[],
   entityId: string,
-  type?: RelationshipType,
+  type?: RelationshipType
 ): Array<{ entity: Entity; relationship: Relationship }> {
   const results: Array<{ entity: Entity; relationship: Relationship }> = [];
 
@@ -59,7 +59,7 @@ export function getRelated(
 export function query(
   entities: Record<string, Entity>,
   type?: EntityType,
-  attributes?: Record<string, string>,
+  attributes?: Record<string, string>
 ): Entity[] {
   let results = Object.values(entities);
 
@@ -93,7 +93,7 @@ export function findPaths(
   relationships: Relationship[],
   fromId: string,
   toId: string,
-  maxDepth = 5,
+  maxDepth = 5
 ): PathNode[][] {
   if (!entities[fromId] || !entities[toId]) return [];
   if (fromId === toId) return [];

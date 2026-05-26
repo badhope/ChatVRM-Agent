@@ -40,16 +40,28 @@ export function registerCoreServices(): void {
   container.register(TOKENS.MemoryManager, { useValue: memoryManager });
 
   // GitManager - 单例
-  container.register(TOKENS.GitManager, { useClass: GitManager }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.GitManager,
+    { useClass: GitManager },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // ToolRegistry - 使用已存在的单例
   container.register(TOKENS.ToolRegistry, { useValue: toolRegistry });
 
   // PluginLoader - 单例
-  container.register(TOKENS.PluginLoader, { useClass: PluginLoader }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.PluginLoader,
+    { useClass: PluginLoader },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // HistoryManager - 单例
-  container.register(TOKENS.HistoryManager, { useClass: HistoryManager }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.HistoryManager,
+    { useClass: HistoryManager },
+    { lifecycle: Lifecycle.Singleton }
+  );
 }
 
 /**
@@ -58,22 +70,46 @@ export function registerCoreServices(): void {
  */
 export function registerServices(): void {
   // ChatService - 单例
-  container.register(TOKENS.ChatService, { useClass: ChatService }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.ChatService,
+    { useClass: ChatService },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // AgentService - 单例
-  container.register(TOKENS.AgentService, { useClass: AgentService }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.AgentService,
+    { useClass: AgentService },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // MemoryService - 单例
-  container.register(TOKENS.MemoryService, { useClass: MemoryService }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.MemoryService,
+    { useClass: MemoryService },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // CompressionService - 单例
-  container.register(TOKENS.CompressionService, { useClass: CompressionService }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.CompressionService,
+    { useClass: CompressionService },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // PersonalityManager - 单例
-  container.register(TOKENS.PersonalityManager, { useClass: PersonalityManager }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.PersonalityManager,
+    { useClass: PersonalityManager },
+    { lifecycle: Lifecycle.Singleton }
+  );
 
   // EmotionalStateManager - 单例
-  container.register(TOKENS.EmotionalStateManager, { useClass: EmotionalStateManager }, { lifecycle: Lifecycle.Singleton });
+  container.register(
+    TOKENS.EmotionalStateManager,
+    { useClass: EmotionalStateManager },
+    { lifecycle: Lifecycle.Singleton }
+  );
 }
 
 /**

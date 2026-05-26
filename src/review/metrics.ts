@@ -163,10 +163,8 @@ function calculateMaintainabilityIndex(
 ): number {
   if (halsteadVolume <= 0 || linesOfCode <= 0) return 100;
 
-  const mi = 171
-    - 5.2 * Math.log(halsteadVolume)
-    - 0.23 * complexity
-    - 16.2 * Math.log(linesOfCode);
+  const mi =
+    171 - 5.2 * Math.log(halsteadVolume) - 0.23 * complexity - 16.2 * Math.log(linesOfCode);
 
   return Math.max(0, Math.min(100, Math.round(mi)));
 }
@@ -188,9 +186,15 @@ export async function calculateMetrics(content: string, filePath?: string): Prom
   let maxComplexity = 1;
 
   // 尝试使用 escomplex 进行精确分析
-  if (filePath && (filePath.endsWith('.js') || filePath.endsWith('.ts') ||
-                   filePath.endsWith('.jsx') || filePath.endsWith('.tsx') ||
-                   filePath.endsWith('.mjs') || filePath.endsWith('.cjs'))) {
+  if (
+    filePath &&
+    (filePath.endsWith('.js') ||
+      filePath.endsWith('.ts') ||
+      filePath.endsWith('.jsx') ||
+      filePath.endsWith('.tsx') ||
+      filePath.endsWith('.mjs') ||
+      filePath.endsWith('.cjs'))
+  ) {
     try {
       // 动态导入 escomplex，避免缺少依赖时崩溃
       const { analyzeModule } = await import('typhonjs-escomplex');
@@ -198,11 +202,14 @@ export async function calculateMetrics(content: string, filePath?: string): Prom
 
       if (report && report.functions && report.functions.length > 0) {
         functionCount = report.functions.length;
-        const complexities = report.functions.map((m: { cyclomatic?: number }) => m.cyclomatic || 1);
+        const complexities = report.functions.map(
+          (m: { cyclomatic?: number }) => m.cyclomatic || 1
+        );
         maxComplexity = Math.max(...complexities);
-        averageComplexity = Math.round(
-          (complexities.reduce((a: number, b: number) => a + b, 0) / complexities.length) * 100
-        ) / 100;
+        averageComplexity =
+          Math.round(
+            (complexities.reduce((a: number, b: number) => a + b, 0) / complexities.length) * 100
+          ) / 100;
         complexity = report.aggregate?.cyclomatic || maxComplexity;
       }
 
@@ -222,7 +229,8 @@ export async function calculateMetrics(content: string, filePath?: string): Prom
     } catch (error) {
       // escomplex 分析失败，使用备用估算
       // escomplex not available or failed, using fallback estimation
-      const complexityKeywords = /\b(if|else|elif|for|while|case|catch|\?\?|&&|\|\||switch|break|continue|return|throw)\b/g;
+      const complexityKeywords =
+        /\b(if|else|elif|for|while|case|catch|\?\?|&&|\|\||switch|break|continue|return|throw)\b/g;
       const matches = content.match(complexityKeywords);
       complexity = (matches ? matches.length : 0) + 1;
 

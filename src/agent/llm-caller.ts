@@ -100,10 +100,7 @@ export function getSystemPrompt(intent: string): string {
  * 创建 provider 实例并调用 chat 接口
  * 统一封装了配置初始化、provider 创建、LLM 调用的流程
  */
-export async function callLLM(
-  messages: Message[],
-  config?: ReasonerConfig
-): Promise<string> {
+export async function callLLM(messages: Message[], config?: ReasonerConfig): Promise<string> {
   return getCircuitBreaker().execute(async () => {
     try {
       // 初始化配置管理器
@@ -124,7 +121,7 @@ export async function callLLM(
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
         model: resolved.model || providerConfig.defaultModel,
-        timeout: config?.timeout ?? 60000,  // 推理任务需要更长超时（60秒）
+        timeout: config?.timeout ?? 60000, // 推理任务需要更长超时（60秒）
         maxRetries: providerConfig.maxRetries || 2,
       });
 

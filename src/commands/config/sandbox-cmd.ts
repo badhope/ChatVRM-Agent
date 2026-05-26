@@ -2,12 +2,17 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { configManager, SANDBOX_PERMISSIONS, type SandboxLevel } from '../../config/manager.js';
-import { printHeader, printSection, printSuccess, printError, printWarning } from '../../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printWarning,
+} from '../../ui/logo.js';
 import { printTable, printKeyValue } from '../../ui/display.js';
 import { formatBytes } from '../../utils/format.js';
 
-export const sandboxConfigCommand = new Command('sandbox')
-  .description('沙盒权限管理');
+export const sandboxConfigCommand = new Command('sandbox').description('沙盒权限管理');
 
 // 设置沙盒权限级别
 sandboxConfigCommand
@@ -18,7 +23,13 @@ sandboxConfigCommand
     await configManager.init();
 
     if (level) {
-      const validLevels: SandboxLevel[] = ['minimal', 'conservative', 'balanced', 'relaxed', 'extreme'];
+      const validLevels: SandboxLevel[] = [
+        'minimal',
+        'conservative',
+        'balanced',
+        'relaxed',
+        'extreme',
+      ];
       if (!validLevels.includes(level as SandboxLevel)) {
         printError(`无效的权限级别: ${level}`);
         console.log(chalk.gray(`  可选级别: ${validLevels.join(', ')}`));
@@ -75,13 +86,15 @@ sandboxConfigCommand
       },
     ];
 
-    const answers = await inquirer.prompt([{
-      type: 'list',
-      name: 'level',
-      message: '选择沙盒权限级别:',
-      default: currentLevel,
-      choices,
-    }]);
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'level',
+        message: '选择沙盒权限级别:',
+        default: currentLevel,
+        choices,
+      },
+    ]);
 
     await configManager.setSandboxLevel(answers.level as SandboxLevel);
     const perms = SANDBOX_PERMISSIONS[answers.level as SandboxLevel];
@@ -110,7 +123,7 @@ sandboxConfigCommand
 
     const levels: SandboxLevel[] = ['minimal', 'conservative', 'balanced', 'relaxed', 'extreme'];
     const head = ['级别', '删除', '系统修改', '网络', '执行', '风险'];
-    const rows = levels.map(level => {
+    const rows = levels.map((level) => {
       const perms = SANDBOX_PERMISSIONS[level];
       const riskLabel = {
         minimal: chalk.green('极低'),
@@ -134,7 +147,7 @@ sandboxConfigCommand
 
     console.log();
     printSection('级别说明');
-    levels.forEach(level => {
+    levels.forEach((level) => {
       const perms = SANDBOX_PERMISSIONS[level];
       const icon = {
         minimal: '🔒',

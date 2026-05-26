@@ -20,7 +20,7 @@ export const PROVIDER_TYPE_LIST: ProviderType[] = [
   'baidu',
   'deepseek',
   'ollama',
-  'lmstudio'
+  'lmstudio',
 ];
 
 export interface ModelInfo {
@@ -65,7 +65,7 @@ export interface ChatParams {
 export interface ImageContent {
   type: 'image_url';
   image_url: {
-    url: string;  // base64 data URL 或 http URL
+    url: string; // base64 data URL 或 http URL
     detail?: 'auto' | 'low' | 'high';
   };
 }

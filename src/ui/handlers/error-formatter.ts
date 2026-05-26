@@ -17,8 +17,16 @@ export interface FormattedApiError {
 export function formatApiError(error: unknown): FormattedApiError {
   const errMsg = getErrorMessage(error);
 
-  if (errMsg.includes('401') || errMsg.includes('Unauthorized') || errMsg.includes('invalid key') || errMsg.includes('Incorrect API key')) {
-    return { message: 'API Key 无效或未配置', hint: '请运行: personal-assistant config set-key <平台> <apiKey>' };
+  if (
+    errMsg.includes('401') ||
+    errMsg.includes('Unauthorized') ||
+    errMsg.includes('invalid key') ||
+    errMsg.includes('Incorrect API key')
+  ) {
+    return {
+      message: 'API Key 无效或未配置',
+      hint: '请运行: personal-assistant config set-key <平台> <apiKey>',
+    };
   }
   if (errMsg.includes('403') || errMsg.includes('Forbidden')) {
     return { message: 'API Key 没有访问权限', hint: '请检查 API Key 是否有该模型的访问权限' };
@@ -35,10 +43,19 @@ export function formatApiError(error: unknown): FormattedApiError {
   if (errMsg.includes('503') || errMsg.includes('Service Unavailable')) {
     return { message: 'AI 服务暂不可用', hint: '平台正在维护或过载，请稍后重试' };
   }
-  if (errMsg.includes('timeout') || errMsg.includes('ETIMEDOUT') || errMsg.includes('Timed out') || errMsg.includes('abort')) {
+  if (
+    errMsg.includes('timeout') ||
+    errMsg.includes('ETIMEDOUT') ||
+    errMsg.includes('Timed out') ||
+    errMsg.includes('abort')
+  ) {
     return { message: '请求超时', hint: '请检查网络连接，或尝试切换更快的模型' };
   }
-  if (errMsg.includes('ENOTFOUND') || errMsg.includes('ECONNREFUSED') || errMsg.includes('fetch failed')) {
+  if (
+    errMsg.includes('ENOTFOUND') ||
+    errMsg.includes('ECONNREFUSED') ||
+    errMsg.includes('fetch failed')
+  ) {
     return { message: '网络连接失败', hint: '请检查网络连接是否正常，是否需要代理' };
   }
   if (errMsg.includes('quota') || errMsg.includes('余额') || errMsg.includes('insufficient')) {

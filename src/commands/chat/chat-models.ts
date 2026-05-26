@@ -2,7 +2,14 @@ import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { configManager } from '../../config/manager.js';
 import { PROVIDER_INFO } from '../../types.js';
-import { printHeader, printSection, printSuccess, printError, printInfo, createSpinner } from '../../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  createSpinner,
+} from '../../ui/logo.js';
 import { printTable } from '../../ui/display.js';
 import { resolveProvider, checkApiKey, createProviderInstance, formatContext } from './helpers.js';
 
@@ -10,7 +17,9 @@ export const chatModelsCommand = new Command('models')
   .alias('m')
   .description('列出平台所有可用模型')
   .option('-p, --provider <provider>', '指定AI平台')
-  .addOption(new Option('--sort <field>', '排序字段').choices(['price', 'name', 'context']).default('price'))
+  .addOption(
+    new Option('--sort <field>', '排序字段').choices(['price', 'name', 'context']).default('price')
+  )
   .action(async (options: { provider?: string; sort: string }) => {
     await configManager.init();
 
@@ -21,22 +30,30 @@ export const chatModelsCommand = new Command('models')
     let models = [...info.models];
 
     switch (options.sort) {
-      case 'price': models.sort((a, b) => a.pricing.inputPerMillion - b.pricing.inputPerMillion); break;
-      case 'name': models.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case 'context': models.sort((a, b) => b.contextWindow - a.contextWindow); break;
+      case 'price':
+        models.sort((a, b) => a.pricing.inputPerMillion - b.pricing.inputPerMillion);
+        break;
+      case 'name':
+        models.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'context':
+        models.sort((a, b) => b.contextWindow - a.contextWindow);
+        break;
     }
 
     printHeader();
     printSection(`${info.displayName} 模型列表 (${models.length} 个)`);
 
     const head = ['模型 ID', '名称', '输入$/M', '输出$/M', '上下文', '能力'];
-    const rows = models.map(model => {
+    const rows = models.map((model) => {
       const capabilities = [
         model.capabilities.thinking ? 'T' : '',
         model.capabilities.vision ? 'V' : '',
         model.capabilities.tools ? 'X' : '',
         model.capabilities.audio ? 'A' : '',
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
       return [
         model.id,
         model.name,
@@ -84,12 +101,16 @@ export const chatSearchCommand = new Command('search')
       return;
     }
 
-    printSuccess(`找到 ${results.length} 个匹配模型${results.length > limit ? ` (显示前 ${limit} 个)` : ''}\n`);
+    printSuccess(
+      `找到 ${results.length} 个匹配模型${results.length > limit ? ` (显示前 ${limit} 个)` : ''}\n`
+    );
 
-    results.slice(0, limit).forEach(id => {
-      const builtin = PROVIDER_INFO[providerType].models.find(m => m.id === id);
+    results.slice(0, limit).forEach((id) => {
+      const builtin = PROVIDER_INFO[providerType].models.find((m) => m.id === id);
       const tag = builtin ? chalk.green(' ✓') : '';
-      const price = builtin ? chalk.gray(` ¥${builtin.pricing.inputPerMillion}/${builtin.pricing.outputPerMillion}/M`) : '';
+      const price = builtin
+        ? chalk.gray(` ¥${builtin.pricing.inputPerMillion}/${builtin.pricing.outputPerMillion}/M`)
+        : '';
       console.log(`  ${chalk.cyan(id)}${tag}${price}`);
     });
 
@@ -124,15 +145,17 @@ export const chatRemoteModelsCommand = new Command('remote-models')
 
     if (options.filter) {
       const lower = options.filter.toLowerCase();
-      models = models.filter(id => id.toLowerCase().includes(lower));
+      models = models.filter((id) => id.toLowerCase().includes(lower));
     }
 
     const limit = parseInt(options.limit, 10) || 50;
 
-    printSuccess(`共 ${models.length} 个模型${options.filter ? ` (过滤: ${options.filter})` : ''}${models.length > limit ? ` (显示前 ${limit} 个)` : ''}\n`);
+    printSuccess(
+      `共 ${models.length} 个模型${options.filter ? ` (过滤: ${options.filter})` : ''}${models.length > limit ? ` (显示前 ${limit} 个)` : ''}\n`
+    );
 
-    models.slice(0, limit).forEach(id => {
-      const builtin = PROVIDER_INFO[providerType].models.find(m => m.id === id);
+    models.slice(0, limit).forEach((id) => {
+      const builtin = PROVIDER_INFO[providerType].models.find((m) => m.id === id);
       const tag = builtin ? chalk.green(' ✓') : '';
       console.log(`  ${chalk.cyan(id)}${tag}`);
     });

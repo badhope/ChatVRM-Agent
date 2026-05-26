@@ -188,8 +188,7 @@ export function toErrorObject(error: unknown): {
 export async function safeAsync<T>(
   fn: () => Promise<T>
 ): Promise<
-  | { success: true; data: T; error: undefined }
-  | { success: false; data: undefined; error: string }
+  { success: true; data: T; error: undefined } | { success: false; data: undefined; error: string }
 > {
   try {
     const data = await fn();
@@ -207,10 +206,9 @@ export async function safeAsync<T>(
  */
 export function safeSync<T>(
   fn: () => T
-): 
+):
   | { success: true; data: T; error: undefined }
-  | { success: false; data: undefined; error: string }
-{
+  | { success: false; data: undefined; error: string } {
   try {
     const data = fn();
     return { success: true, data, error: undefined };

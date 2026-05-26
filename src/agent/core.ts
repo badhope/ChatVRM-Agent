@@ -14,7 +14,7 @@ import { container } from '../di/container.js';
 import { TOKENS } from '../di/tokens.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { MemoryManager } from '../memory/manager.js';
-import { KnowledgeGraph } from '../memory/knowledgeGraph.js';
+import { KnowledgeGraph } from '../memory/knowledge-graph.js';
 import { reasonWithSelfCorrection } from './reasoner.js';
 import { DecisionReflector } from './decision-reflector.js';
 import { detectIssues, generateTrustReport, askUserConfirmation, TrustLevel } from './trust.js';
@@ -187,11 +187,7 @@ export class AgentExecutor {
     this.emotionalState.decay();
 
     // 并行加载非关键系统
-    const loaders = [
-      this.loadPersonality(),
-      this.decisionReflector.load(),
-      this.loadExperience(),
-    ];
+    const loaders = [this.loadPersonality(), this.decisionReflector.load(), this.loadExperience()];
 
     await Promise.allSettled(loaders);
   }
@@ -229,8 +225,10 @@ export class AgentExecutor {
       await checkpoint.create(`执行前自动检查点: ${this.task.userInput.substring(0, 50)}`);
       agentLogger.debug({ taskId: this.task.id }, 'Git checkpoint created');
     } catch (error) {
-      agentLogger.debug({ taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
-        'Git checkpoint skipped (not a git repo)');
+      agentLogger.debug(
+        { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
+        'Git checkpoint skipped (not a git repo)'
+      );
     }
   }
 
@@ -263,10 +261,14 @@ export class AgentExecutor {
 
       if (contextResult.context) {
         this.builtContext = contextResult.context;
-        this.output(chalk.dim(`  ✓ 知识图谱已查询 (${contextResult.knowledgeEntryCount} 个相关条目)`));
+        this.output(
+          chalk.dim(`  ✓ 知识图谱已查询 (${contextResult.knowledgeEntryCount} 个相关条目)`)
+        );
       }
     } catch (error) {
-      this.output(chalk.dim(`  ⚠ 上下文构建失败: ${error instanceof Error ? error.message : String(error)}`));
+      this.output(
+        chalk.dim(`  ⚠ 上下文构建失败: ${error instanceof Error ? error.message : String(error)}`)
+      );
     }
   }
 
@@ -284,7 +286,9 @@ export class AgentExecutor {
     // 展示计划
     this.output(chalk.bold('\n📋 任务计划:'));
     this.task.steps.forEach((step, i) => {
-      this.output(`  ${i + 1}. ${step.description}${step.tool ? ` (${chalk.cyan(step.tool)})` : ''}`);
+      this.output(
+        `  ${i + 1}. ${step.description}${step.tool ? ` (${chalk.cyan(step.tool)})` : ''}`
+      );
     });
     this.output('');
   }
@@ -406,9 +410,13 @@ export class AgentExecutor {
         }
         this.output(chalk.green(`  ✓ 用户确认通过`));
       } else {
-        const autoExecuteIssues = issues.filter(issue => issue.level === TrustLevel.AutoExecute);
+        const autoExecuteIssues = issues.filter((issue) => issue.level === TrustLevel.AutoExecute);
         if (autoExecuteIssues.length > 0) {
-          this.output(chalk.dim(`  ℹ 信任提示: ${autoExecuteIssues.map(issue => issue.description).join(', ')}`));
+          this.output(
+            chalk.dim(
+              `  ℹ 信任提示: ${autoExecuteIssues.map((issue) => issue.description).join(', ')}`
+            )
+          );
         }
       }
     }
@@ -417,10 +425,17 @@ export class AgentExecutor {
   /**
    * 处理步骤错误
    */
-  private async handleStepError(step: TaskStep, error: unknown, stepIndex: number): Promise<boolean> {
+  private async handleStepError(
+    step: TaskStep,
+    error: unknown,
+    stepIndex: number
+  ): Promise<boolean> {
     step.status = 'error';
     step.error = error instanceof Error ? error.message : String(error);
-    agentLogger.error({ taskId: this.task.id, step: stepIndex, error: step.error }, 'Step execution failed');
+    agentLogger.error(
+      { taskId: this.task.id, step: stepIndex, error: step.error },
+      'Step execution failed'
+    );
     this.output(chalk.red(`  ✗ 失败: ${step.error}`));
 
     // 添加到上下文
@@ -448,8 +463,8 @@ export class AgentExecutor {
     agentLogger.debug({ taskId: this.task.id }, 'Phase 4: Validating results');
 
     this.task.result = this.task.steps
-      .filter(s => s.status === 'done' && s.result)
-      .map(s => s.result!)
+      .filter((s) => s.status === 'done' && s.result)
+      .map((s) => s.result!)
       .join('\n\n');
   }
 
@@ -461,7 +476,7 @@ export class AgentExecutor {
     agentLogger.debug({ taskId: this.task.id }, 'Phase 5: Reflection');
 
     // 执行反思步骤
-    const reflectStep = this.task.steps.find(s => s.description.includes('反思'));
+    const reflectStep = this.task.steps.find((s) => s.description.includes('反思'));
     if (reflectStep) {
       reflectStep.status = 'running';
       this.output(chalk.dim(`  🧠 AI 反思中（带自校正推理）...`));
@@ -493,8 +508,8 @@ export class AgentExecutor {
   private async performTaskReflection(): Promise<void> {
     try {
       const executionSummary = this.task.steps
-        .filter(s => s.status === 'done' && s.result)
-        .map(s => `[${s.description}]: ${s.result?.substring(0, 200) ?? ''}`)
+        .filter((s) => s.status === 'done' && s.result)
+        .map((s) => `[${s.description}]: ${s.result?.substring(0, 200) ?? ''}`)
         .join('\n');
 
       const taskReflection = await this.decisionReflector.reflectOnTask(
@@ -542,28 +557,33 @@ export class AgentExecutor {
       const lessons = await this.decisionReflector.learnFromExperience(this.task.id);
       const taskDecisions = await this.decisionReflector.getDecisionsByTask(this.task.id);
 
-      const experienceDecisions = taskDecisions.map(d => ({
+      const experienceDecisions = taskDecisions.map((d) => ({
         context: d.description,
         chosen: d.chosenAlternative,
-        outcome: (d.outcome?.success ? 'success' : (!d.outcome ? 'partial' : 'failure')) as 'success' | 'failure' | 'partial',
+        outcome: (d.outcome?.success ? 'success' : !d.outcome ? 'partial' : 'failure') as
+          | 'success'
+          | 'failure'
+          | 'partial',
         confidence: d.confidence,
         reasoning: d.rationale,
       }));
 
       // 使用 performTaskReflection 中已获取的 taskReflection
       // 避免重复调用 reflectOnTask
-      const improvements = taskReflection.improvements.map(i => i.recommendation);
+      const improvements = taskReflection.improvements.map((i) => i.recommendation);
       const patterns: string[] = [];
       if (taskReflection.failures.length > 0) {
-        patterns.push(...taskReflection.failures.map(f => f.replace(/^失败:\s*/, '')));
+        patterns.push(...taskReflection.failures.map((f) => f.replace(/^失败:\s*/, '')));
       }
       if (taskReflection.successes.length > 0) {
-        patterns.push(...taskReflection.successes.map(s => s.replace(/^成功:\s*/, '')));
+        patterns.push(...taskReflection.successes.map((s) => s.replace(/^成功:\s*/, '')));
       }
 
-      const hasFailures = this.task.steps.some(s => s.status === 'error' || s.status === 'skipped');
-      const allSuccess = this.task.steps.every(s => s.status === 'done');
-      const errorCount = this.task.steps.filter(s => s.status === 'error').length;
+      const hasFailures = this.task.steps.some(
+        (s) => s.status === 'error' || s.status === 'skipped'
+      );
+      const allSuccess = this.task.steps.every((s) => s.status === 'done');
+      const errorCount = this.task.steps.filter((s) => s.status === 'error').length;
 
       let emotionalTone: Experience['emotionalTone'] = 'neutral';
       if (allSuccess && taskReflection.overallRating >= 0.8) emotionalTone = 'excited';
@@ -632,8 +652,10 @@ export class AgentExecutor {
           this.output(chalk.dim(`  📝 ${result.message}`));
         }
       } catch (error) {
-        agentLogger.debug({ taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
-          'Git auto-commit failed (non-critical)');
+        agentLogger.debug(
+          { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
+          'Git auto-commit failed (non-critical)'
+        );
       }
     }
 
@@ -666,8 +688,10 @@ export class AgentExecutor {
 
     // 即使失败也保存已记录的决策
     this.decisionReflector.save().catch((error) => {
-      agentLogger.warn({ taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
-        'Failed to save decisions');
+      agentLogger.warn(
+        { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
+        'Failed to save decisions'
+      );
     });
 
     return this.task;
@@ -706,16 +730,23 @@ export class AgentExecutor {
    * 获取包含项目上下文和行为指导的 previousResults
    */
   private async getContextWithBuiltContext(): Promise<string[]> {
-    const previousContext = this.contextManager.getContext().map(m => {
+    const previousContext = this.contextManager.getContext().map((m) => {
       if (typeof m.content === 'string') return m.content;
       if (Array.isArray(m.content)) {
-        return m.content.map(c => {
-          if (typeof c === 'string') return c;
-          if (typeof c === 'object' && c !== null && 'text' in c && typeof (c as { text: unknown }).text === 'string') {
-            return (c as { text: string }).text;
-          }
-          return '';
-        }).join('');
+        return m.content
+          .map((c) => {
+            if (typeof c === 'string') return c;
+            if (
+              typeof c === 'object' &&
+              c !== null &&
+              'text' in c &&
+              typeof (c as { text: unknown }).text === 'string'
+            ) {
+              return (c as { text: string }).text;
+            }
+            return '';
+          })
+          .join('');
       }
       return String(m.content);
     });
@@ -736,7 +767,9 @@ export class AgentExecutor {
 
     // 注入行为指导
     if (this.behaviorGuidelines) {
-      parts.push(`[行为指导（基于${this.experienceStore.getExperienceCount()}次历史经验自动生成）]\n${this.behaviorGuidelines}`);
+      parts.push(
+        `[行为指导（基于${this.experienceStore.getExperienceCount()}次历史经验自动生成）]\n${this.behaviorGuidelines}`
+      );
     }
 
     // 注入项目配置指令
@@ -746,8 +779,10 @@ export class AgentExecutor {
         parts.push(projectInstructions);
       }
     } catch (error) {
-      agentLogger.debug({ error: error instanceof Error ? error.message : String(error) },
-        'Project config loading failed (non-critical)');
+      agentLogger.debug(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Project config loading failed (non-critical)'
+      );
     }
 
     if (this.builtContext) {
@@ -763,21 +798,29 @@ export class AgentExecutor {
   private async askContinue(): Promise<boolean> {
     if (!process.stdin.isTTY) {
       if (process.env.DEVFLOW_CONTINUE_ON_ERROR === 'true') return true;
-      this.output(chalk.yellow('  非交互环境，步骤失败将中止任务（设置 DEVFLOW_CONTINUE_ON_ERROR=true 可继续）'));
+      this.output(
+        chalk.yellow(
+          '  非交互环境，步骤失败将中止任务（设置 DEVFLOW_CONTINUE_ON_ERROR=true 可继续）'
+        )
+      );
       return false;
     }
     try {
       const inquirer = await import('inquirer');
-      const { continue: result } = await inquirer.default.prompt([{
-        type: 'confirm',
-        name: 'continue',
-        message: '步骤失败，是否继续执行后续步骤？',
-        default: false,
-      }]);
+      const { continue: result } = await inquirer.default.prompt([
+        {
+          type: 'confirm',
+          name: 'continue',
+          message: '步骤失败，是否继续执行后续步骤？',
+          default: false,
+        },
+      ]);
       return result;
     } catch (error) {
-      agentLogger.debug({ error: error instanceof Error ? error.message : String(error) },
-        'Failed to load inquirer module');
+      agentLogger.debug(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Failed to load inquirer module'
+      );
       this.output(chalk.yellow('  无法加载交互模块，默认中止任务'));
       return false;
     }
@@ -804,8 +847,10 @@ export class AgentExecutor {
         const recentRecords = records.slice(0, 5);
         await this.knowledgeGraph.extractFromMemory(recentRecords);
       } catch (error) {
-        agentLogger.debug({ taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
-          'Knowledge graph extraction failed (optional)');
+        agentLogger.debug(
+          { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
+          'Knowledge graph extraction failed (optional)'
+        );
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -821,7 +866,10 @@ export class AgentExecutor {
       return await this.contextBuilder.queryKnowledgeGraph(query);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      agentLogger.warn({ taskId: this.task.id, query, error: errorMsg }, 'Knowledge graph query failed');
+      agentLogger.warn(
+        { taskId: this.task.id, query, error: errorMsg },
+        'Knowledge graph query failed'
+      );
       return [];
     }
   }

@@ -3,15 +3,21 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { configManager } from '../config/manager.js';
 import { PROVIDER_INFO, PROVIDER_TYPE_LIST, type ProviderType } from '../types.js';
-import { printHeader, printSection, printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  printWarning,
+} from '../ui/logo.js';
 import { printTable, printKeyValue } from '../ui/display.js';
 import { showMainMenu } from '../ui/menu.js';
 import { aiSuggestCommand } from './ai/ai-suggest.js';
 import { aiModelsCommand } from './ai/ai-models.js';
 import { waitForEnter } from '../utils/io.js';
 
-const aiCommand = new Command('ai')
-  .description('AI模型管理');
+const aiCommand = new Command('ai').description('AI模型管理');
 
 // 交互式主菜单
 aiCommand
@@ -31,11 +37,21 @@ aiCommand
       }
 
       switch (choice) {
-        case 'list': await showProviderList(); break;
-        case 'status': await showStatus(); break;
-        case 'models': await showAllModels(); break;
-        case 'suggest': await showModelSuggestion(); break;
-        case 'info': await showModelInfo(); break;
+        case 'list':
+          await showProviderList();
+          break;
+        case 'status':
+          await showStatus();
+          break;
+        case 'models':
+          await showAllModels();
+          break;
+        case 'suggest':
+          await showModelSuggestion();
+          break;
+        case 'info':
+          await showModelInfo();
+          break;
         case 'interactive':
         case 'quick-ask':
         case 'agent-run':
@@ -77,7 +93,7 @@ async function showProviderList() {
   printHeader();
   printSection('支持的AI平台');
 
-  PROVIDER_TYPE_LIST.forEach(type => {
+  PROVIDER_TYPE_LIST.forEach((type) => {
     const info = PROVIDER_INFO[type];
     const isConfigured = isProviderConfigured(type);
 
@@ -103,14 +119,16 @@ async function showStatus() {
   printSection('AI配置状态');
 
   const head = ['平台', '状态', '模型数', '类型', 'API Key'];
-  const rows = PROVIDER_TYPE_LIST.map(type => {
+  const rows = PROVIDER_TYPE_LIST.map((type) => {
     const info = PROVIDER_INFO[type];
     const apiKey = configManager.getApiKey(type);
     const isConfigured = isProviderConfigured(type);
     const typeLabel = info.requiresApiKey ? '云端' : '本地';
-    const keyPreview = !info.requiresApiKey ? '无需配置'
-      : apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
-      : '未设置';
+    const keyPreview = !info.requiresApiKey
+      ? '无需配置'
+      : apiKey
+        ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
+        : '未设置';
     return [
       info.displayName,
       isConfigured ? '✓ 已配置' : '○ 未配置',

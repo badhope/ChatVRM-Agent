@@ -10,7 +10,7 @@ export function runSubCommand(args: string[]): Promise<number> {
     // 禁用 shell 防止命令注入
     const child = spawn('node', [cliPath, ...args], {
       stdio: 'inherit',
-      shell: false,  // 安全：无 shell 解释器
+      shell: false, // 安全：无 shell 解释器
     });
     child.on('close', (code) => resolve(code ?? 0));
     child.on('error', (err) => {

@@ -10,7 +10,16 @@ import { globMatch } from './glob.js';
 
 /** Default source file extensions */
 export const DEFAULT_SOURCE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs', '.py', '.pyi',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mts',
+  '.cts',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.pyi',
 ]);
 
 /** Default exclude patterns for source file collection */
@@ -36,7 +45,11 @@ export const DEFAULT_EXCLUDE_PATTERNS = [
 /**
  * Check if a file should be excluded based on patterns.
  */
-export function shouldExclude(filePath: string, rootDir: string, excludePatterns: string[] = DEFAULT_EXCLUDE_PATTERNS): boolean {
+export function shouldExclude(
+  filePath: string,
+  rootDir: string,
+  excludePatterns: string[] = DEFAULT_EXCLUDE_PATTERNS
+): boolean {
   const relative = path.relative(rootDir, filePath).replace(/\\/g, '/');
   for (const pattern of excludePatterns) {
     if (globMatch(relative, pattern)) return true;

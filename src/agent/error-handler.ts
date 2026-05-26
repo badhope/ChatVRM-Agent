@@ -25,14 +25,7 @@ import type {
 } from './error-types.js';
 
 // Re-export 所有类型
-export type {
-  ErrorType,
-  ErrorRecovery,
-  ErrorRecord,
-  SafeErrorResponse,
-  TaskContext,
-  HistoryEntry,
-};
+export type { ErrorType, ErrorRecovery, ErrorRecord, SafeErrorResponse, TaskContext, HistoryEntry };
 
 /**
  * Tool information from registry
@@ -57,7 +50,7 @@ export class ErrorHandler {
       { regex: /(\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b)/g, replacement: '[email]' },
       { regex: /(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)/g, replacement: '[ip]' },
       { regex: /(\b[A-Za-z0-9]{32,}\b)/g, replacement: '[token]' },
-      { regex: /(password|secret|key|token|api[_-]?key)/gi, replacement: '[credential]' }
+      { regex: /(password|secret|key|token|api[_-]?key)/gi, replacement: '[credential]' },
     ];
 
     let sanitized = message;
@@ -73,9 +66,11 @@ export class ErrorHandler {
 
     return {
       success: false,
-      error: this.sanitizeErrorMessage(this.showDetailedErrors ? error.message : 'An error occurred'),
+      error: this.sanitizeErrorMessage(
+        this.showDetailedErrors ? error.message : 'An error occurred'
+      ),
       code: type,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -127,7 +122,7 @@ export class ErrorHandler {
       return {
         action: 'retry',
         delay,
-        message: `Tool timeout, retry attempt ${retryCount + 1}`
+        message: `Tool timeout, retry attempt ${retryCount + 1}`,
       };
     }
 
@@ -136,13 +131,13 @@ export class ErrorHandler {
       return {
         action: 'fallback',
         fallbackTool: fallback,
-        message: 'Timeout exceeded, switching to fallback tool'
+        message: 'Timeout exceeded, switching to fallback tool',
       };
     }
 
     return {
       action: 'request_input',
-      message: '工具执行超时且无备用方案，请提供更多信息'
+      message: '工具执行超时且无备用方案，请提供更多信息',
     };
   }
 
@@ -154,13 +149,13 @@ export class ErrorHandler {
       return {
         action: 'switch_tool',
         switchToTool: { serverId: 'builtin', toolId: alt },
-        message: `Tool not found, switching to alternative: ${alt}`
+        message: `Tool not found, switching to alternative: ${alt}`,
       };
     }
 
     return {
       action: 'skip',
-      message: `工具不存在且无替代方案，跳过此步骤: ${error.message}`
+      message: `工具不存在且无替代方案，跳过此步骤: ${error.message}`,
     };
   }
 
@@ -171,7 +166,7 @@ export class ErrorHandler {
     return tools
       .filter((tool: ToolInfo) => {
         const toolLower = tool.name.toLowerCase();
-        return keywords.some(kw => toolLower.includes(kw));
+        return keywords.some((kw) => toolLower.includes(kw));
       })
       .map((tool: ToolInfo) => tool.name)
       .slice(0, 3);
@@ -180,22 +175,25 @@ export class ErrorHandler {
   private handleValidationError(error: Error, context: TaskContext): ErrorRecovery {
     return {
       action: 'request_input',
-      message: `参数验证失败，请提供必要信息: ${error.message}`
+      message: `参数验证失败，请提供必要信息: ${error.message}`,
     };
   }
 
   private handleDependencyError(error: Error, context: TaskContext): ErrorRecovery {
     return {
       action: 'rollback',
-      stepId: context.history.length > 0 ? context.history[context.history.length - 1].skillName : undefined,
-      message: `依赖错误，回滚到上一步: ${error.message}`
+      stepId:
+        context.history.length > 0
+          ? context.history[context.history.length - 1].skillName
+          : undefined,
+      message: `依赖错误，回滚到上一步: ${error.message}`,
     };
   }
 
   private handleSkillNotFound(error: Error, context: TaskContext): ErrorRecovery {
     return {
       action: 'skip',
-      message: `技能不存在，跳过: ${error.message}`
+      message: `技能不存在，跳过: ${error.message}`,
     };
   }
 
@@ -211,24 +209,26 @@ export class ErrorHandler {
       return {
         action: 'retry',
         delay,
-        message: `Execution error, retry attempt ${retryCount + 1}`
+        message: `Execution error, retry attempt ${retryCount + 1}`,
       };
     }
 
     return {
       action: 'fail',
-      message: `执行失败且已达到最大重试次数: ${error.message}`
+      message: `执行失败且已达到最大重试次数: ${error.message}`,
     };
   }
 
   private handleUnknownError(error: Error, context: TaskContext): ErrorRecovery {
     return {
       action: 'fail',
-      message: `未知错误: ${error.message}`
+      message: `未知错误: ${error.message}`,
     };
   }
 
-  private async findFallbackTool(context: TaskContext): Promise<{ serverId: string; toolId: string } | null> {
+  private async findFallbackTool(
+    context: TaskContext
+  ): Promise<{ serverId: string; toolId: string } | null> {
     const alternatives = await this.findAlternativeTools(context.description);
 
     if (alternatives.length > 1) {
@@ -249,9 +249,9 @@ export class ErrorHandler {
         complexity: context.complexity,
         currentSkill: context.currentSkill,
         history: context.history.slice(-5),
-        results: {}
+        results: {},
       },
-      stack: error.stack
+      stack: error.stack,
     };
 
     this.errorLog.push(record);
@@ -277,7 +277,9 @@ export class ErrorHandler {
       case 'rollback':
         logger.info(`Rolling back to: ${recovery.stepId}`);
         if (recovery.stepId) {
-          const stepIndex = context.history.findIndex((h: HistoryEntry) => h.skillName === recovery.stepId);
+          const stepIndex = context.history.findIndex(
+            (h: HistoryEntry) => h.skillName === recovery.stepId
+          );
           if (stepIndex >= 0) {
             context.history = context.history.slice(0, stepIndex);
           }
@@ -299,7 +301,7 @@ export class ErrorHandler {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   getErrorLog(): ErrorRecord[] {
@@ -312,13 +314,13 @@ export class ErrorHandler {
     lastError?: ErrorRecord;
   } {
     const byType: Record<ErrorType, number> = {
-      'tool_timeout': 0,
-      'tool_not_found': 0,
-      'validation_error': 0,
-      'execution_error': 0,
-      'dependency_error': 0,
-      'skill_not_found': 0,
-      'unknown_error': 0
+      tool_timeout: 0,
+      tool_not_found: 0,
+      validation_error: 0,
+      execution_error: 0,
+      dependency_error: 0,
+      skill_not_found: 0,
+      unknown_error: 0,
     };
 
     for (const record of this.errorLog) {
@@ -328,7 +330,7 @@ export class ErrorHandler {
     return {
       total: this.errorLog.length,
       byType,
-      lastError: this.errorLog[this.errorLog.length - 1]
+      lastError: this.errorLog[this.errorLog.length - 1],
     };
   }
 

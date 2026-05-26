@@ -23,10 +23,7 @@ export function createCommandRegistry(): CommandRegistry {
 /**
  * 注册斜杠命令到注册表
  */
-export function registerCommandToRegistry(
-  registry: CommandRegistry,
-  command: SlashCommand
-): void {
+export function registerCommandToRegistry(registry: CommandRegistry, command: SlashCommand): void {
   registry.set(command.name, command);
   if (command.aliases) {
     for (const alias of command.aliases) {
@@ -115,7 +112,10 @@ const modelCommand: SlashCommand = {
   args: { name: '模型名', description: '要切换的模型ID', required: false },
   execute: async (ctx) => {
     if (!ctx.args) {
-      return { handled: true, message: chalk.dim(`当前模型: ${ctx.modelId}\n用法: /model <模型名>`) };
+      return {
+        handled: true,
+        message: chalk.dim(`当前模型: ${ctx.modelId}\n用法: /model <模型名>`),
+      };
     }
     ctx.setModel(ctx.args);
     return { handled: true, message: chalk.green(`✓ 已切换到模型: ${ctx.args}`) };
@@ -138,10 +138,18 @@ const undoCommand: SlashCommand = {
         return { handled: true, message: chalk.yellow('没有提交记录') };
       }
       if (!commits[0].isAider) {
-        return { handled: true, message: chalk.yellow(`最后一次提交不是 AI 生成的: ${commits[0].shortHash}`) };
+        return {
+          handled: true,
+          message: chalk.yellow(`最后一次提交不是 AI 生成的: ${commits[0].shortHash}`),
+        };
       }
       const result = await git.undoLastCommit();
-      return { handled: true, message: result.success ? chalk.green(`✓ ${result.message}`) : chalk.red(`✗ ${result.message}`) };
+      return {
+        handled: true,
+        message: result.success
+          ? chalk.green(`✓ ${result.message}`)
+          : chalk.red(`✗ ${result.message}`),
+      };
     } catch {
       return { handled: true, message: chalk.yellow('Git 模块不可用') };
     }
@@ -163,9 +171,16 @@ const diffCommand: SlashCommand = {
       if (diff.files.length === 0) {
         return { handled: true, message: chalk.dim('没有变更') };
       }
-      let output = chalk.bold(`\n📝 变更: ${chalk.green(`+${diff.totalAdditions}`)} ${chalk.red(`-${diff.totalDeletions}`)}\n`);
+      let output = chalk.bold(
+        `\n📝 变更: ${chalk.green(`+${diff.totalAdditions}`)} ${chalk.red(`-${diff.totalDeletions}`)}\n`
+      );
       for (const f of diff.files) {
-        const icon = f.status === 'added' ? chalk.green('A') : f.status === 'deleted' ? chalk.red('D') : chalk.yellow('M');
+        const icon =
+          f.status === 'added'
+            ? chalk.green('A')
+            : f.status === 'deleted'
+              ? chalk.red('D')
+              : chalk.yellow('M');
         output += `  ${icon} ${f.file} (+${f.additions} -${f.deletions})\n`;
       }
       return { handled: true, message: output };
@@ -186,7 +201,12 @@ const checkpointCommand: SlashCommand = {
       const cp = new CheckpointManager(process.cwd());
       const desc = ctx.args || undefined;
       const result = await cp.create(desc);
-      return { handled: true, message: result.success ? chalk.green(`✓ ${result.message}`) : chalk.red(`✗ ${result.message}`) };
+      return {
+        handled: true,
+        message: result.success
+          ? chalk.green(`✓ ${result.message}`)
+          : chalk.red(`✗ ${result.message}`),
+      };
     } catch {
       return { handled: true, message: chalk.yellow('Git 模块不可用') };
     }
@@ -206,7 +226,9 @@ const tokensCommand: SlashCommand = {
     const msgCount = ctx.messages.length;
     return {
       handled: true,
-      message: chalk.dim(`\n📊 Token 用量估算:\n  消息数: ${msgCount}\n  估算 tokens: ~${totalTokens.toLocaleString()}\n  估算字符: ~${ctx.messages.reduce((s, m) => s + m.content.length, 0).toLocaleString()}\n`),
+      message: chalk.dim(
+        `\n📊 Token 用量估算:\n  消息数: ${msgCount}\n  估算 tokens: ~${totalTokens.toLocaleString()}\n  估算字符: ~${ctx.messages.reduce((s, m) => s + m.content.length, 0).toLocaleString()}\n`
+      ),
     };
   },
 };
@@ -218,8 +240,8 @@ const saveCommand: SlashCommand = {
   execute: async (ctx) => {
     try {
       const { memoryManager } = await import('../../memory/manager.js');
-      const lastUser = [...ctx.messages].reverse().find(m => m.role === 'user');
-      const lastAssistant = [...ctx.messages].reverse().find(m => m.role === 'assistant');
+      const lastUser = [...ctx.messages].reverse().find((m) => m.role === 'user');
+      const lastAssistant = [...ctx.messages].reverse().find((m) => m.role === 'assistant');
       if (lastUser && lastAssistant) {
         await memoryManager.rememberChat({
           input: lastUser.content,
@@ -243,7 +265,9 @@ const architectCommand: SlashCommand = {
   execute: async () => {
     return {
       handled: true,
-      message: chalk.cyan('🏗️ 双模型模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --architect'),
+      message: chalk.cyan(
+        '🏗️ 双模型模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --architect'
+      ),
     };
   },
 };
@@ -255,7 +279,9 @@ const planCommand: SlashCommand = {
   execute: async () => {
     return {
       handled: true,
-      message: chalk.cyan('📋 Plan/Act 模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --plan-first'),
+      message: chalk.cyan(
+        '📋 Plan/Act 模式需要在 agent run 中使用:\n  personal-assistant agent run "任务" --plan-first'
+      ),
     };
   },
 };
@@ -296,12 +322,12 @@ const compactCommand: SlashCommand = {
         configManager as IConfigManager
       );
 
-      const nonSystemMessages = ctx.messages.filter(m => m.role !== 'system');
+      const nonSystemMessages = ctx.messages.filter((m) => m.role !== 'system');
       const result = await compressionService.compressMessages(nonSystemMessages);
 
       if (result.summary) {
-        const systemMsgs = ctx.messages.filter(m => m.role === 'system');
-        const recentMsgs = ctx.messages.filter(m => m.role !== 'system').slice(-4);
+        const systemMsgs = ctx.messages.filter((m) => m.role === 'system');
+        const recentMsgs = ctx.messages.filter((m) => m.role !== 'system').slice(-4);
         ctx.messages.length = 0;
         ctx.messages.push(...systemMsgs);
         ctx.messages.push({
@@ -314,14 +340,14 @@ const compactCommand: SlashCommand = {
           handled: true,
           message: chalk.green(
             `✓ 对话已智能压缩: ${originalCount}条 → ${ctx.messages.length}条` +
-            chalk.dim(` (节省 ~${result.tokensSaved} tokens)`)
+              chalk.dim(` (节省 ~${result.tokensSaved} tokens)`)
           ),
         };
       }
     } catch (error) {
       // AI 压缩失败，回退到简单截断
       const errMsg = error instanceof Error ? error.message : String(error);
-      const systemMsgs = ctx.messages.filter(m => m.role === 'system');
+      const systemMsgs = ctx.messages.filter((m) => m.role === 'system');
       const recentMsgs = ctx.messages.slice(-4);
       ctx.messages.length = 0;
       ctx.messages.push(...systemMsgs);
@@ -339,7 +365,7 @@ const compactCommand: SlashCommand = {
     }
 
     // 默认回退
-    const systemMsgs = ctx.messages.filter(m => m.role === 'system');
+    const systemMsgs = ctx.messages.filter((m) => m.role === 'system');
     const recentMsgs = ctx.messages.slice(-4);
     ctx.messages.length = 0;
     ctx.messages.push(...systemMsgs);
@@ -357,7 +383,7 @@ const copyCommand: SlashCommand = {
   name: 'copy',
   description: '复制最后一次 AI 回复到剪贴板',
   execute: async (ctx) => {
-    const lastAssistant = [...ctx.messages].reverse().find(m => m.role === 'assistant');
+    const lastAssistant = [...ctx.messages].reverse().find((m) => m.role === 'assistant');
     if (!lastAssistant) {
       return { handled: true, message: chalk.yellow('没有可复制的回复') };
     }
@@ -367,7 +393,12 @@ const copyCommand: SlashCommand = {
       const execAsync = promisify(exec);
 
       // 尝试使用 pbcopy (macOS) 或 xclip (Linux) 或 clip (Windows)
-      const cmd = process.platform === 'darwin' ? 'pbcopy' : process.platform === 'win32' ? 'clip' : 'xclip -selection clipboard';
+      const cmd =
+        process.platform === 'darwin'
+          ? 'pbcopy'
+          : process.platform === 'win32'
+            ? 'clip'
+            : 'xclip -selection clipboard';
       await execAsync(`echo ${JSON.stringify(lastAssistant.content)} | ${cmd}`);
       return { handled: true, message: chalk.green('✓ 已复制到剪贴板') };
     } catch {
@@ -432,13 +463,15 @@ const imageCommand: SlashCommand = {
         role: 'user',
         content: [
           { type: 'text', text: '[用户附加了一张图片]' },
-          { type: 'image_url', image_url: { url: imageUrl, detail: 'auto' } }
+          { type: 'image_url', image_url: { url: imageUrl, detail: 'auto' } },
         ],
         timestamp: new Date().toISOString(),
       });
       return {
         handled: true,
-        message: chalk.green(`✓ 已附加图片: ${imagePath} (${(imageBuffer.length / 1024).toFixed(1)} KB)`),
+        message: chalk.green(
+          `✓ 已附加图片: ${imagePath} (${(imageBuffer.length / 1024).toFixed(1)} KB)`
+        ),
       };
     } catch (err: unknown) {
       return {

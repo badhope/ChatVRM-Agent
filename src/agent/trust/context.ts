@@ -79,7 +79,9 @@ export function shouldSkipInTest(context?: DetectionContext): boolean {
  * @param toolUsed - 使用的工具名称
  * @returns 工具上下文类型
  */
-export function getToolContext(toolUsed: string): 'shell' | 'database' | 'file' | 'network' | 'unknown' {
+export function getToolContext(
+  toolUsed: string
+): 'shell' | 'database' | 'file' | 'network' | 'unknown' {
   const toolLower = toolUsed.toLowerCase();
 
   if (toolLower === 'shell' || toolLower === 'exec') {

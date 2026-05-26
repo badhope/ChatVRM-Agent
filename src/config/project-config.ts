@@ -33,8 +33,8 @@ export interface ProjectConfig {
 }
 
 const CONFIG_FILES = [
-  'DEVFLOW.md',      // 主配置文件（Markdown格式，易读）
-  '.personal-assistantrc',      // JSON/YAML配置
+  'DEVFLOW.md', // 主配置文件（Markdown格式，易读）
+  '.personal-assistantrc', // JSON/YAML配置
   '.personal-assistant/config.json', // 目录级配置
 ];
 
@@ -74,11 +74,21 @@ export class ProjectConfigLoader {
               const key = trimmed.slice(0, eqIdx).trim();
               const value = trimmed.slice(eqIdx + 1).trim();
               switch (key) {
-                case 'instructions': config.instructions = value; break;
-                case 'description': config.description = value; break;
-                case 'testCommand': config.testCommand = value; break;
-                case 'buildCommand': config.buildCommand = value; break;
-                case 'ignorePatterns': config.ignorePatterns = value.split(',').map(s => s.trim()); break;
+                case 'instructions':
+                  config.instructions = value;
+                  break;
+                case 'description':
+                  config.description = value;
+                  break;
+                case 'testCommand':
+                  config.testCommand = value;
+                  break;
+                case 'buildCommand':
+                  config.buildCommand = value;
+                  break;
+                case 'ignorePatterns':
+                  config.ignorePatterns = value.split(',').map((s) => s.trim());
+                  break;
               }
             }
           }
@@ -110,8 +120,10 @@ export class ProjectConfigLoader {
     if (config.codeStyle) {
       const style = config.codeStyle;
       instructions += '\n--- 代码风格 ---\n';
-      if (style.indent) instructions += `- 缩进: ${style.indent === 'tabs' ? 'Tab' : `${style.indentSize || 2}空格`}\n`;
-      if (style.quoteStyle) instructions += `- 引号: ${style.quoteStyle === 'single' ? '单引号' : '双引号'}\n`;
+      if (style.indent)
+        instructions += `- 缩进: ${style.indent === 'tabs' ? 'Tab' : `${style.indentSize || 2}空格`}\n`;
+      if (style.quoteStyle)
+        instructions += `- 引号: ${style.quoteStyle === 'single' ? '单引号' : '双引号'}\n`;
       if (style.semi !== undefined) instructions += `- 分号: ${style.semi ? '使用' : '不使用'}\n`;
     }
     if (config.testCommand) {

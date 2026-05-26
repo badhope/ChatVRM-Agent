@@ -56,11 +56,7 @@ export interface TreeSitterTree {
 /**
  * Extract lines from source text for a given 1-based line range.
  */
-export function extractLines(
-  source: string,
-  startLine: number,
-  endLine: number
-): string {
+export function extractLines(source: string, startLine: number, endLine: number): string {
   const lines = source.split('\n');
   const startIdx = Math.max(0, startLine - 1);
   const endIdx = Math.min(lines.length, endLine);
@@ -188,7 +184,7 @@ export function groupImportsIntoChunk(
     type: 'import-section',
     nestingLevel: 0,
     tokens: estimateTokens(content),
-    dependencies: importedNames.map(n => `${filePath}:${n}`),
+    dependencies: importedNames.map((n) => `${filePath}:${n}`),
   };
 }
 
@@ -213,12 +209,13 @@ export function splitLargeClass(
   const methods: TreeSitterNode[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child && (
-      child.type === 'method_definition' ||
-      child.type === 'public_field_definition' ||
-      child.type === 'property_definition' ||
-      child.type === 'method_signature'
-    )) {
+    if (
+      child &&
+      (child.type === 'method_definition' ||
+        child.type === 'public_field_definition' ||
+        child.type === 'property_definition' ||
+        child.type === 'method_signature')
+    ) {
       methods.push(child);
     }
   }
@@ -354,14 +351,16 @@ export function buildChunks(
       for (let l = child.startPosition.row; l <= child.endPosition.row; l++) {
         coveredLines.add(l);
       }
-    } else if (child.type.startsWith('function') ||
-               child.type.startsWith('class') ||
-               child.type.startsWith('interface') ||
-               child.type.startsWith('type') ||
-               child.type.startsWith('enum') ||
-               child.type === 'lexical_declaration' ||
-               child.type === 'variable_declaration' ||
-               child.type.startsWith('export')) {
+    } else if (
+      child.type.startsWith('function') ||
+      child.type.startsWith('class') ||
+      child.type.startsWith('interface') ||
+      child.type.startsWith('type') ||
+      child.type.startsWith('enum') ||
+      child.type === 'lexical_declaration' ||
+      child.type === 'variable_declaration' ||
+      child.type.startsWith('export')
+    ) {
       declarationNodes.push(child);
       for (let l = child.startPosition.row; l <= child.endPosition.row; l++) {
         coveredLines.add(l);
@@ -402,7 +401,12 @@ export function buildChunks(
       // Try to split classes at method boundaries
       if (node.type === 'class_declaration' || node.type === 'class_definition') {
         const subChunks = splitLargeClass(
-          node, source, filePath, chunkName ?? 'anonymous', 1, maxTokens
+          node,
+          source,
+          filePath,
+          chunkName ?? 'anonymous',
+          1,
+          maxTokens
         );
         if (subChunks.length > 0) {
           chunks.push(...subChunks);
@@ -471,11 +475,7 @@ export function buildChunks(
 /**
  * Build a single chunk from a symbol.
  */
-export function buildChunkFromSymbol(
-  sym: CodeSymbol,
-  source: string,
-  filePath: string
-): CodeChunk {
+export function buildChunkFromSymbol(sym: CodeSymbol, source: string, filePath: string): CodeChunk {
   const content = extractLines(source, sym.startLine, sym.endLine);
   const chunkType = nodeTypeToChunkType(sym.kind);
 

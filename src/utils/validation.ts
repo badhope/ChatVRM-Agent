@@ -4,11 +4,14 @@
  * @param error 可选的错误对象
  * @returns 包含错误信息的对象
  */
-export function formatError<T = unknown>(message: string, error?: T): { success: false; error: string; details: string } {
+export function formatError<T = unknown>(
+  message: string,
+  error?: T
+): { success: false; error: string; details: string } {
   return {
     success: false,
     error: message,
-    details: (error as { message?: string } | undefined)?.message || String(error ?? '')
+    details: (error as { message?: string } | undefined)?.message || String(error ?? ''),
   };
 }
 
@@ -20,7 +23,7 @@ export function formatError<T = unknown>(message: string, error?: T): { success:
 export function formatSuccess<T extends Record<string, unknown>>(data: T): { success: true } & T {
   return {
     success: true,
-    ...data
+    ...data,
   };
 }
 

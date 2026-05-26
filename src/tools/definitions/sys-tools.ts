@@ -82,22 +82,22 @@ export const shellTool: ToolDefinition = {
   ],
   execute: async (args) => {
     if (!args || !args.command) {
-      return { 
-        success: false, 
-        output: '', 
-        error: '缺少必要参数: command' 
+      return {
+        success: false,
+        output: '',
+        error: '缺少必要参数: command',
       };
     }
     const { checkShellCommand } = await import('../security.js');
     const check = checkShellCommand(args.command);
     if (!check.allowed) {
-      return { 
-        success: false, 
-        output: '', 
-        error: `安全拦截: ${check.reason}` 
+      return {
+        success: false,
+        output: '',
+        error: `安全拦截: ${check.reason}`,
       };
     }
-    
+
     try {
       const timeout = args.timeout ? parseInt(args.timeout, 10) : 30000;
       const cwd = args.cwd || process.cwd();
@@ -131,7 +131,11 @@ export const shellTool: ToolDefinition = {
       const errorMsg = getErrorMessage(error);
       const errObj = error as { stdout?: string; stderr?: string };
       if (errorMsg.includes('maxBuffer')) {
-        return { success: false, output: errObj.stdout || '', error: '命令输出超过缓冲区限制(10MB)，请使用分页或过滤参数' };
+        return {
+          success: false,
+          output: errObj.stdout || '',
+          error: '命令输出超过缓冲区限制(10MB)，请使用分页或过滤参数',
+        };
       }
       if (errorMsg.includes('ETIMEDOUT') || errorMsg.includes('timeout')) {
         return { success: false, output: errObj.stdout || '', error: '命令执行超时' };

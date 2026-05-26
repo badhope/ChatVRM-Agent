@@ -113,8 +113,12 @@ export function parseAiderFormat(text: string): SearchReplaceBlock[] {
       if (i > 0) {
         const prevLine = lines[i - 1].trim();
         // Heuristic: if the previous line looks like a file path
-        if (prevLine && !prevLine.startsWith('#') && !prevLine.startsWith('```') &&
-            (prevLine.includes('.') || prevLine.includes('/'))) {
+        if (
+          prevLine &&
+          !prevLine.startsWith('#') &&
+          !prevLine.startsWith('```') &&
+          (prevLine.includes('.') || prevLine.includes('/'))
+        ) {
           filePath = prevLine;
         }
       }
@@ -173,17 +177,17 @@ export function normalizeContent(content: string): string {
   if (trimmed.length === 0) return '';
 
   // Detect common indentation
-  const nonEmpty = trimmed.filter(l => l.trim() !== '');
+  const nonEmpty = trimmed.filter((l) => l.trim() !== '');
   if (nonEmpty.length === 0) return '';
 
-  const indentSizes = nonEmpty.map(l => {
+  const indentSizes = nonEmpty.map((l) => {
     const match = l.match(/^(\s*)/);
     return match ? match[1].length : 0;
   });
   const commonIndent = Math.min(...indentSizes);
 
   // Remove common indentation
-  const normalized = trimmed.map(l => {
+  const normalized = trimmed.map((l) => {
     if (l.trim() === '') return '';
     return l.substring(commonIndent);
   });

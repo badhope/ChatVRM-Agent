@@ -171,13 +171,16 @@ export async function runActMode(
         // 工具步骤 → 生成参数并执行
         if (!step.args || Object.keys(step.args).length === 0) {
           output(chalk.dim('  🧠 AI 推理工具参数...'));
-          const reasoning = await reasonStep({
-            taskDescription,
-            intent,
-            stepDescription: `为工具 "${step.tool}" 确定执行参数: ${step.description}`,
-            previousResults,
-            availableTools: [step.tool],
-          }, config?.llm);
+          const reasoning = await reasonStep(
+            {
+              taskDescription,
+              intent,
+              stepDescription: `为工具 "${step.tool}" 确定执行参数: ${step.description}`,
+              previousResults,
+              availableTools: [step.tool],
+            },
+            config?.llm
+          );
           try {
             const jsonMatch = reasoning.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
@@ -201,14 +204,23 @@ export async function runActMode(
               const confirmed = await askUserConfirmation(report);
               if (!confirmed) {
                 output(chalk.yellow('  ⏭ 用户拒绝，跳过'));
-                stepResults.push({ step, success: false, error: '用户拒绝', durationMs: Date.now() - stepStart });
+                stepResults.push({
+                  step,
+                  success: false,
+                  error: '用户拒绝',
+                  durationMs: Date.now() - stepStart,
+                });
                 continue;
               }
             }
           }
         }
 
-        output(chalk.dim(`  → ${step.tool} ${step.args ? JSON.stringify(step.args).slice(0, 80) : ''}...`));
+        output(
+          chalk.dim(
+            `  → ${step.tool} ${step.args ? JSON.stringify(step.args).slice(0, 80) : ''}...`
+          )
+        );
 
         // 使用变更控制包装执行（对于写入类操作）
         if (step.tool && isWriteTool(step.tool)) {
@@ -236,13 +248,16 @@ export async function runActMode(
       } else {
         // 空操作步骤 → AI 推理
         output(chalk.dim('  🧠 AI 推理...'));
-        result = await reasonStep({
-          taskDescription,
-          intent,
-          stepDescription: step.description,
-          previousResults,
-          availableTools: [],
-        }, config?.llm);
+        result = await reasonStep(
+          {
+            taskDescription,
+            intent,
+            stepDescription: step.description,
+            previousResults,
+            availableTools: [],
+          },
+          config?.llm
+        );
         previousResults.push(result);
         output(chalk.green('  ✓ 推理完成'));
       }
@@ -265,12 +280,14 @@ export async function runActMode(
       if (!config?.autoApprove) {
         try {
           const inquirer = await import('inquirer');
-          const { cont } = await inquirer.default.prompt([{
-            type: 'confirm',
-            name: 'cont',
-            message: '步骤失败，是否继续？',
-            default: false,
-          }]);
+          const { cont } = await inquirer.default.prompt([
+            {
+              type: 'confirm',
+              name: 'cont',
+              message: '步骤失败，是否继续？',
+              default: false,
+            },
+          ]);
           if (!cont) break;
         } catch (error) {
           break;
@@ -279,8 +296,8 @@ export async function runActMode(
     }
   }
 
-  const allSuccess = stepResults.every(r => r.success);
-  const successCount = stepResults.filter(r => r.success).length;
+  const allSuccess = stepResults.every((r) => r.success);
+  const successCount = stepResults.filter((r) => r.success).length;
 
   return {
     stepResults,
@@ -306,9 +323,9 @@ function extractTargetPath(tool: string, args?: Record<string, unknown>): string
     case 'write_file':
     case 'delete_file':
     case 'read_file':
-      return args.path as string || null;
+      return (args.path as string) || null;
     case 'shell':
-      return args.command as string || null;
+      return (args.command as string) || null;
     default:
       return null;
   }

@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { memoryManager } from '../memory/manager.js';
-import { KnowledgeGraph } from '../memory/knowledgeGraph.js';
+import { KnowledgeGraph } from '../memory/knowledge-graph.js';
 import { ragModule } from '../memory/rag.js';
 import { backupManager } from '../cloud/backup.js';
 import { configManager } from '../config/manager.js';
@@ -12,8 +12,7 @@ import { getErrorMessage } from '../utils/error-handling.js';
 
 const DATA_DIR = path.join(os.homedir(), '.personal-assistant');
 
-export const dataCommand = new Command('data')
-  .description('数据管理（导出、导入、重置）');
+export const dataCommand = new Command('data').description('数据管理（导出、导入、重置）');
 
 dataCommand
   .command('export')
@@ -54,7 +53,9 @@ dataCommand
 
       const content = JSON.stringify(exportData, null, 2);
       await fs.writeFile(opts.output, content, 'utf-8');
-      printSuccess(`数据已导出到: ${opts.output} (${(Buffer.byteLength(content) / 1024).toFixed(1)} KB)`);
+      printSuccess(
+        `数据已导出到: ${opts.output} (${(Buffer.byteLength(content) / 1024).toFixed(1)} KB)`
+      );
     } catch (error: unknown) {
       printError(`导出失败: ${getErrorMessage(error)}`);
     }

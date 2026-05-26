@@ -51,9 +51,24 @@ export class CodeIndexCache {
             // 只检查常见的源代码文件
             const ext = path.extname(entry.name).toLowerCase();
             const sourceExts = new Set([
-              '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-              '.py', '.java', '.go', '.rs', '.cpp', '.c', '.h',
-              '.php', '.rb', '.swift', '.kt', '.scala',
+              '.ts',
+              '.tsx',
+              '.js',
+              '.jsx',
+              '.mjs',
+              '.cjs',
+              '.py',
+              '.java',
+              '.go',
+              '.rs',
+              '.cpp',
+              '.c',
+              '.h',
+              '.php',
+              '.rb',
+              '.swift',
+              '.kt',
+              '.scala',
             ]);
 
             if (sourceExts.has(ext)) {

@@ -1,5 +1,12 @@
 import { BaseProvider } from '../base.js';
-import type { ChatParams, ChatResponse, StreamChunk, ProviderConfig, Message, TextContent } from '../types.js';
+import type {
+  ChatParams,
+  ChatResponse,
+  StreamChunk,
+  ProviderConfig,
+  Message,
+  TextContent,
+} from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
 import { CONNECTION_TIMEOUT_MS } from '../constants/index.js';
 
@@ -57,7 +64,7 @@ export class BaiduProvider extends BaseProvider {
       throw new Error(`Failed to get Baidu access token: ${response.status}`);
     }
 
-    const data = await response.json() as { access_token: string; expires_in: number };
+    const data = (await response.json()) as { access_token: string; expires_in: number };
     this.accessToken = data.access_token;
     this.tokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000; // Refresh 1 min early
     return this.accessToken;
@@ -68,7 +75,7 @@ export class BaiduProvider extends BaseProvider {
     const accessToken = await this.getAccessToken();
 
     const body = {
-      messages: params.messages.map(msg => ({
+      messages: params.messages.map((msg) => ({
         role: msg.role,
         content: this.convertContent(msg.content),
       })),
@@ -122,7 +129,7 @@ export class BaiduProvider extends BaseProvider {
     const accessToken = await this.getAccessToken();
 
     const body = {
-      messages: params.messages.map(msg => ({
+      messages: params.messages.map((msg) => ({
         role: msg.role,
         content: this.convertContent(msg.content),
       })),
@@ -221,7 +228,7 @@ export class BaiduProvider extends BaseProvider {
                       promptTokens: data.usage.prompt_tokens || 0,
                       completionTokens: data.usage.completion_tokens || 0,
                       totalTokens: data.usage.total_tokens || 0,
-                    }
+                    },
                   };
                 }
               } catch {
@@ -270,7 +277,7 @@ export class BaiduProvider extends BaseProvider {
       // Extract text parts, ignore images (Baidu has limited multimodal support in this format)
       return content
         .filter((p): p is TextContent => typeof p !== 'string' && p.type === 'text')
-        .map(p => p.text)
+        .map((p) => p.text)
         .join('\n');
     }
     return String(content);

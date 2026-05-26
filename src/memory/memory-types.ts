@@ -20,7 +20,7 @@ export interface MemoryInteraction {
   accessCount?: number;
 }
 
-/** 
+/**
  * 记忆记录扩展接口（包含可选的元数据属性）
  * 用于遗忘曲线计算和记忆强化
  */

@@ -100,10 +100,7 @@ export function parseSource(
 /**
  * 增量解析（更新已有文件）
  */
-export function updateParse(
-  result: ParseResult,
-  newSource: string
-): ParseResult | null {
+export function updateParse(result: ParseResult, newSource: string): ParseResult | null {
   const language = result.language;
   if (!language.language) return null;
 
@@ -150,7 +147,7 @@ export async function parseFiles(filePaths: string[]): Promise<Map<string, Parse
     const batchResults = await Promise.all(
       batch.map(async (fp) => {
         const result = await parseFile(fp);
-        return result ? [fp, result] as const : null;
+        return result ? ([fp, result] as const) : null;
       })
     );
     for (const r of batchResults) {

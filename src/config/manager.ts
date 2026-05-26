@@ -13,7 +13,6 @@ import { createLogger } from '../services/logger.js';
 
 const logger = createLogger('config');
 
-
 // Re-export 类型和常量
 export type { ManagerProviderConfig, SandboxLevel };
 export { SANDBOX_PERMISSIONS, DEFAULT_CONFIG };
@@ -98,7 +97,7 @@ export class ConfigManager {
       await fs.rename(tmpPath, this.configFile);
     } catch (error) {
       logger.error({ error }, '[Config] 保存配置失败');
-      throw error;  // 不要静默失败
+      throw error; // 不要静默失败
     }
   }
 
@@ -125,8 +124,14 @@ export class ConfigManager {
     return this.config.providers[provider] || {};
   }
 
-  async setProviderConfig(provider: ProviderType, config: Partial<ManagerProviderConfig>): Promise<void> {
-    const existing = this.config.providers[provider] || { timeout: DEFAULT_TIMEOUT_MS, maxRetries: 2 };
+  async setProviderConfig(
+    provider: ProviderType,
+    config: Partial<ManagerProviderConfig>
+  ): Promise<void> {
+    const existing = this.config.providers[provider] || {
+      timeout: DEFAULT_TIMEOUT_MS,
+      maxRetries: 2,
+    };
     this.config.providers[provider] = {
       ...existing,
       ...config,
@@ -204,7 +209,10 @@ export class ConfigManager {
     return this.config.circuitBreaker;
   }
 
-  checkSandboxPermission(action: 'delete' | 'modify' | 'network' | 'exec', path?: string): {
+  checkSandboxPermission(
+    action: 'delete' | 'modify' | 'network' | 'exec',
+    path?: string
+  ): {
     allowed: boolean;
     requiresConfirmation: boolean;
     reason?: string;

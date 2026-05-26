@@ -9,12 +9,15 @@ import { encodingForModel, type Tiktoken } from 'js-tiktoken';
  */
 export function tokenize(text: string): string[] {
   if (!text) return [];
-  return [...new Set(
-    text.toLowerCase()
-      .replace(/[^\w\u4e00-\u9fff]+/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 1),
-  )];
+  return [
+    ...new Set(
+      text
+        .toLowerCase()
+        .replace(/[^\w\u4e00-\u9fff]+/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 1)
+    ),
+  ];
 }
 
 // ------------------------------------------------------------------

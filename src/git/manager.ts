@@ -89,8 +89,10 @@ export class GitManager {
         const tracking = status.tracking;
         if (tracking) {
           const revList = await this.git.raw([
-            'rev-list', '--left-right', '--count',
-            `${branch}...${tracking}`
+            'rev-list',
+            '--left-right',
+            '--count',
+            `${branch}...${tracking}`,
           ]);
           const [a, b] = revList.trim().split(/\s+/).map(Number);
           ahead = a || 0;
@@ -101,7 +103,7 @@ export class GitManager {
       }
 
       // 解析暂存区文件
-      const staged = status.staged.map(file => ({
+      const staged = status.staged.map((file) => ({
         file: file,
         status: this.mapStatus(file),
         additions: 0,
@@ -109,7 +111,7 @@ export class GitManager {
       }));
 
       // 解析未暂存文件
-      const unstaged = status.modified.map(file => ({
+      const unstaged = status.modified.map((file) => ({
         file: file,
         status: 'modified' as const,
         additions: 0,
@@ -166,15 +168,21 @@ export class GitManager {
       }
 
       if (options?.file) {
-        patch = await this.git.diff([options.staged ? '--cached' : '', '--', options.file].filter(Boolean));
+        patch = await this.git.diff(
+          [options.staged ? '--cached' : '', '--', options.file].filter(Boolean)
+        );
       }
 
-      const files = diffSummary.files.map(f => {
+      const files = diffSummary.files.map((f) => {
         // Handle binary files which don't have insertions/deletions
         const isBinary = 'binary' in f && f.binary;
         return {
           file: f.file,
-          status: isBinary ? 'modified' as const : this.mapDiffStatus(f as { file: string; changes: number; insertions: number; deletions: number }),
+          status: isBinary
+            ? ('modified' as const)
+            : this.mapDiffStatus(
+                f as { file: string; changes: number; insertions: number; deletions: number }
+              ),
           additions: isBinary ? 0 : (f as { insertions: number }).insertions,
           deletions: isBinary ? 0 : (f as { deletions: number }).deletions,
         };
@@ -208,8 +216,10 @@ export class GitManager {
     try {
       const branches = await this.git.branch(['-a']);
       return {
-        local: branches.all.filter(b => !b.startsWith('remotes/')),
-        remote: branches.all.filter(b => b.startsWith('remotes/')).map(b => b.replace('remotes/', '')),
+        local: branches.all.filter((b) => !b.startsWith('remotes/')),
+        remote: branches.all
+          .filter((b) => b.startsWith('remotes/'))
+          .map((b) => b.replace('remotes/', '')),
         current: branches.current || '',
       };
     } catch (error) {
@@ -221,7 +231,12 @@ export class GitManager {
   /**
    * 获取提交日志
    */
-  async getCommits(options?: { count?: number; author?: string; since?: string; file?: string }): Promise<GitCommit[]> {
+  async getCommits(options?: {
+    count?: number;
+    author?: string;
+    since?: string;
+    file?: string;
+  }): Promise<GitCommit[]> {
     try {
       const logOptions: string[] = [];
 
@@ -243,15 +258,16 @@ export class GitManager {
 
       const log: LogResult<DefaultLogFields> = await this.git.log(logOptions);
 
-      return log.all.map(commit => ({
+      return log.all.map((commit) => ({
         hash: commit.hash,
         shortHash: commit.hash.substring(0, 7),
         author: `${commit.author_name} <${commit.author_email}>`,
         date: commit.date,
         message: commit.message,
-        isAider: commit.author_name.includes('(personal-assistant)') ||
-                 commit.author_name.includes('(aider)') ||
-                 commit.message.startsWith('[personal-assistant]'),
+        isAider:
+          commit.author_name.includes('(personal-assistant)') ||
+          commit.author_name.includes('(aider)') ||
+          commit.message.startsWith('[personal-assistant]'),
       }));
     } catch (error) {
       gitLogger.error({ error }, 'Failed to get commits');
@@ -282,7 +298,10 @@ export class GitManager {
   /**
    * 提交变更
    */
-  async commit(message: string, options?: { allowEmpty?: boolean; amend?: boolean }): Promise<GitResult> {
+  async commit(
+    message: string,
+    options?: { allowEmpty?: boolean; amend?: boolean }
+  ): Promise<GitResult> {
     gitLogger.debug({ message, options }, 'Creating commit');
     try {
       const commitOptions: string[] = [];
@@ -332,7 +351,10 @@ export class GitManager {
   /**
    * 创建分支
    */
-  async createBranch(name: string, options?: { checkout?: boolean; from?: string }): Promise<GitResult> {
+  async createBranch(
+    name: string,
+    options?: { checkout?: boolean; from?: string }
+  ): Promise<GitResult> {
     try {
       const createOptions: string[] = [name];
 
@@ -387,8 +409,8 @@ export class GitManager {
       const status = await this.getStatus();
 
       if (files) {
-        const dirtyFiles = [...status.staged, ...status.unstaged].map(f => f.file);
-        return files.some(f => dirtyFiles.includes(f));
+        const dirtyFiles = [...status.staged, ...status.unstaged].map((f) => f.file);
+        return files.some((f) => dirtyFiles.includes(f));
       }
 
       return !status.isClean;
@@ -439,7 +461,7 @@ export class GitManager {
    * 推送到远程仓库
    */
   async push(remote = 'origin', branch?: string): Promise<GitResult> {
-    const branchName = branch || await this.getCurrentBranch();
+    const branchName = branch || (await this.getCurrentBranch());
     gitLogger.debug({ remote, branch: branchName }, 'Pushing to remote');
 
     try {
@@ -462,7 +484,7 @@ export class GitManager {
    * 从远程拉取
    */
   async pull(remote = 'origin', branch?: string): Promise<GitResult> {
-    const branchName = branch || await this.getCurrentBranch();
+    const branchName = branch || (await this.getCurrentBranch());
     gitLogger.debug({ remote, branch: branchName }, 'Pulling from remote');
 
     try {
@@ -499,7 +521,7 @@ export class GitManager {
   async getRemoteUrl(remote = 'origin'): Promise<string> {
     try {
       const remotes = await this.git.getRemotes(true);
-      const found = remotes.find(r => r.name === remote);
+      const found = remotes.find((r) => r.name === remote);
       return found?.refs?.fetch || found?.refs?.push || '';
     } catch (error) {
       gitLogger.error({ remote, error }, 'Failed to get remote URL');
@@ -553,7 +575,13 @@ export class GitManager {
   /**
    * 映射 diff 状态
    */
-  private mapDiffStatus(file: { file: string; changes: number; insertions: number; deletions: number; binary?: boolean }): 'added' | 'modified' | 'deleted' {
+  private mapDiffStatus(file: {
+    file: string;
+    changes: number;
+    insertions: number;
+    deletions: number;
+    binary?: boolean;
+  }): 'added' | 'modified' | 'deleted' {
     if (file.binary) return 'modified';
     if (file.insertions > 0 && file.deletions === 0) return 'added';
     if (file.insertions === 0 && file.deletions > 0) return 'deleted';

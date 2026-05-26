@@ -21,7 +21,7 @@ const MAX_GOALS = 10; // 最大目标数量
 export interface AutonomousGoal {
   id: string;
   type: 'health-check' | 'improvement' | 'learning' | 'maintenance';
-  priority: number;          // 0-100
+  priority: number; // 0-100
   description: string;
   status: 'pending' | 'in-progress' | 'completed' | 'deferred';
   createdAt: string;
@@ -48,7 +48,7 @@ export class AutonomousGoalManager {
       (dir) => this.checkGitStatus(dir),
       (dir) => this.checkDependencies(dir),
       (dir) => this.checkCodeQuality(dir),
-      (dir) => this.checkSecurityVulnerabilities(dir),
+      (dir) => this.checkSecurityVulnerabilities(dir)
     );
   }
 
@@ -102,7 +102,7 @@ export class AutonomousGoalManager {
 
       // 避免重复目标
       const isDuplicate = [...this.goals.values()].some(
-        existing => existing.description === goal.description && existing.status !== 'completed'
+        (existing) => existing.description === goal.description && existing.status !== 'completed'
       );
       if (!isDuplicate) {
         this.goals.set(goalId, goal);
@@ -124,7 +124,7 @@ export class AutonomousGoalManager {
    */
   async getPendingGoals(): Promise<AutonomousGoal[]> {
     return [...this.goals.values()]
-      .filter(g => g.status === 'pending')
+      .filter((g) => g.status === 'pending')
       .sort((a, b) => b.priority - a.priority);
   }
 
@@ -272,7 +272,7 @@ export class AutonomousGoalManager {
       // 检查是否缺少 scripts 中的常用脚本
       const scripts = pkg.scripts || {};
       const recommendedScripts = ['build', 'test', 'lint'];
-      const missingScripts = recommendedScripts.filter(s => !scripts[s]);
+      const missingScripts = recommendedScripts.filter((s) => !scripts[s]);
 
       if (missingScripts.length > 0 && Object.keys(allDeps).length > 5) {
         results.push({
@@ -305,7 +305,10 @@ export class AutonomousGoalManager {
 
     try {
       const todoCount = await this.countPatternInDir(srcDir, /\b(TODO|FIXME|HACK|XXX)\b/g);
-      const consoleLogCount = await this.countPatternInDir(srcDir, /console\.(log|warn|error|debug)\s*\(/g);
+      const consoleLogCount = await this.countPatternInDir(
+        srcDir,
+        /console\.(log|warn|error|debug)\s*\(/g
+      );
       const largeFiles = await this.findLargeFiles(srcDir, 500);
 
       if (todoCount > 10) {
@@ -327,7 +330,7 @@ export class AutonomousGoalManager {
       }
 
       if (largeFiles.length > 0) {
-        const fileNames = largeFiles.slice(0, 3).map(f => path.relative(rootDir, f));
+        const fileNames = largeFiles.slice(0, 3).map((f) => path.relative(rootDir, f));
         results.push({
           category: 'code-quality',
           status: 'warning',
@@ -358,7 +361,11 @@ export class AutonomousGoalManager {
     try {
       // 检查硬编码密钥模式
       const secretPatterns = [
-        { regex: /(?:api[_-]?key|apikey|secret[_-]?key|password|token)\s*[:=]\s*['"][^'"]{8,}['"]/gi, label: 'API 密钥/密码' },
+        {
+          regex:
+            /(?:api[_-]?key|apikey|secret[_-]?key|password|token)\s*[:=]\s*['"][^'"]{8,}['"]/gi,
+          label: 'API 密钥/密码',
+        },
         { regex: /sk-[a-zA-Z0-9]{20,}/g, label: 'OpenAI API Key' },
         { regex: /ghp_[a-zA-Z0-9]{36}/g, label: 'GitHub Token' },
         { regex: /AKIA[0-9A-Z]{16}/g, label: 'AWS Access Key' },
@@ -435,9 +442,13 @@ export class AutonomousGoalManager {
 
     for (const result of results) {
       if (result.status === 'critical') {
-        suggestions.push(`[严重] ${result.message}${result.suggestion ? ` - ${result.suggestion}` : ''}`);
+        suggestions.push(
+          `[严重] ${result.message}${result.suggestion ? ` - ${result.suggestion}` : ''}`
+        );
       } else if (result.status === 'warning') {
-        suggestions.push(`[警告] ${result.message}${result.suggestion ? ` - ${result.suggestion}` : ''}`);
+        suggestions.push(
+          `[警告] ${result.message}${result.suggestion ? ` - ${result.suggestion}` : ''}`
+        );
       }
     }
 
@@ -492,7 +503,11 @@ export class AutonomousGoalManager {
 
         // 跳过 node_modules、dist、.git 等目录
         if (entry.isDirectory()) {
-          if (['node_modules', 'dist', '.git', 'coverage', '.next', '.nuxt', 'build'].includes(entry.name)) {
+          if (
+            ['node_modules', 'dist', '.git', 'coverage', '.next', '.nuxt', 'build'].includes(
+              entry.name
+            )
+          ) {
             continue;
           }
           count += await this.countPatternInDir(fullPath, pattern);
@@ -537,10 +552,14 @@ export class AutonomousGoalManager {
         const fullPath = path.join(dirPath, entry.name);
 
         if (entry.isDirectory()) {
-          if (['node_modules', 'dist', '.git', 'coverage', '.next', '.nuxt', 'build'].includes(entry.name)) {
+          if (
+            ['node_modules', 'dist', '.git', 'coverage', '.next', '.nuxt', 'build'].includes(
+              entry.name
+            )
+          ) {
             continue;
           }
-          largeFiles.push(...await this.findLargeFiles(fullPath, maxLines));
+          largeFiles.push(...(await this.findLargeFiles(fullPath, maxLines)));
           continue;
         }
 
@@ -569,12 +588,27 @@ export class AutonomousGoalManager {
    */
   private isCodeFile(fileName: string): boolean {
     const codeExtensions = [
-      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-      '.py', '.rb', '.go', '.rs', '.java', '.kt',
-      '.c', '.cpp', '.h', '.hpp',
-      '.vue', '.svelte', '.astro',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      '.py',
+      '.rb',
+      '.go',
+      '.rs',
+      '.java',
+      '.kt',
+      '.c',
+      '.cpp',
+      '.h',
+      '.hpp',
+      '.vue',
+      '.svelte',
+      '.astro',
     ];
-    return codeExtensions.some(ext => fileName.endsWith(ext));
+    return codeExtensions.some((ext) => fileName.endsWith(ext));
   }
 }
 

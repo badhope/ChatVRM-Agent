@@ -28,26 +28,85 @@ export interface DiscoveryOptions {
 
 const CATEGORY_MAP: Record<string, string[]> = {
   development: [
-    'code-generator', 'code-review', 'code-rag', 'coding-workflow',
-    'testing-toolkit', 'test-generator', 'debugging-workflow', 'refactoring-workflow',
-    'dependency-analyzer', 'api-dev', 'core-dev-kit', 'backend-dev-kit', 'frontend-dev-kit',
-    'fullstack-dev', 'qa-dev-kit', 'typescript', 'react',
+    'code-generator',
+    'code-review',
+    'code-rag',
+    'coding-workflow',
+    'testing-toolkit',
+    'test-generator',
+    'debugging-workflow',
+    'refactoring-workflow',
+    'dependency-analyzer',
+    'api-dev',
+    'core-dev-kit',
+    'backend-dev-kit',
+    'frontend-dev-kit',
+    'fullstack-dev',
+    'qa-dev-kit',
+    'typescript',
+    'react',
   ],
   devops: [
-    'docker', 'kubernetes', 'aws', 'aws-dev', 'gitlab', 'github', 'gitee', 'bitbucket',
-    'vercel', 'cloudflare', 'ci-cd', 'system-admin', 'terminal',
+    'docker',
+    'kubernetes',
+    'aws',
+    'aws-dev',
+    'gitlab',
+    'github',
+    'gitee',
+    'bitbucket',
+    'vercel',
+    'cloudflare',
+    'ci-cd',
+    'system-admin',
+    'terminal',
   ],
   security: ['security-auditor', 'secrets', 'auth'],
   data: ['database', 'mongodb', 'redis', 'csv', 'json', 'yaml'],
-  ai: ['agent-autonomous', 'agent-coordinator', 'agent-devkit', 'agent-memory',
-    'agent-reflection', 'agent-persistence', 'agent-unified-toolkit'],
+  ai: [
+    'agent-autonomous',
+    'agent-coordinator',
+    'agent-devkit',
+    'agent-memory',
+    'agent-reflection',
+    'agent-persistence',
+    'agent-unified-toolkit',
+  ],
   web: ['web-search', 'web-crawler', 'browser-automation', 'puppeteer', 'proxy'],
-  productivity: ['markdown', 'documentation', 'template', 'library-manager', 'libraries',
-    'compression', 'encoding', 'diff'],
-  analysis: ['performance-optimizer', 'monitoring', 'observability-mq', 'message-bus',
-    'consistency-manager', 'search', 'search-tools', 'search-pdf-advanced'],
-  utilities: ['datetime', 'math', 'regex', 'random', 'colors', 'filesystem', 'network',
-    'ssh', 'sentry', 'aliyun', 'clarify', 'thinking'],
+  productivity: [
+    'markdown',
+    'documentation',
+    'template',
+    'library-manager',
+    'libraries',
+    'compression',
+    'encoding',
+    'diff',
+  ],
+  analysis: [
+    'performance-optimizer',
+    'monitoring',
+    'observability-mq',
+    'message-bus',
+    'consistency-manager',
+    'search',
+    'search-tools',
+    'search-pdf-advanced',
+  ],
+  utilities: [
+    'datetime',
+    'math',
+    'regex',
+    'random',
+    'colors',
+    'filesystem',
+    'network',
+    'ssh',
+    'sentry',
+    'aliyun',
+    'clarify',
+    'thinking',
+  ],
   design: ['ui-design-kit'],
 };
 
@@ -100,7 +159,7 @@ export class MCPDiscovery {
       (s) =>
         s.name.toLowerCase().includes(lower) ||
         s.description.toLowerCase().includes(lower) ||
-        s.toolNames.some((t) => t.toLowerCase().includes(lower)),
+        s.toolNames.some((t) => t.toLowerCase().includes(lower))
     );
   }
 
@@ -137,12 +196,14 @@ export class MCPDiscovery {
 
   getServicesWithTool(toolName: string): MCPServiceInfo[] {
     const lower = toolName.toLowerCase();
-    return this.getAll().filter((s) =>
-      s.toolNames.some((t) => t.toLowerCase() === lower),
-    );
+    return this.getAll().filter((s) => s.toolNames.some((t) => t.toLowerCase() === lower));
   }
 
-  private parseServiceInfo(dirName: string, filePath: string, content: string): MCPServiceInfo | null {
+  private parseServiceInfo(
+    dirName: string,
+    filePath: string,
+    content: string
+  ): MCPServiceInfo | null {
     const isBuilder = content.includes('createMCPServer');
     const pattern: 'builder' | 'plain-object' = isBuilder ? 'builder' : 'plain-object';
     const nameMatch = content.match(/name:\s*['"]([^'"]+)['"]/);

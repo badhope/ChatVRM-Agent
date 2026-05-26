@@ -5,11 +5,7 @@
  */
 
 // ==================== Types ====================
-export type {
-  SeverityLevel,
-  DetectionPattern,
-  PatternCategory,
-} from './types.js';
+export type { SeverityLevel, DetectionPattern, PatternCategory } from './types.js';
 
 // ==================== Patterns ====================
 export {
@@ -51,7 +47,4 @@ export {
 } from './context.js';
 
 // ==================== Detector ====================
-export {
-  TrustDetector,
-  detectIssues,
-} from './detector.js';
+export { TrustDetector, detectIssues } from './detector.js';

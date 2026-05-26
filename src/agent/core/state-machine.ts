@@ -13,10 +13,7 @@ import { agentLogger } from '../../services/logger.js';
  * 定义从每个状态可以转换到哪些状态
  */
 const VALID_TRANSITIONS: Record<ExecutionPhase, ExecutionPhase[]> = {
-  [ExecutionPhase.INITIALIZING]: [
-    ExecutionPhase.UNDERSTANDING,
-    ExecutionPhase.FAILED,
-  ],
+  [ExecutionPhase.INITIALIZING]: [ExecutionPhase.UNDERSTANDING, ExecutionPhase.FAILED],
   [ExecutionPhase.UNDERSTANDING]: [
     ExecutionPhase.PLANNING,
     ExecutionPhase.FAILED,
@@ -122,8 +119,9 @@ export class AgentStateMachine {
     if (!validTargets.includes(targetPhase)) {
       return {
         allowed: false,
-        reason: `Invalid transition from ${this.currentPhase} to ${targetPhase}. ` +
-                `Valid targets: ${validTargets.join(', ')}`,
+        reason:
+          `Invalid transition from ${this.currentPhase} to ${targetPhase}. ` +
+          `Valid targets: ${validTargets.join(', ')}`,
       };
     }
 
@@ -151,10 +149,7 @@ export class AgentStateMachine {
     this.phaseStartTime = Date.now();
     this.recordPhaseEntry();
 
-    agentLogger.warn(
-      { taskId: this.taskId, phase },
-      `State forcefully set to ${phase}`
-    );
+    agentLogger.warn({ taskId: this.taskId, phase }, `State forcefully set to ${phase}`);
   }
 
   /**
@@ -178,11 +173,9 @@ export class AgentStateMachine {
    * 检查当前是否处于终止状态
    */
   isInTerminalState(): boolean {
-    return [
-      ExecutionPhase.COMPLETED,
-      ExecutionPhase.FAILED,
-      ExecutionPhase.TIMEOUT,
-    ].includes(this.currentPhase);
+    return [ExecutionPhase.COMPLETED, ExecutionPhase.FAILED, ExecutionPhase.TIMEOUT].includes(
+      this.currentPhase
+    );
   }
 
   /**

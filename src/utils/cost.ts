@@ -3,10 +3,7 @@ import type { TokenUsage, CostInfo, ModelInfo } from '../types.js';
 /**
  * 计算 token 使用成本
  */
-export function calculateCost(
-  usage: TokenUsage,
-  model: ModelInfo | undefined
-): CostInfo {
+export function calculateCost(usage: TokenUsage, model: ModelInfo | undefined): CostInfo {
   if (!model) {
     return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
   }
@@ -18,6 +15,6 @@ export function calculateCost(
     inputCost,
     outputCost,
     totalCost: inputCost + outputCost,
-    currency: model.pricing.currency
+    currency: model.pricing.currency,
   };
 }

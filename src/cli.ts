@@ -40,10 +40,13 @@ import { SHUTDOWN_DELAY_MS } from './constants/index.js';
 
 // 全局状态追踪
 let currentSessionId: string | null = null;
-let currentMessages: Array<{role: string; content: string}> = [];
+let currentMessages: Array<{ role: string; content: string }> = [];
 
 // 供 chat-start.ts 调用以追踪当前对话
-export function setCurrentSession(sessionId: string, messages: Array<{role: string; content: string}>) {
+export function setCurrentSession(
+  sessionId: string,
+  messages: Array<{ role: string; content: string }>
+) {
   currentSessionId = sessionId;
   currentMessages = messages;
 }
@@ -51,36 +54,43 @@ export function setCurrentSession(sessionId: string, messages: Array<{role: stri
 // 注册全局清理处理器
 const cleanup = async () => {
   console.log('\n正在保存状态...');
-  
+
   try {
     // 1. 停止所有自动同步
     syncManager.stopAutoSync();
-    
+
     // 2. 保存当前对话（如果有）
     if (currentSessionId && currentMessages.length > 0) {
       const sessionFile = path.join(DEVFLOW_DIR, 'sessions', `${currentSessionId}.json`);
       await fs.mkdir(path.dirname(sessionFile), { recursive: true });
-      await fs.writeFile(sessionFile, JSON.stringify({
-        id: currentSessionId,
-        messages: currentMessages,
-        savedAt: new Date().toISOString(),
-        interrupted: true
-      }, null, 2));
+      await fs.writeFile(
+        sessionFile,
+        JSON.stringify(
+          {
+            id: currentSessionId,
+            messages: currentMessages,
+            savedAt: new Date().toISOString(),
+            interrupted: true,
+          },
+          null,
+          2
+        )
+      );
       console.log('✓ 对话已保存');
     }
-    
+
     // 3. 保存决策历史
     await decisionReflector.save();
     console.log('✓ 决策历史已保存');
-    
+
     // 4. 执行最后一次同步（非阻塞，最多等待 3 秒）
     await Promise.race([
       syncManager.sync().catch((error) => {
         logger.debug({ error }, 'Final sync failed during shutdown');
       }),
-      new Promise(resolve => setTimeout(resolve, SHUTDOWN_DELAY_MS))
+      new Promise((resolve) => setTimeout(resolve, SHUTDOWN_DELAY_MS)),
     ]);
-    
+
     console.log('✓ 状态保存完成');
   } catch (error: unknown) {
     logger.error({ error: getErrorMessage(error) }, 'Error saving state');
@@ -96,14 +106,14 @@ const cleanupSync = () => {
 };
 
 process.on('exit', cleanupSync);
-process.on('SIGINT', async () => { 
-  await cleanup(); 
+process.on('SIGINT', async () => {
+  await cleanup();
   console.log('\n再见！');
-  process.exit(0); 
+  process.exit(0);
 });
-process.on('SIGTERM', async () => { 
-  await cleanup(); 
-  process.exit(0); 
+process.on('SIGTERM', async () => {
+  await cleanup();
+  process.exit(0);
 });
 
 const program = new Command();
@@ -141,7 +151,7 @@ program
     await askQuestion(question, {
       model: options.model,
       provider: options.provider,
-      stream: options.stream
+      stream: options.stream,
     });
   });
 
@@ -178,24 +188,27 @@ if (process.argv.length === 2) {
       logger.debug('Configuration initialized successfully');
 
       // 首次运行检测和引导
-      const hasApiKey = configManager.getProviderConfig('openai')?.apiKey
-        || configManager.getProviderConfig('anthropic')?.apiKey
-        || process.env.OPENAI_API_KEY
-        || process.env.ANTHROPIC_API_KEY;
+      const hasApiKey =
+        configManager.getProviderConfig('openai')?.apiKey ||
+        configManager.getProviderConfig('anthropic')?.apiKey ||
+        process.env.OPENAI_API_KEY ||
+        process.env.ANTHROPIC_API_KEY;
 
       if (!hasApiKey) {
-      console.log();
-      printWarning('⚠️  检测到首次运行：尚未配置 API Key');
-      printInfo('Personal-Assistant Agent 需要 AI 提供商的 API Key 才能工作');
-      console.log();
-      console.log('  快速配置方式：');
-      console.log('    1. 运行 personal-assistant config set-provider --provider openai --api-key YOUR_KEY');
-      console.log('    2. 设置环境变量: export OPENAI_API_KEY=your_key');
-      console.log('    3. 在交互菜单中选择 "⚙️ 配置管理" → "设置AI提供商"');
-      console.log();
-      printInfo('支持 OpenAI、Anthropic、阿里云百炼 等提供商');
-      console.log();
-    }
+        console.log();
+        printWarning('⚠️  检测到首次运行：尚未配置 API Key');
+        printInfo('Personal-Assistant Agent 需要 AI 提供商的 API Key 才能工作');
+        console.log();
+        console.log('  快速配置方式：');
+        console.log(
+          '    1. 运行 personal-assistant config set-provider --provider openai --api-key YOUR_KEY'
+        );
+        console.log('    2. 设置环境变量: export OPENAI_API_KEY=your_key');
+        console.log('    3. 在交互菜单中选择 "⚙️ 配置管理" → "设置AI提供商"');
+        console.log();
+        printInfo('支持 OpenAI、Anthropic、阿里云百炼 等提供商');
+        console.log();
+      }
 
       // 运行启动健康检查（非阻塞，仅提示）
       try {

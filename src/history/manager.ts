@@ -85,15 +85,21 @@ export class HistoryManager {
     // 限制消息数量
     if (this.currentSession.messages.length > this.config.maxMessagesPerSession) {
       // 保留系统消息和最近的消息
-      const systemMessages = this.currentSession.messages.filter(m => m.role === 'system');
-      const recentMessages = this.currentSession.messages.slice(-this.config.maxMessagesPerSession + systemMessages.length);
+      const systemMessages = this.currentSession.messages.filter((m) => m.role === 'system');
+      const recentMessages = this.currentSession.messages.slice(
+        -this.config.maxMessagesPerSession + systemMessages.length
+      );
       this.currentSession.messages = [...systemMessages, ...recentMessages];
     }
 
     this.currentSession.updatedAt = Date.now();
 
     // 自动生成标题
-    if (this.config.autoTitle && this.currentSession.title === '新会话' && message.role === 'user') {
+    if (
+      this.config.autoTitle &&
+      this.currentSession.title === '新会话' &&
+      message.role === 'user'
+    ) {
       this.currentSession.title = this.generateTitle(message.content);
     }
 
@@ -135,7 +141,7 @@ export class HistoryManager {
   // 获取当前会话的消息（用于API调用）
   getMessagesForApi(): Array<{ role: string; content: string }> {
     if (!this.currentSession) return [];
-    return this.currentSession.messages.map(m => ({
+    return this.currentSession.messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));

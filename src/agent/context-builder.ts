@@ -12,7 +12,7 @@
 
 import { generateRepoMap } from '../parser/repo-map.js';
 import { buildCodeIndex, searchIndex } from '../analysis/code-indexer.js';
-import { KnowledgeGraph } from '../memory/knowledgeGraph.js';
+import { KnowledgeGraph } from '../memory/knowledge-graph.js';
 import { memoryManager } from '../memory/manager.js';
 import type { CodeIndex, IndexEntry } from '../analysis/indexer/types.js';
 import type { MemoryRecord } from '../memory/memory-types.js';
@@ -100,7 +100,9 @@ export class ContextBuilder {
           repoMapIncluded = true;
         } else if (repoMapResult.length > 0) {
           // Truncate if too large
-          parts.push(`## Codebase Structure (Repo Map)\n\`\`\`\n${repoMapResult.slice(0, budgetForRepoMap * 4)}\n\`\`\``);
+          parts.push(
+            `## Codebase Structure (Repo Map)\n\`\`\`\n${repoMapResult.slice(0, budgetForRepoMap * 4)}\n\`\`\``
+          );
           repoMapIncluded = true;
         }
       }
@@ -120,7 +122,9 @@ export class ContextBuilder {
           codeSearchIncluded = true;
         } else {
           // Truncate
-          parts.push(`## Relevant Code (Search: "${options.query}")\n${codeSection.slice(0, budgetForCode * 4)}`);
+          parts.push(
+            `## Relevant Code (Search: "${options.query}")\n${codeSection.slice(0, budgetForCode * 4)}`
+          );
           codeSearchIncluded = true;
         }
       }
@@ -139,7 +143,9 @@ export class ContextBuilder {
           parts.push(`## Prior Context (Knowledge Graph)\n${knowledgeSection}`);
           knowledgeIncluded = true;
         } else {
-          parts.push(`## Prior Context (Knowledge Graph)\n${knowledgeSection.slice(0, budgetForKnowledge * 4)}`);
+          parts.push(
+            `## Prior Context (Knowledge Graph)\n${knowledgeSection.slice(0, budgetForKnowledge * 4)}`
+          );
           knowledgeIncluded = true;
         }
       }
@@ -230,14 +236,14 @@ export class ContextBuilder {
 
       // Score entities by relevance to query
       const scored = entities
-        .map(entity => ({
+        .map((entity) => ({
           id: entity.id,
           type: entity.type,
           label: entity.label,
           relevance: this.calculateRelevance(entity.label, query),
           snippet: entity.attributes?.description || entity.attributes?.summary,
         }))
-        .filter(e => e.relevance > 0)
+        .filter((e) => e.relevance > 0)
         .sort((a, b) => b.relevance - a.relevance)
         .slice(0, 5);
 
@@ -342,7 +348,9 @@ export class ContextBuilder {
     for (const record of results) {
       const interaction = record.interaction;
       const date = new Date(interaction.timestamp).toLocaleDateString('zh-CN');
-      lines.push(`- **${date}**: ${interaction.input.slice(0, 80)}${interaction.input.length > 80 ? '...' : ''}`);
+      lines.push(
+        `- **${date}**: ${interaction.input.slice(0, 80)}${interaction.input.length > 80 ? '...' : ''}`
+      );
     }
 
     return lines.join('\n') || 'No relevant memory found.';

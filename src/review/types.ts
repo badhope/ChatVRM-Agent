@@ -66,4 +66,4 @@ export const SUPPORTED_LANGUAGES = [
   'markdown',
 ] as const;
 
-export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];

@@ -4,8 +4,7 @@ import { toolRegistry } from '../../tools/registry.js';
 import { printHeader, printSection, printSuccess, printError, printInfo } from '../../ui/logo.js';
 import { MAX_OUTPUT_DISPLAY_CHARS } from '../../constants/index.js';
 
-export const toolsExecCommand = new Command('exec')
-  .description('工具执行（列表/运行/管道）');
+export const toolsExecCommand = new Command('exec').description('工具执行（列表/运行/管道）');
 
 // 列出所有可用工具
 toolsExecCommand
@@ -19,9 +18,9 @@ toolsExecCommand
     for (const [name, tool] of toolRegistry.toolsMap) {
       console.log(`  ${chalk.bold.cyan(name)}`);
       console.log(`    ${chalk.gray(tool.description)}`);
-      const params = tool.parameters.map(p =>
-        `${chalk.yellow(p.name)}${p.required ? '*' : ''}: ${p.type}`
-      ).join(', ');
+      const params = tool.parameters
+        .map((p) => `${chalk.yellow(p.name)}${p.required ? '*' : ''}: ${p.type}`)
+        .join(', ');
       console.log(`    参数: ${params}`);
       console.log();
     }
@@ -29,8 +28,12 @@ toolsExecCommand
     printInfo('独立使用示例:');
     console.log(chalk.gray('  personal-assistant tools shell "ls -la"'));
     console.log(chalk.gray('  personal-assistant tools run read_file path=./src/index.ts'));
-    console.log(chalk.gray('  personal-assistant tools run search_files pattern="TODO" path=./src'));
-    console.log(chalk.gray('  echo "hello" | personal-assistant tools run write_file path=output.txt'));
+    console.log(
+      chalk.gray('  personal-assistant tools run search_files pattern="TODO" path=./src')
+    );
+    console.log(
+      chalk.gray('  echo "hello" | personal-assistant tools run write_file path=output.txt')
+    );
     console.log();
   });
 
@@ -45,35 +48,40 @@ toolsExecCommand
   .option('--timeout <ms>', '超时时间(ms)', '30000')
   .option('-s, --silent', '静默模式，只输出结果', false)
   .option('-j, --json', 'JSON 格式输出', false)
-  .action(async (command: string, options: { cwd?: string; timeout: string; silent: boolean; json: boolean }) => {
-    if (!options.silent) {
-      printHeader();
-      printSection(`Shell: ${command}`);
-    }
-
-    const shellArgs: Record<string, string> = { command };
-    if (options.cwd) shellArgs.cwd = options.cwd;
-    shellArgs.timeout = options.timeout;
-
-    const result = await toolRegistry.execute('shell', shellArgs);
-
-    if (options.json) {
-      console.log(JSON.stringify(result, null, 2));
-      return;
-    }
-
-    if (result.success) {
-      if (!options.silent) printSuccess('执行成功');
-      if (result.output.trim()) {
-        console.log(options.silent ? result.output : chalk.white('\n' + result.output));
+  .action(
+    async (
+      command: string,
+      options: { cwd?: string; timeout: string; silent: boolean; json: boolean }
+    ) => {
+      if (!options.silent) {
+        printHeader();
+        printSection(`Shell: ${command}`);
       }
-    } else {
-      if (!options.silent) printError('执行失败');
-      if (result.output) console.log(chalk.white(result.output));
-      if (result.error) console.log(chalk.red(result.error));
-      process.exitCode = 1;
+
+      const shellArgs: Record<string, string> = { command };
+      if (options.cwd) shellArgs.cwd = options.cwd;
+      shellArgs.timeout = options.timeout;
+
+      const result = await toolRegistry.execute('shell', shellArgs);
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      if (result.success) {
+        if (!options.silent) printSuccess('执行成功');
+        if (result.output.trim()) {
+          console.log(options.silent ? result.output : chalk.white('\n' + result.output));
+        }
+      } else {
+        if (!options.silent) printError('执行失败');
+        if (result.output) console.log(chalk.white(result.output));
+        if (result.error) console.log(chalk.red(result.error));
+        process.exitCode = 1;
+      }
     }
-  });
+  );
 
 // 执行工具（增强版）
 toolsExecCommand
@@ -164,7 +172,10 @@ toolsExecCommand
   .option('-j, --json', 'JSON 格式输出', false)
   .action(async (chain: string, options: { input?: string; json: boolean }) => {
     // 解析管道链: tool1(key=val) | tool2(key=val)
-    const steps = chain.split('|').map(s => s.trim()).filter(Boolean);
+    const steps = chain
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     if (steps.length === 0) {
       printError('请提供至少一个工具步骤');
@@ -195,7 +206,7 @@ toolsExecCommand
       const parsedArgs: Record<string, string> = {};
       if (argsStr.trim()) {
         for (const pair of argsStr.split(',')) {
-          const [key, ...valueParts] = pair.split('=').map(s => s.trim());
+          const [key, ...valueParts] = pair.split('=').map((s) => s.trim());
           if (key) {
             parsedArgs[key] = valueParts.join('=').replace(/^["']|["']$/g, '');
           }
@@ -243,9 +254,15 @@ function readStdin(): Promise<string> {
     if (!process.stdin.isTTY) {
       let data = '';
       process.stdin.setEncoding('utf-8');
-      process.stdin.on('data', (chunk) => { data += chunk; });
-      process.stdin.on('end', () => { resolve(data); });
-      process.stdin.on('error', () => { resolve(''); });
+      process.stdin.on('data', (chunk) => {
+        data += chunk;
+      });
+      process.stdin.on('end', () => {
+        resolve(data);
+      });
+      process.stdin.on('error', () => {
+        resolve('');
+      });
     } else {
       resolve('');
     }

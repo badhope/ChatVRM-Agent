@@ -2,15 +2,21 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { GitManager, AutoCommitEngine, DirtyProtect, CheckpointManager } from '../git/index.js';
 import type { GitCheckpoint } from '../git/types.js';
-import { printHeader, printSection, printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  printWarning,
+} from '../ui/logo.js';
 import { printTable, printBadge } from '../ui/display.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 
 /**
  * Git 命令 - Git 深度集成
  */
-export const gitCommand = new Command('git')
-  .description('Git 深度集成管理');
+export const gitCommand = new Command('git').description('Git 深度集成管理');
 
 // ─── git status ───────────────────────────────────────────
 gitCommand
@@ -37,24 +43,35 @@ gitCommand
 
     if (status.staged.length > 0) {
       printWarning(`暂存区 (${status.staged.length} 个文件):`);
-      status.staged.forEach(f => {
-        const icon = f.status === 'added' ? chalk.green('A') : f.status === 'deleted' ? chalk.red('D') : chalk.yellow('M');
+      status.staged.forEach((f) => {
+        const icon =
+          f.status === 'added'
+            ? chalk.green('A')
+            : f.status === 'deleted'
+              ? chalk.red('D')
+              : chalk.yellow('M');
         printInfo(`  ${icon} ${f.file} (+${f.additions} -${f.deletions})`);
       });
     }
 
     if (status.unstaged.length > 0) {
       printWarning(`未暂存 (${status.unstaged.length} 个文件):`);
-      status.unstaged.forEach(f => {
-        const icon = f.status === 'added' ? chalk.green('A') : f.status === 'deleted' ? chalk.red('D') : chalk.yellow('M');
+      status.unstaged.forEach((f) => {
+        const icon =
+          f.status === 'added'
+            ? chalk.green('A')
+            : f.status === 'deleted'
+              ? chalk.red('D')
+              : chalk.yellow('M');
         printInfo(`  ${icon} ${f.file} (+${f.additions} -${f.deletions})`);
       });
     }
 
     if (status.untracked.length > 0) {
       printInfo(`未跟踪 (${status.untracked.length} 个文件):`);
-      status.untracked.slice(0, 10).forEach(f => printInfo(`  ${chalk.gray('?')} ${f}`));
-      if (status.untracked.length > 10) printInfo(`  ... 还有 ${status.untracked.length - 10} 个文件`);
+      status.untracked.slice(0, 10).forEach((f) => printInfo(`  ${chalk.gray('?')} ${f}`));
+      if (status.untracked.length > 10)
+        printInfo(`  ... 还有 ${status.untracked.length - 10} 个文件`);
     }
 
     if (status.isClean) {
@@ -92,7 +109,7 @@ gitCommand
     printTable({
       title: '',
       head: ['Hash', 'Author', 'Date', 'Message', 'Type'],
-      rows: commits.map(c => [
+      rows: commits.map((c) => [
         c.isAider ? chalk.cyan(c.shortHash) : c.shortHash,
         c.isAider ? chalk.dim(c.author) : c.author,
         chalk.dim(new Date(c.date).toLocaleString('zh-CN')),
@@ -127,10 +144,17 @@ gitCommand
       return;
     }
 
-    printSection(`变更概览: ${chalk.green(`+${diff.totalAdditions}`)} ${chalk.red(`-${diff.totalDeletions}`)} (${diff.files.length} 个文件)`);
+    printSection(
+      `变更概览: ${chalk.green(`+${diff.totalAdditions}`)} ${chalk.red(`-${diff.totalDeletions}`)} (${diff.files.length} 个文件)`
+    );
 
-    diff.files.forEach(f => {
-      const icon = f.status === 'added' ? chalk.green('A') : f.status === 'deleted' ? chalk.red('D') : chalk.yellow('M');
+    diff.files.forEach((f) => {
+      const icon =
+        f.status === 'added'
+          ? chalk.green('A')
+          : f.status === 'deleted'
+            ? chalk.red('D')
+            : chalk.yellow('M');
       printInfo(`  ${icon} ${f.file} (+${f.additions} -${f.deletions})`);
     });
 
@@ -187,8 +211,7 @@ gitCommand
   });
 
 // ─── git checkpoint ───────────────────────────────────────
-const checkpointCmd = new Command('checkpoint')
-  .description('检查点管理');
+const checkpointCmd = new Command('checkpoint').description('检查点管理');
 
 checkpointCmd
   .command('create')
@@ -227,7 +250,7 @@ checkpointCmd
     printTable({
       title: '',
       head: ['ID', 'Branch', 'Commit', 'Created', 'Description'],
-      rows: checkpoints.map(c => [
+      rows: checkpoints.map((c) => [
         chalk.cyan(c.id),
         c.branch,
         c.commitHash.substring(0, 7),
@@ -331,7 +354,9 @@ gitCommand
     const currentConfig = engine.getConfig();
     printInfo(`自动提交: ${currentConfig.enabled ? chalk.green('启用') : chalk.red('禁用')}`);
     printInfo(`提交前缀: ${chalk.cyan(currentConfig.commitPrefix)}`);
-    printInfo(`AI 作者: ${chalk.dim(`${currentConfig.authorName} <${currentConfig.authorEmail}>`)}`);
+    printInfo(
+      `AI 作者: ${chalk.dim(`${currentConfig.authorName} <${currentConfig.authorEmail}>`)}`
+    );
   });
 
 // ─── git push ─────────────────────────────────────────────
@@ -378,7 +403,7 @@ gitCommand
     }
 
     try {
-      const prTitle = title || await git.getCurrentBranch();
+      const prTitle = title || (await git.getCurrentBranch());
       printInfo(`正在创建 PR: ${chalk.cyan(prTitle)}`);
       const result = await git.createPR(prTitle, options.body, options.base);
       printSuccess(`PR 创建成功: ${result}`);

@@ -52,7 +52,14 @@ export interface SearchOptions {
 
 /** Symbol kinds to index */
 export const INDEXABLE_KINDS = new Set<SymbolKind>([
-  'function', 'class', 'interface', 'type', 'enum', 'method', 'module', 'namespace',
+  'function',
+  'class',
+  'interface',
+  'type',
+  'enum',
+  'method',
+  'module',
+  'namespace',
 ]);
 
 /** Internal index data structure */

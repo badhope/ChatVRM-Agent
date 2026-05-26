@@ -66,7 +66,7 @@ export class MemoryReflector {
     }
 
     // 生成新洞察
-    const memories = records.map(r => ({
+    const memories = records.map((r) => ({
       id: r.id,
       input: r.input,
       output: r.output,
@@ -78,9 +78,8 @@ export class MemoryReflector {
 
     // 去重：与已有洞察比较，相似内容不重复添加
     for (const insight of newInsights) {
-      const isDuplicate = this.insights.some(existing =>
-        existing.type === insight.type &&
-        existing.content === insight.content
+      const isDuplicate = this.insights.some(
+        (existing) => existing.type === insight.type && existing.content === insight.content
       );
       if (!isDuplicate) {
         this.insights.push(insight);
@@ -90,7 +89,7 @@ export class MemoryReflector {
     // 更新访问计数
     for (const insight of this.insights) {
       for (const newInsight of newInsights) {
-        if (newInsight.sourceIds.some(id => insight.sourceIds.includes(id))) {
+        if (newInsight.sourceIds.some((id) => insight.sourceIds.includes(id))) {
           insight.accessCount++;
           insight.accessedAt = Date.now();
         }
@@ -126,7 +125,7 @@ export class MemoryReflector {
    */
   getInsights(type?: string): MemoryInsight[] {
     if (!type) return this.insights;
-    return this.insights.filter(i => i.type === type);
+    return this.insights.filter((i) => i.type === type);
   }
 
   /**
@@ -138,11 +137,11 @@ export class MemoryReflector {
 
     // 按类型优先级排序：fact > preference > pattern > summary
     const priority = { fact: 0, preference: 1, pattern: 2, summary: 3 };
-    const sorted = [...this.insights].sort((a, b) =>
-      (priority[a.type] || 9) - (priority[b.type] || 9)
+    const sorted = [...this.insights].sort(
+      (a, b) => (priority[a.type] || 9) - (priority[b.type] || 9)
     );
 
-    const lines = sorted.slice(0, 10).map(i => i.content);
+    const lines = sorted.slice(0, 10).map((i) => i.content);
     return lines.join('\n');
   }
 

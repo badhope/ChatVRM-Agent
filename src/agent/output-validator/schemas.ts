@@ -14,10 +14,9 @@ import { z } from 'zod';
  * JSON 输出验证模式
  * 支持任意 JSON 结构
  */
-export const JsonSchema = z.unknown().refine(
-  (val) => val !== undefined,
-  { message: 'JSON 解析结果不能为 undefined' }
-);
+export const JsonSchema = z
+  .unknown()
+  .refine((val) => val !== undefined, { message: 'JSON 解析结果不能为 undefined' });
 
 /**
  * 代码块验证模式
@@ -89,9 +88,7 @@ export interface OutputSchema {
 /**
  * 构建 JSON 对象验证模式
  */
-export function buildJsonObjectSchema<T extends z.ZodRawShape>(
-  shape: T
-): z.ZodObject<T> {
+export function buildJsonObjectSchema<T extends z.ZodRawShape>(shape: T): z.ZodObject<T> {
   return z.object(shape);
 }
 
@@ -169,7 +166,7 @@ export const DEFAULT_SCHEMAS: Record<string, OutputSchema> = {
     required: ['问题', '原因', '修复'],
     maxLength: 5000,
   },
-  'fullstack': {
+  fullstack: {
     type: 'code',
     patterns: [/function|class|const|let|var|import|export/],
     forbidden: [/eval\s*\(/, /Function\s*\(/],
@@ -180,17 +177,17 @@ export const DEFAULT_SCHEMAS: Record<string, OutputSchema> = {
     required: ['审查', '建议'],
     maxLength: 5000,
   },
-  'refactor': {
+  refactor: {
     type: 'code',
     patterns: [/function|class/],
     maxLength: 10000,
   },
-  'security': {
+  security: {
     type: 'markdown',
     required: ['漏洞', '风险', '建议'],
     maxLength: 5000,
   },
-  'testing': {
+  testing: {
     type: 'code',
     patterns: [/describe|it\(|test\(|expect/],
     maxLength: 8000,

@@ -47,7 +47,7 @@ export class HistoryStorage {
   async listSessions(): Promise<SessionSummary[]> {
     try {
       const files = await fs.readdir(this.historyDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter((f) => f.endsWith('.json'));
 
       // 并发读取所有文件
       const results = await Promise.all(
@@ -94,9 +94,12 @@ export class HistoryStorage {
   }
 
   private generatePreview(session: Session): string {
-    const firstUserMessage = session.messages.find(m => m.role === 'user');
+    const firstUserMessage = session.messages.find((m) => m.role === 'user');
     if (firstUserMessage) {
-      return firstUserMessage.content.slice(0, 100) + (firstUserMessage.content.length > 100 ? '...' : '');
+      return (
+        firstUserMessage.content.slice(0, 100) +
+        (firstUserMessage.content.length > 100 ? '...' : '')
+      );
     }
     return '无预览';
   }

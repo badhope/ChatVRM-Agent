@@ -17,7 +17,11 @@ const logger = createLogger('ai-review');
  * @param categories 审查类别
  * @returns AI检测到的问题列表
  */
-export async function aiReview(content: string, filePath: string, categories: string[]): Promise<ReviewIssue[]> {
+export async function aiReview(
+  content: string,
+  filePath: string,
+  categories: string[]
+): Promise<ReviewIssue[]> {
   await configManager.init();
 
   const defaultProvider = configManager.getDefaultProvider();
@@ -40,13 +44,15 @@ export async function aiReview(content: string, filePath: string, categories: st
     security: '安全审计：注入攻击、XSS、CSRF、敏感信息泄露、权限问题',
   };
 
-  const selectedCategories = categories.length > 0 ? categories : ['quality', 'bugs', 'performance', 'security'];
-  const reviewFocus = selectedCategories.map(c => categoryPrompts[c] || c).join('、');
+  const selectedCategories =
+    categories.length > 0 ? categories : ['quality', 'bugs', 'performance', 'security'];
+  const reviewFocus = selectedCategories.map((c) => categoryPrompts[c] || c).join('、');
 
   const maxCodeLength = 8000;
-  const codeForReview = content.length > maxCodeLength
-    ? content.slice(0, maxCodeLength) + '\n\n// ... (代码过长，已截断)'
-    : content;
+  const codeForReview =
+    content.length > maxCodeLength
+      ? content.slice(0, maxCodeLength) + '\n\n// ... (代码过长，已截断)'
+      : content;
 
   const ext = path.extname(filePath).slice(1);
 
@@ -86,20 +92,27 @@ ${codeForReview}
       const jsonMatch = response.content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const issues = JSON.parse(jsonMatch[0]) as ReviewIssue[];
-        return issues.map(issue => ({
+        return issues.map((issue) => ({
           ...issue,
-          severity: ['error', 'warning', 'info'].includes(issue.severity) ? issue.severity : 'info' as const,
-          category: ['quality', 'bugs', 'performance', 'security'].includes(issue.category) ? issue.category : 'quality' as const,
+          severity: ['error', 'warning', 'info'].includes(issue.severity)
+            ? issue.severity
+            : ('info' as const),
+          category: ['quality', 'bugs', 'performance', 'security'].includes(issue.category)
+            ? issue.category
+            : ('quality' as const),
         }));
       }
       return [];
     } catch (error) {
       if (attempt === MAX_RETRIES - 1) {
-        logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'AI review failed after retries');
+        logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          'AI review failed after retries'
+        );
         return [];
       }
       // 指数退避等待
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
     }
   }
 

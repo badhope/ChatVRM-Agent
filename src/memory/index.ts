@@ -9,15 +9,10 @@ export type { ConsolidationConfig, ConsolidationResult } from './manager.js';
 
 // 导出 GraphWrapper（基于 graphlib 的图包装器）
 export { GraphWrapper } from './graph-wrapper.js';
-export type {
-  NodeAttributes,
-  EdgeAttributes,
-  Edge,
-  DijkstraResult,
-} from './graph-wrapper.js';
+export type { NodeAttributes, EdgeAttributes, Edge, DijkstraResult } from './graph-wrapper.js';
 
 // 导出知识图谱
-export { KnowledgeGraph, knowledgeGraph } from './knowledgeGraph.js';
+export { KnowledgeGraph, knowledgeGraph } from './knowledge-graph.js';
 export type {
   EntityType,
   RelationshipType,
@@ -27,10 +22,10 @@ export type {
   KnowledgeGraphStats,
   KnowledgeGraphData,
   MemoryEntry,
-} from './knowledgeGraph.js';
+} from './knowledge-graph.js';
 
 // 导出记忆图谱
-export { MemoryGraph, memoryGraph } from './memoryGraph.js';
+export { MemoryGraph, memoryGraph } from './memory-graph.js';
 export type {
   NodeType,
   EdgeType,
@@ -40,7 +35,7 @@ export type {
   SearchResult,
   GraphStats,
   ContextResult,
-} from './memoryGraph.js';
+} from './memory-graph.js';
 
 // 导出图谱类型
 export type {
@@ -49,18 +44,10 @@ export type {
 } from './graph-types.js';
 
 // 导出图谱工具函数
-export {
-  generateId,
-  tokenize,
-  computeRelevance,
-  isExpired,
-} from './graph-utils.js';
+export { generateId, tokenize, computeRelevance, isExpired } from './graph-utils.js';
 
 // Re-export 知识图谱子模块
-export {
-  ENTITY_TYPES,
-  RELATIONSHIP_TYPES,
-} from './knowledge-graph/index.js';
+export { ENTITY_TYPES, RELATIONSHIP_TYPES } from './knowledge-graph/index.js';
 export {
   TECH_KEYWORDS,
   classifyEntityType,
@@ -68,7 +55,4 @@ export {
   extractEntities,
   extractRelationships,
 } from './knowledge-graph/index.js';
-export {
-  findPath,
-  findAllConnected,
-} from './knowledge-graph/index.js';
+export { findPath, findAllConnected } from './knowledge-graph/index.js';

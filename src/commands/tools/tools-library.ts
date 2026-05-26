@@ -4,11 +4,18 @@ import fs from 'fs/promises';
 import path from 'path';
 import { toolLibrary, type ToolMetadata } from '../../tools/library.js';
 import { configManager } from '../../config/manager.js';
-import { printHeader, printSection, printSuccess, printError, printWarning } from '../../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printWarning,
+} from '../../ui/logo.js';
 import { TOOLS_DIR } from '../../utils/index.js';
 
-export const toolsLibraryCommand = new Command('library')
-  .description('工具库管理（安装/卸载/搜索）');
+export const toolsLibraryCommand = new Command('library').description(
+  '工具库管理（安装/卸载/搜索）'
+);
 
 // 查看可用工具库
 toolsLibraryCommand
@@ -49,17 +56,17 @@ toolsLibraryCommand
 
       for (const tool of tools) {
         const icons: Record<string, string> = {
-          'development': '🔧',
-          'devops': '🚀',
-          'security': '🔒',
-          'data': '💾',
-          'ai': '🤖',
-          'web': '🌐',
-          'productivity': '⚡',
-          'analysis': '📊',
-          'utilities': '🛠️',
-          'design': '🎨',
-          'other': '📦'
+          development: '🔧',
+          devops: '🚀',
+          security: '🔒',
+          data: '💾',
+          ai: '🤖',
+          web: '🌐',
+          productivity: '⚡',
+          analysis: '📊',
+          utilities: '🛠️',
+          design: '🎨',
+          other: '📦',
         };
         const icon = icons[tool.category] || '📦';
 
@@ -292,7 +299,9 @@ toolsLibraryCommand
     }
 
     if (options.json) {
-      console.log(JSON.stringify({ installed: installedTools, count: installedTools.length }, null, 2));
+      console.log(
+        JSON.stringify({ installed: installedTools, count: installedTools.length }, null, 2)
+      );
       return;
     }
 

@@ -102,8 +102,8 @@ export async function architectAnalyze(
   ];
 
   const response = await callLLM(messages, {
-    temperature: 0.2,  // 低温度保证稳定输出
-    maxTokens: 4096,   // 方案可能较长
+    temperature: 0.2, // 低温度保证稳定输出
+    maxTokens: 4096, // 方案可能较长
     ...config,
   });
 
@@ -136,15 +136,15 @@ function parseArchitectResponse(response: string): ArchitectResult {
     if (modifyMatch) {
       result.filesToModify = modifyMatch[1]
         .split(/[,，、\n]/)
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0);
     }
     const createMatch = filesSection[0].match(/需要新建[:：]\s*(.+?)(?:\n|$)/);
     if (createMatch) {
       result.filesToCreate = createMatch[1]
         .split(/[,，、\n]/)
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0);
     }
   }
 
@@ -153,9 +153,9 @@ function parseArchitectResponse(response: string): ArchitectResult {
   if (riskSection) {
     result.risks = riskSection[1]
       .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
-      .map(line => line.replace(/^[-•]\s*/, '').trim())
-      .filter(r => r.length > 0);
+      .filter((line) => line.trim().startsWith('-') || line.trim().startsWith('•'))
+      .map((line) => line.replace(/^[-•]\s*/, '').trim())
+      .filter((r) => r.length > 0);
   }
 
   // 提取复杂度

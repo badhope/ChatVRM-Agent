@@ -1,5 +1,12 @@
 import { BaseProvider } from '../base.js';
-import type { ChatParams, ChatResponse, StreamChunk, ProviderConfig, Message, TextContent } from '../types.js';
+import type {
+  ChatParams,
+  ChatResponse,
+  StreamChunk,
+  ProviderConfig,
+  Message,
+  TextContent,
+} from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
 import { formatBytes } from '../utils/format.js';
 import { CONNECTION_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../constants/index.js';
@@ -79,7 +86,7 @@ export class OllamaProvider extends BaseProvider {
     const model = params.model || this.getDefaultModel();
 
     // 转换消息格式为Ollama格式
-    const messages = params.messages.map(msg => ({
+    const messages = params.messages.map((msg) => ({
       role: msg.role,
       content: this.convertContent(msg.content),
     }));
@@ -138,7 +145,7 @@ export class OllamaProvider extends BaseProvider {
   async *stream(params: ChatParams): AsyncGenerator<StreamChunk> {
     const model = params.model || this.getDefaultModel();
 
-    const messages = params.messages.map(msg => ({
+    const messages = params.messages.map((msg) => ({
       role: msg.role,
       content: this.convertContent(msg.content),
     }));
@@ -206,8 +213,11 @@ export class OllamaProvider extends BaseProvider {
 
             // Parse usage info from the final done chunk
             if (data.done) {
-              const promptTokens = (data as OllamaChatStreamResponse & { prompt_eval_count?: number }).prompt_eval_count || 0;
-              const completionTokens = (data as OllamaChatStreamResponse & { eval_count?: number }).eval_count || 0;
+              const promptTokens =
+                (data as OllamaChatStreamResponse & { prompt_eval_count?: number })
+                  .prompt_eval_count || 0;
+              const completionTokens =
+                (data as OllamaChatStreamResponse & { eval_count?: number }).eval_count || 0;
               if (promptTokens > 0 || completionTokens > 0) {
                 yield {
                   content: '',
@@ -216,7 +226,7 @@ export class OllamaProvider extends BaseProvider {
                     promptTokens,
                     completionTokens,
                     totalTokens: promptTokens + completionTokens,
-                  }
+                  },
                 };
               }
             }
@@ -254,10 +264,10 @@ export class OllamaProvider extends BaseProvider {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) return [];
-      const data = await response.json() as OllamaTagsResponse;
+      const data = (await response.json()) as OllamaTagsResponse;
       // Ollama 返回 { models: [{ name: "llama3:latest", model: "llama3:latest", ... }] }
       const models = data.models || [];
-      return models.map(m => m.model || m.name).sort();
+      return models.map((m) => m.model || m.name).sort();
     } catch {
       return [];
     }
@@ -271,7 +281,7 @@ export class OllamaProvider extends BaseProvider {
       // Extract text parts, ignore images for now (Ollama has limited multimodal support)
       return content
         .filter((p): p is TextContent => typeof p !== 'string' && p.type === 'text')
-        .map(p => p.text)
+        .map((p) => p.text)
         .join('\n');
     }
     return String(content);
@@ -289,9 +299,9 @@ export class OllamaProvider extends BaseProvider {
         return [];
       }
 
-      const data = await response.json() as OllamaListResponse;
+      const data = (await response.json()) as OllamaListResponse;
 
-      return data.models.map(model => ({
+      return data.models.map((model) => ({
         id: model.model,
         name: model.name,
         size: formatBytes(model.size),

@@ -77,7 +77,7 @@ interface EdgeAttrs {
  */
 export class MemoryGraph {
   private graph: GraphWrapper;
-  private nodes: Record<string, MemoryNode> = {};  // 用于快速查找
+  private nodes: Record<string, MemoryNode> = {}; // 用于快速查找
   private initialized = false;
   private initLock = new AsyncLock();
   private saveLock = new AsyncLock();
@@ -174,7 +174,7 @@ export class MemoryGraph {
     content: string,
     tags?: string[],
     importance?: number,
-    expiresAt?: string,
+    expiresAt?: string
   ): Promise<MemoryNode> {
     return this.stateLock.acquire(async () => {
       await this.init();
@@ -237,7 +237,7 @@ export class MemoryGraph {
     fromId: string,
     toId: string,
     type: EdgeType = 'related_to',
-    strength?: number,
+    strength?: number
   ): Promise<MemoryEdge | null> {
     return this.stateLock.acquire(async () => {
       await this.init();
@@ -356,7 +356,7 @@ export class MemoryGraph {
         return { nodes: [], edges: [], query };
       }
 
-      const seedNodeIds = new Set(searchResults.map(r => r.node.id));
+      const seedNodeIds = new Set(searchResults.map((r) => r.node.id));
       const allNodeIds = new Set<string>(seedNodeIds);
 
       for (const seedId of seedNodeIds) {
@@ -369,11 +369,11 @@ export class MemoryGraph {
       }
 
       const subEdges = this.getAllEdgesFromGraph().filter(
-        e => allNodeIds.has(e.from) && allNodeIds.has(e.to),
+        (e) => allNodeIds.has(e.from) && allNodeIds.has(e.to)
       );
 
       const subNodes = Array.from(allNodeIds)
-        .map(id => this.nodes[id])
+        .map((id) => this.nodes[id])
         .filter((n): n is MemoryNode => !!n && !isExpired(n));
 
       return { nodes: subNodes, edges: subEdges, query };
@@ -463,9 +463,8 @@ export class MemoryGraph {
         totalEdges: this.graph.edgeCount(),
         nodesByType,
         edgesByType,
-        averageImportance: totalNodes > 0
-          ? Math.round((totalImportance / totalNodes) * 100) / 100
-          : 0,
+        averageImportance:
+          totalNodes > 0 ? Math.round((totalImportance / totalNodes) * 100) / 100 : 0,
         expiredNodes,
         storagePath: GRAPH_FILE,
       };
@@ -480,9 +479,9 @@ export class MemoryGraph {
       await this.init();
       let nodes = Object.values(this.nodes);
       if (type) {
-        nodes = nodes.filter(n => n.type === type);
+        nodes = nodes.filter((n) => n.type === type);
       }
-      return nodes.filter(n => !isExpired(n));
+      return nodes.filter((n) => !isExpired(n));
     });
   }
 
@@ -494,7 +493,7 @@ export class MemoryGraph {
       await this.init();
       let edges = this.getAllEdgesFromGraph();
       if (type) {
-        edges = edges.filter(e => e.type === type);
+        edges = edges.filter((e) => e.type === type);
       }
       return edges;
     });

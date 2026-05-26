@@ -12,7 +12,9 @@ import { getErrorMessage } from '../../utils/error-handling.js';
  */
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 export type JsonPrimitive = string | number | boolean | null;
-export interface JsonObject { [key: string]: JsonValue }
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
 export interface JsonArray extends Array<JsonValue> {}
 
 // ==================== 辅助函数 ====================
@@ -29,21 +31,36 @@ function validateUrl(url: string): void {
   const hostname = parsed.hostname.toLowerCase();
 
   // 阻止 localhost 和回环地址
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') {
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0'
+  ) {
     throw new Error('Access denied: cannot access localhost or loopback addresses');
   }
 
   // 阻止 IPv4 私有地址段
-  if (hostname.startsWith('10.') ||
-      hostname.startsWith('172.16.') || hostname.startsWith('172.17.') ||
-      hostname.startsWith('172.18.') || hostname.startsWith('172.19.') ||
-      hostname.startsWith('172.20.') || hostname.startsWith('172.21.') ||
-      hostname.startsWith('172.22.') || hostname.startsWith('172.23.') ||
-      hostname.startsWith('172.24.') || hostname.startsWith('172.25.') ||
-      hostname.startsWith('172.26.') || hostname.startsWith('172.27.') ||
-      hostname.startsWith('172.28.') || hostname.startsWith('172.29.') ||
-      hostname.startsWith('172.30.') || hostname.startsWith('172.31.') ||
-      hostname.startsWith('192.168.')) {
+  if (
+    hostname.startsWith('10.') ||
+    hostname.startsWith('172.16.') ||
+    hostname.startsWith('172.17.') ||
+    hostname.startsWith('172.18.') ||
+    hostname.startsWith('172.19.') ||
+    hostname.startsWith('172.20.') ||
+    hostname.startsWith('172.21.') ||
+    hostname.startsWith('172.22.') ||
+    hostname.startsWith('172.23.') ||
+    hostname.startsWith('172.24.') ||
+    hostname.startsWith('172.25.') ||
+    hostname.startsWith('172.26.') ||
+    hostname.startsWith('172.27.') ||
+    hostname.startsWith('172.28.') ||
+    hostname.startsWith('172.29.') ||
+    hostname.startsWith('172.30.') ||
+    hostname.startsWith('172.31.') ||
+    hostname.startsWith('192.168.')
+  ) {
     throw new Error('Access denied: cannot access private IP ranges');
   }
 
@@ -53,15 +70,21 @@ function validateUrl(url: string): void {
   }
 
   // 阻止 IPv6 私有地址
-  if (hostname.startsWith('fc00:') || hostname.startsWith('fd') ||
-      hostname.startsWith('fe80:') || hostname === '::1') {
+  if (
+    hostname.startsWith('fc00:') ||
+    hostname.startsWith('fd') ||
+    hostname.startsWith('fe80:') ||
+    hostname === '::1'
+  ) {
     throw new Error('Access denied: cannot access IPv6 private or link-local addresses');
   }
 
   // 阻止 AWS/GCP/Azure 元数据端点
-  if (hostname === '169.254.169.254' ||
-      hostname === 'metadata.google.internal' ||
-      hostname.includes('.internal.')) {
+  if (
+    hostname === '169.254.169.254' ||
+    hostname === 'metadata.google.internal' ||
+    hostname.includes('.internal.')
+  ) {
     throw new Error('Access denied: cannot access cloud metadata endpoints');
   }
 }
@@ -83,7 +106,10 @@ function extractHtmlContent(html: string, url: string): string {
   text = text.replace(/<!--[\s\S]*?-->/g, '');
 
   // 将常见块级标签转换为换行
-  text = text.replace(/<\/?(p|div|br|h[1-6]|li|tr|blockquote|pre|section|article|header|footer|nav|main)[^>]*>/gi, '\n');
+  text = text.replace(
+    /<\/?(p|div|br|h[1-6]|li|tr|blockquote|pre|section|article|header|footer|nav|main)[^>]*>/gi,
+    '\n'
+  );
 
   // 将行内标签移除
   text = text.replace(/<[^>]+>/g, '');
@@ -122,7 +148,12 @@ export const httpTool: ToolDefinition = {
   description: '发送 HTTP 请求',
   parameters: [
     { name: 'url', type: 'string', description: '请求 URL', required: true },
-    { name: 'method', type: 'string', description: 'HTTP 方法 (GET/POST/PUT/DELETE)', required: false },
+    {
+      name: 'method',
+      type: 'string',
+      description: 'HTTP 方法 (GET/POST/PUT/DELETE)',
+      required: false,
+    },
     { name: 'body', type: 'string', description: '请求体 (JSON)', required: false },
     { name: 'headers', type: 'string', description: '请求头 (JSON)', required: false },
     { name: 'timeout', type: 'number', description: '超时时间(ms)', required: false },
@@ -190,8 +221,18 @@ export const jsonTool: ToolDefinition = {
   description: 'JSON 处理（格式化/查询/转换）',
   parameters: [
     { name: 'input', type: 'string', description: 'JSON 字符串或文件路径', required: true },
-    { name: 'query', type: 'string', description: 'JSONPath 查询（如 .name, .items[0].id）', required: false },
-    { name: 'action', type: 'string', description: '操作: format/query/keys/values/count', required: false },
+    {
+      name: 'query',
+      type: 'string',
+      description: 'JSONPath 查询（如 .name, .items[0].id）',
+      required: false,
+    },
+    {
+      name: 'action',
+      type: 'string',
+      description: '操作: format/query/keys/values/count',
+      required: false,
+    },
   ],
   execute: async (args) => {
     try {
@@ -201,7 +242,7 @@ export const jsonTool: ToolDefinition = {
       // 如果是文件路径，先验证再读取
       if (!jsonStr.startsWith('{') && !jsonStr.startsWith('[') && !jsonStr.startsWith('"')) {
         try {
-          const safePath = validatePath(jsonStr);  // 验证路径安全
+          const safePath = validatePath(jsonStr); // 验证路径安全
           const stat = await fs.stat(safePath);
           if (stat.isFile()) {
             // 验证文件大小
@@ -211,8 +252,8 @@ export const jsonTool: ToolDefinition = {
             jsonStr = await fs.readFile(safePath, 'utf-8');
           }
         } catch (error) {
-        // Not a valid file path, treat as string
-      }
+          // Not a valid file path, treat as string
+        }
       }
 
       const obj = JSON.parse(jsonStr);
@@ -223,14 +264,20 @@ export const jsonTool: ToolDefinition = {
         case 'keys':
           return { success: true, output: Object.keys(obj).join('\n') };
         case 'values':
-          return { success: true, output: Object.values(obj).map(v => String(v)).join('\n') };
+          return {
+            success: true,
+            output: Object.values(obj)
+              .map((v) => String(v))
+              .join('\n'),
+          };
         case 'count':
           if (Array.isArray(obj)) {
             return { success: true, output: `数组长度: ${obj.length}` };
           }
           return { success: true, output: `对象属性数: ${Object.keys(obj).length}` };
         case 'query': {
-          if (!args.query) return { success: false, output: '', error: '查询模式需要 --query 参数' };
+          if (!args.query)
+            return { success: false, output: '', error: '查询模式需要 --query 参数' };
           const parts = args.query.replace(/^\./, '').split('.');
           let result: JsonValue = obj;
           for (const part of parts) {
@@ -244,7 +291,10 @@ export const jsonTool: ToolDefinition = {
             }
             if (result === undefined) break;
           }
-          return { success: true, output: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result) };
+          return {
+            success: true,
+            output: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
+          };
         }
         default:
           return { success: true, output: JSON.stringify(obj, null, 2) };
@@ -262,8 +312,18 @@ export const textTool: ToolDefinition = {
   description: '文本处理（统计/替换/提取/排序/去重）',
   parameters: [
     { name: 'input', type: 'string', description: '输入文本', required: true },
-    { name: 'action', type: 'string', description: '操作: count/replace/extract/sort/unique/upper/lower/reverse/lines', required: false },
-    { name: 'pattern', type: 'string', description: '匹配模式（用于 replace/extract）', required: false },
+    {
+      name: 'action',
+      type: 'string',
+      description: '操作: count/replace/extract/sort/unique/upper/lower/reverse/lines',
+      required: false,
+    },
+    {
+      name: 'pattern',
+      type: 'string',
+      description: '匹配模式（用于 replace/extract）',
+      required: false,
+    },
     { name: 'replacement', type: 'string', description: '替换文本', required: false },
   ],
   execute: async (args) => {
@@ -277,14 +337,25 @@ export const textTool: ToolDefinition = {
           const lines = input.split('\n').length;
           const words = input.split(/\s+/).filter(Boolean).length;
           const bytes = Buffer.byteLength(input, 'utf-8');
-          return { success: true, output: `字符: ${chars}\n行数: ${lines}\n词数: ${words}\n字节: ${bytes}` };
+          return {
+            success: true,
+            output: `字符: ${chars}\n行数: ${lines}\n词数: ${words}\n字节: ${bytes}`,
+          };
         }
         case 'replace':
-          if (!args.pattern) return { success: false, output: '', error: 'replace 需要 --pattern 参数' };
-          return { success: true, output: input.replace(new RegExp(args.pattern, 'g'), args.replacement || '') };
+          if (!args.pattern)
+            return { success: false, output: '', error: 'replace 需要 --pattern 参数' };
+          return {
+            success: true,
+            output: input.replace(new RegExp(args.pattern, 'g'), args.replacement || ''),
+          };
         case 'extract':
-          if (!args.pattern) return { success: false, output: '', error: 'extract 需要 --pattern 参数' };
-          return { success: true, output: [...input.matchAll(new RegExp(args.pattern, 'g'))].map(m => m[0]).join('\n') };
+          if (!args.pattern)
+            return { success: false, output: '', error: 'extract 需要 --pattern 参数' };
+          return {
+            success: true,
+            output: [...input.matchAll(new RegExp(args.pattern, 'g'))].map((m) => m[0]).join('\n'),
+          };
         case 'sort':
           return { success: true, output: input.split('\n').sort().join('\n') };
         case 'unique':
@@ -296,7 +367,13 @@ export const textTool: ToolDefinition = {
         case 'reverse':
           return { success: true, output: input.split('\n').reverse().join('\n') };
         case 'lines':
-          return { success: true, output: input.split('\n').map((line, i) => `${String(i + 1).padStart(4)} | ${line}`).join('\n') };
+          return {
+            success: true,
+            output: input
+              .split('\n')
+              .map((line, i) => `${String(i + 1).padStart(4)} | ${line}`)
+              .join('\n'),
+          };
         default:
           return { success: true, output: input };
       }
@@ -313,7 +390,12 @@ export const hashTool: ToolDefinition = {
   description: '计算文件或文本的哈希值',
   parameters: [
     { name: 'input', type: 'string', description: '文件路径或文本内容', required: true },
-    { name: 'algorithm', type: 'string', description: '哈希算法 (md5/sha1/sha256/sha512)', required: false },
+    {
+      name: 'algorithm',
+      type: 'string',
+      description: '哈希算法 (md5/sha1/sha256/sha512)',
+      required: false,
+    },
   ],
   execute: async (args) => {
     try {

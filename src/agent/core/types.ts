@@ -13,7 +13,7 @@ import type { DecisionReflector } from '../decision-reflector.js';
 import type { ExperienceStore } from '../experience-store.js';
 import type { PersonalityManager } from '../personality.js';
 import type { EmotionalStateManager } from '../emotional-state.js';
-import type { KnowledgeGraph } from '../../memory/knowledgeGraph.js';
+import type { KnowledgeGraph } from '../../memory/knowledge-graph.js';
 import type { DirtyProtect, AutoCommitEngine } from '../../git/index.js';
 import type { KnowledgeEntry } from '../context-builder.js';
 import type { CodeIndex } from '../../analysis/indexer/types.js';

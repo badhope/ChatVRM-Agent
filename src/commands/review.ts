@@ -1,11 +1,17 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { analyzeCode, CodeAnalyzer } from '../review/analyzer.js';
-import { printHeader, printSection, printSuccess, printError, printInfo, printWarning, createSpinner } from '../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  printWarning,
+  createSpinner,
+} from '../ui/logo.js';
 
-const reviewCommand = new Command('review')
-  .alias('r')
-  .description('代码审查');
+const reviewCommand = new Command('review').alias('r').description('代码审查');
 
 // 审查文件
 reviewCommand
@@ -13,13 +19,19 @@ reviewCommand
   .alias('f')
   .description('审查单个文件')
   .argument('<filePath>', '文件路径')
-  .option('-c, --category <categories>', '审查类别 (quality,bugs,performance,security)', 'quality,bugs,performance,security')
+  .option(
+    '-c, --category <categories>',
+    '审查类别 (quality,bugs,performance,security)',
+    'quality,bugs,performance,security'
+  )
   .option('--no-ai', '不使用AI深度审查，仅规则检测')
   .action(async (filePath: string, options: { category: string; ai: boolean }) => {
     printHeader();
     printSection(`审查文件: ${filePath}`);
 
-    const categories = options.category.split(',') as Array<'quality' | 'bugs' | 'performance' | 'security'>;
+    const categories = options.category.split(',') as Array<
+      'quality' | 'bugs' | 'performance' | 'security'
+    >;
 
     const spinner = createSpinner('正在审查代码...');
 
@@ -47,14 +59,20 @@ reviewCommand
     printHeader();
     printSection(`审查目录: ${dirPath}`);
 
-    const categories = options.category.split(',') as Array<'quality' | 'bugs' | 'performance' | 'security'>;
+    const categories = options.category.split(',') as Array<
+      'quality' | 'bugs' | 'performance' | 'security'
+    >;
     const ignorePatterns = options.ignore.split(',');
 
     const spinner = createSpinner('正在扫描目录...');
 
     try {
       const analyzer = new CodeAnalyzer();
-      const results = await analyzer.analyzeDirectory(dirPath, { categories, ignorePatterns, useAi: options.ai });
+      const results = await analyzer.analyzeDirectory(dirPath, {
+        categories,
+        ignorePatterns,
+        useAi: options.ai,
+      });
 
       if (spinner) spinner.stop();
 
@@ -87,7 +105,12 @@ reviewCommand
         console.log(chalk.gray(`  ${'─'.repeat(result.filePath.length + 4)}`));
 
         for (const issue of result.issues.slice(0, 5)) {
-          const icon = issue.severity === 'error' ? chalk.red('✗') : issue.severity === 'warning' ? chalk.yellow('⚠') : chalk.blue('ℹ');
+          const icon =
+            issue.severity === 'error'
+              ? chalk.red('✗')
+              : issue.severity === 'warning'
+                ? chalk.yellow('⚠')
+                : chalk.blue('ℹ');
           const lineInfo = issue.line ? `:${issue.line}` : '';
           console.log(`  ${icon} [${issue.ruleId}] ${issue.message}${lineInfo}`);
           if (issue.suggestion) {
@@ -133,11 +156,18 @@ function printReviewResult(result: import('../review/types.js').ReviewResult): v
     console.log(chalk.bold('\n  📋 问题列表:\n'));
 
     for (const issue of issues) {
-      const icon = issue.severity === 'error' ? chalk.red('✗') : issue.severity === 'warning' ? chalk.yellow('⚠') : chalk.blue('ℹ');
+      const icon =
+        issue.severity === 'error'
+          ? chalk.red('✗')
+          : issue.severity === 'warning'
+            ? chalk.yellow('⚠')
+            : chalk.blue('ℹ');
       const categoryLabel = getCategoryLabel(issue.category);
       const lineInfo = issue.line ? chalk.gray(` (行 ${issue.line})`) : '';
 
-      console.log(`  ${icon} [${chalk.bold(issue.ruleId)}] [${categoryLabel}] ${issue.message}${lineInfo}`);
+      console.log(
+        `  ${icon} [${chalk.bold(issue.ruleId)}] [${categoryLabel}] ${issue.message}${lineInfo}`
+      );
       if (issue.suggestion) {
         console.log(`    ${chalk.green('→')} ${issue.suggestion}`);
       }

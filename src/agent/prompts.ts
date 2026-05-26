@@ -11,7 +11,8 @@ import { formatGoalsForSystemPrompt } from './startup-suggestions.js';
  * 可用工具列表
  * 用于安全边界提示中声明允许使用的工具
  */
-export const AVAILABLE_TOOLS_LIST = 'read_file, write_file, search_files, list_dir, file_tree, file_info, delete_file, shell, sysinfo, http, json, text, hash, browse';
+export const AVAILABLE_TOOLS_LIST =
+  'read_file, write_file, search_files, list_dir, file_tree, file_info, delete_file, shell, sysinfo, http, json, text, hash, browse';
 
 /**
  * 思考要求 - 附加到所有 system prompt 的通用 CoT 指令
@@ -46,7 +47,7 @@ export const SYSTEM_PROMPTS: Record<string, string> = {
 - 用中文回答，结构化输出你的分析结果
 ${THINKING_INSTRUCTIONS}`,
 
-  'fullstack': `你是一个全栈开发工程师。你的任务是：
+  fullstack: `你是一个全栈开发工程师。你的任务是：
 - 根据需求设计和生成高质量的代码
 - 考虑前端和后端的协调配合
 - 遵循最佳实践和设计模式
@@ -62,7 +63,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，结构化输出审查意见
 ${THINKING_INSTRUCTIONS}`,
 
-  'refactor': `你是一个代码重构专家。你的任务是：
+  refactor: `你是一个代码重构专家。你的任务是：
 - 识别代码中的"坏味道"（code smells）
 - 提出合理的重构方案，遵循 SOLID 原则
 - 确保重构不改变外部行为
@@ -70,7 +71,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，详细说明每个重构步骤的理由
 ${THINKING_INSTRUCTIONS}`,
 
-  'security': `你是一个安全审计专家。你的任务是：
+  security: `你是一个安全审计专家。你的任务是：
 - 全面扫描代码中的安全漏洞
 - 检查常见安全问题：注入攻击、XSS、CSRF、认证授权缺陷等
 - 评估依赖项的已知漏洞
@@ -78,7 +79,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，按严重程度分级输出安全问题
 ${THINKING_INSTRUCTIONS}`,
 
-  'testing': `你是一个测试工程师。你的任务是：
+  testing: `你是一个测试工程师。你的任务是：
 - 分析代码并设计全面的测试用例
 - 覆盖正常流程、边界情况和异常情况
 - 生成可运行的测试代码
@@ -86,7 +87,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，确保测试用例清晰可执行
 ${THINKING_INSTRUCTIONS}`,
 
-  'devops': `你是一个 DevOps 工程师。你的任务是：
+  devops: `你是一个 DevOps 工程师。你的任务是：
 - 分析部署和运维相关的需求
 - 提供容器化、CI/CD、监控等方案
 - 编写部署脚本和配置文件
@@ -94,7 +95,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，提供完整的运维方案
 ${THINKING_INSTRUCTIONS}`,
 
-  'database': `你是一个数据库专家。你的任务是：
+  database: `你是一个数据库专家。你的任务是：
 - 设计和优化数据库 schema
 - 编写高效的 SQL 查询
 - 分析查询性能并给出优化建议
@@ -102,7 +103,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，提供详细的数据库方案
 ${THINKING_INSTRUCTIONS}`,
 
-  'documentation': `你是一个技术文档专家。你的任务是：
+  documentation: `你是一个技术文档专家。你的任务是：
 - 编写清晰、准确、完整的技术文档
 - 组织文档结构，确保逻辑清晰
 - 生成 API 文档、使用指南、架构说明等
@@ -110,7 +111,7 @@ ${THINKING_INSTRUCTIONS}`,
 - 用中文回答，输出格式规范的文档内容
 ${THINKING_INSTRUCTIONS}`,
 
-  'default': `你是一个 AI 开发助手。你的任务是：
+  default: `你是一个 AI 开发助手。你的任务是：
 - 理解用户的需求并提供准确的回答
 - 在需要时生成代码、分析问题或提供建议
 - 确保回答清晰、结构化、有实用价值

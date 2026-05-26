@@ -110,12 +110,14 @@ export async function checkAndRequestPermission(
   console.log();
 
   try {
-    const { confirmed } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'confirmed',
-      message: `确认执行此操作? (需要提升权限)`,
-      default: false,
-    }]);
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: `确认执行此操作? (需要提升权限)`,
+        default: false,
+      },
+    ]);
 
     if (confirmed) {
       console.log(chalk.green('  ✓ 用户已确认'));
@@ -142,9 +144,7 @@ export async function showPermissionDeniedError(
   console.log(chalk.red('✗ 权限不足'));
   console.log();
 
-  const details = [
-    { key: '操作', value: action },
-  ];
+  const details = [{ key: '操作', value: action }];
 
   if (target) {
     details.push({ key: '目标', value: target });

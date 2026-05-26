@@ -29,7 +29,7 @@ const DEFAULT_ESLINT_CONFIG: ESLint.ConfigData = {
     'no-new-func': 'error',
 
     // Bug 预防
-    'eqeqeq': ['warn', 'always'],
+    eqeqeq: ['warn', 'always'],
     'no-catch-shadow': 'warn',
     'no-promise-executor-return': 'error',
     'no-unsafe-optional-chaining': 'error',
@@ -61,7 +61,7 @@ const RULE_CATEGORIES: Record<string, 'security' | 'bugs' | 'performance' | 'qua
   'no-script-url': 'security',
 
   // Bug
-  'eqeqeq': 'bugs',
+  eqeqeq: 'bugs',
   'no-catch-shadow': 'bugs',
   'no-promise-executor-return': 'bugs',
   'no-unsafe-optional-chaining': 'bugs',
@@ -180,14 +180,16 @@ export class ReviewRulesEngine {
       return issues;
     } catch (error) {
       // ESLint 分析失败时，返回一个错误提示
-      return [{
-        ruleId: 'ESLINT_ERROR',
-        message: `ESLint 分析失败: ${error instanceof Error ? error.message : String(error)}`,
-        severity: 'warning',
-        category: 'quality',
-        line: 1,
-        suggestion: '请检查 ESLint 配置或文件语法',
-      }];
+      return [
+        {
+          ruleId: 'ESLINT_ERROR',
+          message: `ESLint 分析失败: ${error instanceof Error ? error.message : String(error)}`,
+          severity: 'warning',
+          category: 'quality',
+          line: 1,
+          suggestion: '请检查 ESLint 配置或文件语法',
+        },
+      ];
     }
   }
 
@@ -195,7 +197,13 @@ export class ReviewRulesEngine {
    * 将 ESLint 消息转换为 ReviewIssue
    */
   private convertToReviewIssue(
-    message: { ruleId: string | null; severity: number; message: string; line?: number; column?: number },
+    message: {
+      ruleId: string | null;
+      severity: number;
+      message: string;
+      line?: number;
+      column?: number;
+    },
     filePath: string
   ): ReviewIssue {
     const ruleId = message.ruleId || 'unknown';
@@ -221,7 +229,7 @@ export class ReviewRulesEngine {
       'no-eval': '避免使用 eval()，考虑使用 JSON.parse 或其他安全替代方案',
       'no-implied-eval': '避免使用隐式 eval，如 setTimeout 传入字符串',
       'no-new-func': '避免使用 Function 构造函数',
-      'eqeqeq': '使用 === 和 !== 进行严格相等比较',
+      eqeqeq: '使用 === 和 !== 进行严格相等比较',
       'no-unused-vars': '删除未使用的变量，或在其名称前加下划线前缀',
       'prefer-const': '对于不会被重新赋值的变量，使用 const 声明',
       'no-var': '使用 let 或 const 替代 var',
@@ -279,7 +287,10 @@ export class ReviewRulesEngine {
       const lineNum = i + 1;
 
       // === 安全审计 ===
-      if (/password\s*[:=]\s*['"][^'"]{3,}/i.test(line) || /api[_-]?key\s*[:=]\s*['"][^'"]{3,}/i.test(line)) {
+      if (
+        /password\s*[:=]\s*['"][^'"]{3,}/i.test(line) ||
+        /api[_-]?key\s*[:=]\s*['"][^'"]{3,}/i.test(line)
+      ) {
         issues.push({
           ruleId: 'SEC001',
           message: '检测到硬编码的敏感信息（密码或API密钥）',
@@ -291,7 +302,10 @@ export class ReviewRulesEngine {
         });
       }
 
-      if (/\+\s*['"`].*SELECT|INSERT|UPDATE|DELETE|DROP/i.test(line) && !/prepared|parameterized|escape/i.test(line)) {
+      if (
+        /\+\s*['"`].*SELECT|INSERT|UPDATE|DELETE|DROP/i.test(line) &&
+        !/prepared|parameterized|escape/i.test(line)
+      ) {
         issues.push({
           ruleId: 'SEC002',
           message: '潜在的SQL注入风险：字符串拼接SQL语句',
@@ -316,7 +330,11 @@ export class ReviewRulesEngine {
       }
 
       // === Bug检测 ===
-      if ((ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.tsx') && /[^=!]==[^=]/.test(line) && !/===/.test(line)) {
+      if (
+        (ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.tsx') &&
+        /[^=!]==[^=]/.test(line) &&
+        !/===/.test(line)
+      ) {
         issues.push({
           ruleId: 'BUG001',
           message: '使用==可能导致类型转换问题，建议使用===',

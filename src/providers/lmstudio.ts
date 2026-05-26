@@ -54,9 +54,9 @@ export class LMStudioProvider extends OpenAIProvider {
         return [];
       }
 
-      const data = await response.json() as LMStudioListResponse;
+      const data = (await response.json()) as LMStudioListResponse;
 
-      return data.data.map(model => ({
+      return data.data.map((model) => ({
         id: model.id,
         name: model.id,
         owned_by: model.owned_by,

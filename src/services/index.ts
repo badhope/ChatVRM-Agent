@@ -24,7 +24,12 @@ export { logger, type Logger, type LogContext } from './logger.js';
 export { BaseService, type ServiceContext } from './base.js';
 
 // 导出 Chat 服务
-export { ChatService, type ChatMessage, type ChatOptions, type ChatResult } from './chat-service.js';
+export {
+  ChatService,
+  type ChatMessage,
+  type ChatOptions,
+  type ChatResult,
+} from './chat-service.js';
 
 // 导出 Agent 服务
 export { AgentService, type AgentTask, type AgentTaskResult } from './agent-service.js';

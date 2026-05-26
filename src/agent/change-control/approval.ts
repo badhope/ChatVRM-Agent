@@ -12,11 +12,7 @@ import inquirer from 'inquirer';
 import type { ChangeRecord, ApprovalResult } from './types.js';
 import type { RiskAssessmentResult } from './types.js';
 
-import {
-  RiskLevel,
-  RISK_LEVEL_STYLE,
-  RISK_LEVEL_LABEL,
-} from '../risk-rules.js';
+import { RiskLevel, RISK_LEVEL_STYLE, RISK_LEVEL_LABEL } from '../risk-rules.js';
 
 // ==================== 格式化函数 ====================
 
@@ -47,7 +43,7 @@ export function formatRiskSummary(
   lines.push(chalk.cyan('  操作目标: ') + chalk.white(target));
   lines.push(
     chalk.cyan('  风险等级: ') +
-    RISK_LEVEL_STYLE[assessment.risk](`[${RISK_LEVEL_LABEL[assessment.risk]}]`)
+      RISK_LEVEL_STYLE[assessment.risk](`[${RISK_LEVEL_LABEL[assessment.risk]}]`)
   );
   lines.push(chalk.cyan('  风险原因: ') + chalk.white(assessment.reason));
   lines.push(chalk.cyan('  匹配规则: ') + chalk.white(assessment.rules.join('、')));
@@ -95,12 +91,14 @@ export async function requestApproval(
 
   // 使用 inquirer 请求用户确认
   try {
-    const { confirmed } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'confirmed',
-      message: '是否批准执行以上操作？',
-      default: false,
-    }]);
+    const { confirmed } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: '是否批准执行以上操作？',
+        default: false,
+      },
+    ]);
 
     if (confirmed) {
       console.log(chalk.green('  操作已批准，继续执行。'));

@@ -87,7 +87,7 @@ describe('MemoryConsolidator', () => {
       consolidator.reinforceMemory(memory);
 
       expect(memory.stability).toBeCloseTo(10.5, 1); // 7 * 1.5
-      expect(memory.importance).toBeCloseTo(0.4, 1);  // 0.3 + 0.1
+      expect(memory.importance).toBeCloseTo(0.4, 1); // 0.3 + 0.1
       expect(memory.accessCount).toBe(3);
     });
 
@@ -151,8 +151,12 @@ describe('MemoryConsolidator', () => {
       const addedSummaries: string[] = [];
 
       const mockManager = {
-        removeMemory: async (id: string) => { removedIds.push(id); },
-        addSummary: async (summary: string) => { addedSummaries.push(summary); },
+        removeMemory: async (id: string) => {
+          removedIds.push(id);
+        },
+        addSummary: async (summary: string) => {
+          addedSummaries.push(summary);
+        },
       };
 
       // 创建两个共享相同 id 前缀（前8字符）的低重要性记忆
@@ -162,7 +166,13 @@ describe('MemoryConsolidator', () => {
         createMemory({ id: `${prefix}-b2`, importance: 0.2 }),
       ];
 
-      const result = await consolidator.consolidate(memories, mockManager as { removeMemory: (id: string) => Promise<void>; addSummary: (summary: string, sourceIds: string[]) => Promise<void> });
+      const result = await consolidator.consolidate(
+        memories,
+        mockManager as {
+          removeMemory: (id: string) => Promise<void>;
+          addSummary: (summary: string, sourceIds: string[]) => Promise<void>;
+        }
+      );
 
       expect(result.memoriesConsolidated).toBe(2);
       expect(result.memoriesRemoved).toBe(2);
@@ -183,7 +193,13 @@ describe('MemoryConsolidator', () => {
         createMemory({ id: 'high2', importance: 0.9 }),
       ];
 
-      const result = await consolidator.consolidate(memories, mockManager as { removeMemory: (id: string) => Promise<void>; addSummary: (summary: string, sourceIds: string[]) => Promise<void> });
+      const result = await consolidator.consolidate(
+        memories,
+        mockManager as {
+          removeMemory: (id: string) => Promise<void>;
+          addSummary: (summary: string, sourceIds: string[]) => Promise<void>;
+        }
+      );
       expect(result.memoriesConsolidated).toBe(0);
     });
   });

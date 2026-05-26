@@ -12,10 +12,7 @@ import { locateEditTarget } from './edit-target.js';
 import type { EditTarget } from './edit-target.js';
 import { applyEdit, applyMultipleEdits, generateDiff } from './diff-generator.js';
 import type { EditOperation, DiffResult } from './diff-generator.js';
-import {
-  parseSearchReplaceBlocks,
-  type SearchReplaceBlock,
-} from './search-replace/parser.js';
+import { parseSearchReplaceBlocks, type SearchReplaceBlock } from './search-replace/parser.js';
 import { normalizeContent } from './search-replace/normalizer.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 
@@ -197,9 +194,7 @@ export async function executeMultipleSearchReplace(
   const fileGroups = new Map<string, SearchReplaceBlock[]>();
   for (const block of blocks) {
     const blockPath = block.filePath || '';
-    const resolvedPath = baseDir && blockPath
-      ? path.resolve(baseDir, blockPath)
-      : blockPath;
+    const resolvedPath = baseDir && blockPath ? path.resolve(baseDir, blockPath) : blockPath;
     const key = resolvedPath || '__default__';
 
     const groupBlocks = fileGroups.get(key);
@@ -272,8 +267,8 @@ export async function executeMultipleSearchReplace(
 
     try {
       const newContent = applyMultipleEdits(source, operations);
-      const diffs = operations.map(op => generateDiff(op));
-      const combinedDiff = diffs.map(d => d.unifiedDiff).join('\n');
+      const diffs = operations.map((op) => generateDiff(op));
+      const combinedDiff = diffs.map((d) => d.unifiedDiff).join('\n');
 
       // Write the new content
       await fs.writeFile(filePath, newContent, 'utf8');

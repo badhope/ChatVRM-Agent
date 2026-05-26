@@ -15,7 +15,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock tool registry for response-parser
 vi.mock('../tools/registry.js', () => ({
   toolRegistry: {
-    has: vi.fn((name: string) => ['read_file', 'write_file', 'run_command', 'search', 'test'].includes(name)),
+    has: vi.fn((name: string) =>
+      ['read_file', 'write_file', 'run_command', 'search', 'test'].includes(name)
+    ),
     keys: vi.fn(() => ['read_file', 'write_file', 'run_command', 'search', 'test']),
     toolsMap: {
       keys: vi.fn(() => ['read_file', 'write_file', 'run_command', 'search', 'test']),
@@ -60,7 +62,9 @@ vi.mock('./decision-reflector.js', () => ({
     save: vi.fn(() => Promise.resolve()),
     recordDecision: vi.fn(() => Promise.resolve('decision-id')),
     recordOutcome: vi.fn(() => Promise.resolve()),
-    reflectOnTask: vi.fn(() => Promise.resolve({ improvements: [], failures: [], successes: [], overallRating: 0.8 })),
+    reflectOnTask: vi.fn(() =>
+      Promise.resolve({ improvements: [], failures: [], successes: [], overallRating: 0.8 })
+    ),
     generateImprovementReport: vi.fn(() => Promise.resolve(null)),
     learnFromExperience: vi.fn(() => Promise.resolve([])),
     getDecisionsByTask: vi.fn(() => Promise.resolve([])),
@@ -69,7 +73,12 @@ vi.mock('./decision-reflector.js', () => ({
 
 vi.mock('./trust.js', () => ({
   detectIssues: vi.fn(() => []),
-  generateTrustReport: vi.fn(() => ({ requiresConfirmation: false, issues: [], summary: '', overallLevel: 'safe' })),
+  generateTrustReport: vi.fn(() => ({
+    requiresConfirmation: false,
+    issues: [],
+    summary: '',
+    overallLevel: 'safe',
+  })),
   askUserConfirmation: vi.fn(() => Promise.resolve(true)),
 }));
 
@@ -82,7 +91,14 @@ vi.mock('./context-manager.js', () => ({
 
 vi.mock('./context-builder.js', () => ({
   ContextBuilder: vi.fn().mockImplementation(() => ({
-    build: vi.fn(() => Promise.resolve({ context: '', repoMapIncluded: false, codeEntryCount: 0, knowledgeEntryCount: 0 })),
+    build: vi.fn(() =>
+      Promise.resolve({
+        context: '',
+        repoMapIncluded: false,
+        codeEntryCount: 0,
+        knowledgeEntryCount: 0,
+      })
+    ),
     queryKnowledgeGraph: vi.fn(() => Promise.resolve([])),
   })),
 }));
@@ -153,10 +169,12 @@ vi.mock('./intent-recognizer.js', () => ({
 }));
 
 vi.mock('./task-planner.js', () => ({
-  planTask: vi.fn(() => Promise.resolve([
-    { id: 1, description: '步骤1', status: 'pending' },
-    { id: 2, description: '步骤2', status: 'pending' },
-  ])),
+  planTask: vi.fn(() =>
+    Promise.resolve([
+      { id: 1, description: '步骤1', status: 'pending' },
+      { id: 2, description: '步骤2', status: 'pending' },
+    ])
+  ),
 }));
 
 vi.mock('./agent-utils.js', () => ({

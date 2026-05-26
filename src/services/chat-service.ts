@@ -78,15 +78,15 @@ export class ChatService extends BaseService {
         messages,
         model: options?.model || defaultModel || 'gpt-4',
         temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 4000
+        maxTokens: options?.maxTokens ?? 4000,
       });
 
       return {
         content: response.content,
         usage: {
           promptTokens: response.usage?.promptTokens ?? 0,
-          completionTokens: response.usage?.completionTokens ?? 0
-        }
+          completionTokens: response.usage?.completionTokens ?? 0,
+        },
       };
     });
   }
@@ -113,7 +113,7 @@ export class ChatService extends BaseService {
       messages,
       model: options?.model || defaultModel || 'gpt-4',
       temperature: options?.temperature ?? 0.7,
-      maxTokens: options?.maxTokens ?? 4000
+      maxTokens: options?.maxTokens ?? 4000,
     });
 
     for await (const chunk of stream) {
@@ -137,7 +137,18 @@ export class ChatService extends BaseService {
    * @returns 是否可用
    */
   isProviderAvailable(type: string): boolean {
-    const validProviders = ['openai', 'anthropic', 'google', 'siliconflow', 'aliyun', 'zhipu', 'baidu', 'deepseek', 'ollama', 'lmstudio'];
+    const validProviders = [
+      'openai',
+      'anthropic',
+      'google',
+      'siliconflow',
+      'aliyun',
+      'zhipu',
+      'baidu',
+      'deepseek',
+      'ollama',
+      'lmstudio',
+    ];
     if (!validProviders.includes(type)) return false;
     return this.providerFactory.isProviderAvailable(type as import('../types.js').ProviderType);
   }

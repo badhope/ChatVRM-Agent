@@ -9,7 +9,7 @@ export interface GitCommit {
   author: string;
   date: string;
   message: string;
-  isAider: boolean;  // 是否为 AI 生成
+  isAider: boolean; // 是否为 AI 生成
 }
 
 /** Git 文件变更 */
@@ -55,9 +55,9 @@ export interface AutoCommitConfig {
   enabled: boolean;
   authorName: string;
   authorEmail: string;
-  commitPrefix: string;       // 如 "feat:", "fix:"
-  includePattern?: RegExp;    // 只提交匹配的文件
-  excludePattern?: RegExp;    // 排除匹配的文件
+  commitPrefix: string; // 如 "feat:", "fix:"
+  includePattern?: RegExp; // 只提交匹配的文件
+  excludePattern?: RegExp; // 排除匹配的文件
 }
 
 /**

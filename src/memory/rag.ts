@@ -128,7 +128,7 @@ export class RAGModule {
       const response = await fetch(EMBEDDING_API_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -140,11 +140,14 @@ export class RAGModule {
       });
 
       if (!response.ok) {
-        logger.error({ status: response.status, statusText: response.statusText }, 'Embedding API request failed');
+        logger.error(
+          { status: response.status, statusText: response.statusText },
+          'Embedding API request failed'
+        );
         return null;
       }
 
-      const data = await response.json() as EmbeddingApiResponse;
+      const data = (await response.json()) as EmbeddingApiResponse;
 
       if (!data.data || data.data.length === 0) {
         logger.error('Embedding API returned empty data');
@@ -171,13 +174,13 @@ export class RAGModule {
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const batch = texts.slice(i, i + BATCH_SIZE);
-      const validTexts = batch.map(t => (t && t.trim()) ? t.trim() : '');
+      const validTexts = batch.map((t) => (t && t.trim() ? t.trim() : ''));
 
       try {
         const response = await fetch(EMBEDDING_API_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -189,14 +192,17 @@ export class RAGModule {
         });
 
         if (!response.ok) {
-          logger.error({ status: response.status, statusText: response.statusText }, 'Batch Embedding API request failed');
+          logger.error(
+            { status: response.status, statusText: response.statusText },
+            'Batch Embedding API request failed'
+          );
           continue;
         }
 
-        const data = await response.json() as EmbeddingApiResponse;
+        const data = (await response.json()) as EmbeddingApiResponse;
 
         if (data.data && data.data.length > 0) {
-          for (let j = 0; j < data.data.length && (i + j) < texts.length; j++) {
+          for (let j = 0; j < data.data.length && i + j < texts.length; j++) {
             results[i + j] = data.data[j].embedding;
           }
         }
@@ -256,7 +262,7 @@ export class RAGModule {
     await this.docLock.acquire(async () => {
       if (!items || items.length === 0) return;
 
-      const texts = items.map(item => item.text);
+      const texts = items.map((item) => item.text);
       const embeddings = await this.embedBatch(texts);
       const now = new Date().toISOString();
 
@@ -360,7 +366,7 @@ export class RAGModule {
   private searchWithMiniSearch(query: string, limit: number): SearchResult[] {
     try {
       const results = this.miniSearch.search(query, { prefix: true, fuzzy: 0.2 });
-      return results.slice(0, limit).map(result => {
+      return results.slice(0, limit).map((result) => {
         const doc = this.documents.get(result.id);
         return {
           id: result.id,
@@ -399,9 +405,7 @@ export class RAGModule {
       });
     }
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return scored.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 
   /**
@@ -417,7 +421,7 @@ export class RAGModule {
     resultsA: SearchResult[],
     resultsB: SearchResult[],
     topK: number,
-    k = 60,
+    k = 60
   ): SearchResult[] {
     const scoreMap = new Map<string, number>();
     const docMap = new Map<string, SearchResult>();

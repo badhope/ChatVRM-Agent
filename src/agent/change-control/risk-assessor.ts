@@ -8,10 +8,7 @@
 
 import chalk from 'chalk';
 
-import type {
-  ChangeRecord,
-  RiskAssessmentResult,
-} from './types.js';
+import type { ChangeRecord, RiskAssessmentResult } from './types.js';
 
 import type { ChangeAction } from '../risk-rules.js';
 import {
@@ -42,10 +39,7 @@ import {
  * // result.reason 包含 '删除文件' 和 '系统关键文件' 等原因
  * ```
  */
-export function assessFileRisk(
-  action: ChangeAction,
-  target: string
-): RiskAssessmentResult {
+export function assessFileRisk(action: ChangeAction, target: string): RiskAssessmentResult {
   const { risk, reason, rules } = assessRisk(action, target);
   return { risk, reason, rules };
 }
@@ -57,10 +51,7 @@ export function assessFileRisk(
  * @param threshold - 阈值风险等级
  * @returns 是否达到阈值
  */
-export function isRiskAtOrAbove(
-  risk: RiskLevel,
-  threshold: RiskLevel
-): boolean {
+export function isRiskAtOrAbove(risk: RiskLevel, threshold: RiskLevel): boolean {
   return RISK_LEVEL_WEIGHT[risk] >= RISK_LEVEL_WEIGHT[threshold];
 }
 
@@ -72,9 +63,7 @@ export function isRiskAtOrAbove(
  * @param risk - 风险等级
  * @returns chalk 颜色函数
  */
-export function getRiskStyle(
-  risk: RiskLevel
-): (text: string) => string {
+export function getRiskStyle(risk: RiskLevel): (text: string) => string {
   return RISK_LEVEL_STYLE[risk];
 }
 

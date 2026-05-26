@@ -21,8 +21,17 @@ import {
 
 /** 提取操作回调接口 */
 export interface ExtractionCallbacks {
-  addEntity: (type: EntityType, label: string, attributes?: Record<string, string>) => Promise<Entity>;
-  addRelationship: (fromId: string, toId: string, type: RelationshipType, weight?: number) => Promise<unknown>;
+  addEntity: (
+    type: EntityType,
+    label: string,
+    attributes?: Record<string, string>
+  ) => Promise<Entity>;
+  addRelationship: (
+    fromId: string,
+    toId: string,
+    type: RelationshipType,
+    weight?: number
+  ) => Promise<unknown>;
   findEntity: (type: string, label: string) => Entity | undefined;
 }
 
@@ -76,7 +85,7 @@ export class KnowledgeExtractionEngine {
  */
 export async function extractFromMemories(
   memories: MemoryEntry[],
-  callbacks: ExtractionCallbacks,
+  callbacks: ExtractionCallbacks
 ): Promise<{ entitiesAdded: number; relationshipsAdded: number }> {
   const engine = new KnowledgeExtractionEngine();
   let entitiesAdded = 0;
@@ -108,10 +117,7 @@ export async function extractFromMemories(
       if (!currentUserEntity) continue;
 
       // 查找目标实体
-      const targetEntity = callbacks.findEntity(
-        inferEntityType(rel.toLabel),
-        rel.toLabel,
-      );
+      const targetEntity = callbacks.findEntity(inferEntityType(rel.toLabel), rel.toLabel);
       if (!targetEntity) continue;
 
       const relKey = `${currentUserEntity.id}:${rel.type}:${targetEntity.id}`;
@@ -120,7 +126,7 @@ export async function extractFromMemories(
           currentUserEntity.id,
           targetEntity.id,
           rel.type,
-          rel.weight,
+          rel.weight
         );
         processedRelationships.add(relKey);
         relationshipsAdded++;

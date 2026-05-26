@@ -163,10 +163,7 @@ export async function getProjectAsync(): Promise<Project> {
  * @param options - Additional project options
  * @returns A new Project instance
  */
-export function createProject(
-  tsConfigPath?: string,
-  options?: Partial<ProjectOptions>
-): Project {
+export function createProject(tsConfigPath?: string, options?: Partial<ProjectOptions>): Project {
   const projectOptions: ProjectOptions = {
     ...defaultOptions,
     ...options,

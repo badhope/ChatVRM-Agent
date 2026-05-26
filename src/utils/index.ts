@@ -1,5 +1,12 @@
 // Re-export from modularized files for backward compatibility
-export { PROJECT_DIR, DEVFLOW_DIR, MEMORY_DIR, HISTORY_DIR, TOOLS_DIR, BACKUP_DIR } from './paths.js';
+export {
+  PROJECT_DIR,
+  DEVFLOW_DIR,
+  MEMORY_DIR,
+  HISTORY_DIR,
+  TOOLS_DIR,
+  BACKUP_DIR,
+} from './paths.js';
 export { ExecResult, safeExecRaw, safeExec } from './exec.js';
 export { fileExists, readJsonFile, writeJsonFile } from './fs-utils.js';
 export { formatError, formatSuccess, ValidationSchema, validateParams } from './validation.js';
@@ -17,3 +24,4 @@ export {
   safeAsync,
   safeSync,
 } from './error-handling.js';
+export { performanceMonitor, PerformanceMetric, PerformanceReport } from './performance-monitor.js';

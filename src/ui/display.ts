@@ -30,7 +30,13 @@ export type {
   ColumnsOptions,
 };
 
-export { stripAnsi, getTerminalWidth, printEmptyLine, truncate, wrapText } from './display-utils.js';
+export {
+  stripAnsi,
+  getTerminalWidth,
+  printEmptyLine,
+  truncate,
+  wrapText,
+} from './display-utils.js';
 
 // ==================== 显示函数 ====================
 
@@ -88,9 +94,24 @@ export function printTable(options: TableOptions): void {
  */
 export function printBox(title: string, content: string, options?: BoxOptions): void {
   const borderColor = (options?.borderColor || 'cyan') as
-    | 'black' | 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white'
-    | 'gray' | 'grey' | 'blackBright' | 'redBright' | 'greenBright' | 'yellowBright'
-    | 'blueBright' | 'magentaBright' | 'cyanBright' | 'whiteBright';
+    | 'black'
+    | 'red'
+    | 'green'
+    | 'yellow'
+    | 'blue'
+    | 'magenta'
+    | 'cyan'
+    | 'white'
+    | 'gray'
+    | 'grey'
+    | 'blackBright'
+    | 'redBright'
+    | 'greenBright'
+    | 'yellowBright'
+    | 'blueBright'
+    | 'magentaBright'
+    | 'cyanBright'
+    | 'whiteBright';
 
   // 组合标题和内容
   let text = '';
@@ -116,15 +137,11 @@ export function printBox(title: string, content: string, options?: BoxOptions): 
  */
 export function printKeyValue(pairs: KeyValuePair[]): void {
   // 计算 key 的最大宽度（去除 ANSI 颜色码）
-  const maxKeyLen = Math.max(
-    ...pairs.map((p) => stripAnsi(p.key).length)
-  );
+  const maxKeyLen = Math.max(...pairs.map((p) => stripAnsi(p.key).length));
 
   for (const pair of pairs) {
     const keyStr = chalk.cyan(pair.key.padEnd(maxKeyLen));
-    const valueStr = pair.highlight
-      ? chalk.green(pair.value)
-      : chalk.white(pair.value);
+    const valueStr = pair.highlight ? chalk.green(pair.value) : chalk.white(pair.value);
     console.log(`  ${keyStr}  ${valueStr}`);
   }
 }

@@ -34,9 +34,4 @@ export {
 } from './chunk-builder.js';
 
 // Re-export main chunking functions from parent level
-export {
-  chunkFile,
-  chunkFiles,
-  getChunkById,
-  findRelevantChunks,
-} from '../semantic-chunker.js';
+export { chunkFile, chunkFiles, getChunkById, findRelevantChunks } from '../semantic-chunker.js';

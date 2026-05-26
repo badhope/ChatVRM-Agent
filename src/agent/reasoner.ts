@@ -10,11 +10,7 @@ import chalk from 'chalk';
 
 // 从子模块导入 LLM 调用基础设施
 import { SYSTEM_PROMPTS } from './prompts.js';
-import {
-  callLLM,
-  resolveConfig,
-  getSystemPrompt,
-} from './llm-caller.js';
+import { callLLM, resolveConfig, getSystemPrompt } from './llm-caller.js';
 import type { ReasonerConfig } from './llm-caller.js';
 
 // Re-export 配置接口和常量
@@ -91,10 +87,7 @@ export interface AnalyzeContext {
  * });
  * ```
  */
-export async function reasonStep(
-  context: ReasonContext,
-  config?: ReasonerConfig
-): Promise<string> {
+export async function reasonStep(context: ReasonContext, config?: ReasonerConfig): Promise<string> {
   if (!context.taskDescription?.trim() || !context.stepDescription?.trim()) {
     return '（跳过）任务描述或步骤描述为空';
   }
@@ -105,7 +98,8 @@ export async function reasonStep(
   // 构造之前步骤结果的上下文段落
   let previousContext = '';
   if (context.previousResults.length > 0) {
-    previousContext = '\n\n--- 之前步骤的执行结果 ---\n' +
+    previousContext =
+      '\n\n--- 之前步骤的执行结果 ---\n' +
       context.previousResults
         .map((result, index) => `[步骤 ${index + 1}]: ${result}`)
         .join('\n\n') +
@@ -174,9 +168,9 @@ export async function reasonStepWithRetry(
       const validation = validator.validate(result, context.intent);
       if (!validation.valid) {
         console.warn(chalk.yellow(`输出验证失败（尝试 ${attempt}/${maxRetries}）:`));
-        validation.errors.forEach(e => console.warn(chalk.yellow(`  - ${e}`)));
+        validation.errors.forEach((e) => console.warn(chalk.yellow(`  - ${e}`)));
         if (attempt < maxRetries) {
-          await new Promise(r => setTimeout(r, retryDelay * attempt)); // 指数退避
+          await new Promise((r) => setTimeout(r, retryDelay * attempt)); // 指数退避
           continue;
         }
       }
@@ -186,8 +180,10 @@ export async function reasonStepWithRetry(
       if (attempt === maxRetries) {
         throw error;
       }
-      console.warn(chalk.yellow(`推理失败，${retryDelay * attempt}ms 后重试（${attempt}/${maxRetries}）...`));
-      await new Promise(r => setTimeout(r, retryDelay * attempt));
+      console.warn(
+        chalk.yellow(`推理失败，${retryDelay * attempt}ms 后重试（${attempt}/${maxRetries}）...`)
+      );
+      await new Promise((r) => setTimeout(r, retryDelay * attempt));
     }
   }
 
@@ -219,17 +215,12 @@ export async function reasonStepWithRetry(
  * });
  * ```
  */
-export async function generateCode(
-  context: CodeContext,
-  config?: ReasonerConfig
-): Promise<string> {
+export async function generateCode(context: CodeContext, config?: ReasonerConfig): Promise<string> {
   // 获取对应意图的 system prompt
   const systemPrompt = getSystemPrompt(context.intent);
 
   // 构造语言提示
-  const languageHint = context.language
-    ? `\n目标编程语言: ${context.language}`
-    : '';
+  const languageHint = context.language ? `\n目标编程语言: ${context.language}` : '';
 
   // 构造需求列表
   const requirementsText = context.requirements
@@ -239,9 +230,8 @@ export async function generateCode(
   // 构造之前步骤结果的上下文段落
   let previousContext = '';
   if (context.previousResults.length > 0) {
-    previousContext = '\n\n--- 参考信息 ---\n' +
-      context.previousResults.join('\n') +
-      '\n--- 参考信息结束 ---';
+    previousContext =
+      '\n\n--- 参考信息 ---\n' + context.previousResults.join('\n') + '\n--- 参考信息结束 ---';
   }
 
   // 构造 user prompt
@@ -372,29 +362,36 @@ export async function reasonWithSelfCorrection(
   let corrections = 0;
 
   for (let attempt = 0; attempt <= maxCorrections; attempt++) {
-    const prompt = attempt === 0
-      ? `## 任务描述\n${taskDescription}\n\n## 当前步骤\n${stepDescription}\n\n请针对当前步骤进行深入分析和推理，给出具体、可操作的输出。`
-      : `上一次的推理结果可能存在问题，请重新审视并修正：\n\n上一次结果：${content}\n\n请检查是否有逻辑错误、遗漏的边界条件或不完整的分析，然后给出修正后的结果。`;
+    const prompt =
+      attempt === 0
+        ? `## 任务描述\n${taskDescription}\n\n## 当前步骤\n${stepDescription}\n\n请针对当前步骤进行深入分析和推理，给出具体、可操作的输出。`
+        : `上一次的推理结果可能存在问题，请重新审视并修正：\n\n上一次结果：${content}\n\n请检查是否有逻辑错误、遗漏的边界条件或不完整的分析，然后给出修正后的结果。`;
 
-    const result = await reasonStep({
-      taskDescription,
-      intent: 'default',
-      stepDescription: prompt,
-      previousResults,
-      availableTools,
-    }, config);
+    const result = await reasonStep(
+      {
+        taskDescription,
+        intent: 'default',
+        stepDescription: prompt,
+        previousResults,
+        availableTools,
+      },
+      config
+    );
     content = result;
 
     // Self-check: ask LLM to verify its own output
     if (attempt < maxCorrections) {
       const checkPrompt = `请检查以下推理结果是否正确、完整、无遗漏：\n${content}\n\n如果发现问题，请简要描述。如果没有问题，请回复"OK"。`;
-      const check = await reasonStep({
-        taskDescription,
-        intent: 'default',
-        stepDescription: checkPrompt,
-        previousResults,
-        availableTools: [],
-      }, config);
+      const check = await reasonStep(
+        {
+          taskDescription,
+          intent: 'default',
+          stepDescription: checkPrompt,
+          previousResults,
+          availableTools: [],
+        },
+        config
+      );
       if (check.trim() === 'OK' || check.trim().length < 20) {
         break; // No corrections needed
       }

@@ -29,12 +29,7 @@ const READ_ONLY_TOOLS = new Set([
 ]);
 
 /** 写入类工具（Plan 模式禁止的工具） */
-const WRITE_TOOLS = new Set([
-  'write_file',
-  'delete_file',
-  'shell',
-  'http',
-]);
+const WRITE_TOOLS = new Set(['write_file', 'delete_file', 'shell', 'http']);
 
 /** Plan 结果 */
 export interface PlanResult {
@@ -158,7 +153,9 @@ export async function runPlanMode(
       output(chalk.green(`  ✓ 知识图谱已查询 (${contextResult.knowledgeEntryCount} 个相关条目)`));
     }
   } catch (error) {
-    output(chalk.dim(`  ⚠ 上下文构建失败: ${error instanceof Error ? error.message : String(error)}`));
+    output(
+      chalk.dim(`  ⚠ 上下文构建失败: ${error instanceof Error ? error.message : String(error)}`)
+    );
     contextResult = null;
   }
 
@@ -167,7 +164,7 @@ export async function runPlanMode(
   output(chalk.dim(`📋 基础步骤: ${steps.length} 个`));
 
   // 3. 过滤出只读步骤并执行
-  const readOnlySteps = steps.filter(s => !s.tool || READ_ONLY_TOOLS.has(s.tool));
+  const readOnlySteps = steps.filter((s) => !s.tool || READ_ONLY_TOOLS.has(s.tool));
   const context: Record<string, unknown> = {};
   const previousResults: string[] = [];
 
@@ -177,13 +174,16 @@ export async function runPlanMode(
       try {
         // 为只读步骤生成参数
         if (!step.args || Object.keys(step.args).length === 0) {
-          const reasoning = await reasonStep({
-            taskDescription,
-            intent,
-            stepDescription: step.description,
-            previousResults,
-            availableTools: [...READ_ONLY_TOOLS],
-          }, config);
+          const reasoning = await reasonStep(
+            {
+              taskDescription,
+              intent,
+              stepDescription: step.description,
+              previousResults,
+              availableTools: [...READ_ONLY_TOOLS],
+            },
+            config
+          );
           // 尝试从推理结果中提取参数
           try {
             const jsonMatch = reasoning.match(/\{[\s\S]*\}/);
@@ -213,13 +213,16 @@ export async function runPlanMode(
       // 空操作步骤 → AI 推理
       output(chalk.dim(`  🧠 ${step.description}...`));
       try {
-        const reasoning = await reasonStep({
-          taskDescription,
-          intent,
-          stepDescription: step.description,
-          previousResults,
-          availableTools: [...READ_ONLY_TOOLS],
-        }, config);
+        const reasoning = await reasonStep(
+          {
+            taskDescription,
+            intent,
+            stepDescription: step.description,
+            previousResults,
+            availableTools: [...READ_ONLY_TOOLS],
+          },
+          config
+        );
         step.result = reasoning;
         previousResults.push(reasoning);
         step.status = 'done';
@@ -235,7 +238,10 @@ export async function runPlanMode(
   output(chalk.dim('\n🧠 生成详细方案...'));
   const planMessages: Message[] = [
     { role: 'system', content: PLAN_SYSTEM_PROMPT },
-    { role: 'user', content: `## 任务\n${taskDescription}\n\n## 已收集的信息\n${previousResults.join('\n\n---\n\n')}\n\n请基于以上信息，生成完整的执行计划。` },
+    {
+      role: 'user',
+      content: `## 任务\n${taskDescription}\n\n## 已收集的信息\n${previousResults.join('\n\n---\n\n')}\n\n请基于以上信息，生成完整的执行计划。`,
+    },
   ];
 
   const detailedPlan = await callLLM(planMessages, {
@@ -250,9 +256,10 @@ export async function runPlanMode(
 
   const filesMatch = detailedPlan.match(/## 需要修改的文件\s*\n([\s\S]*?)(?=\n## |\n# |$)/);
   if (filesMatch) {
-    filesMatch[1].split('\n')
-      .filter(line => line.trim().startsWith('-'))
-      .forEach(line => {
+    filesMatch[1]
+      .split('\n')
+      .filter((line) => line.trim().startsWith('-'))
+      .forEach((line) => {
         const match = line.replace(/^-\s*/, '').match(/^([^\s:]+)/);
         if (match) filesToModify.push(match[1]);
       });
@@ -260,9 +267,10 @@ export async function runPlanMode(
 
   const riskMatch = detailedPlan.match(/## 风险评估\s*\n([\s\S]*?)(?=\n## |\n# |$)/);
   if (riskMatch) {
-    riskMatch[1].split('\n')
-      .filter(line => line.trim().startsWith('-'))
-      .forEach(line => risks.push(line.replace(/^-\s*/, '').trim()));
+    riskMatch[1]
+      .split('\n')
+      .filter((line) => line.trim().startsWith('-'))
+      .forEach((line) => risks.push(line.replace(/^-\s*/, '').trim()));
   }
 
   return {
@@ -272,13 +280,17 @@ export async function runPlanMode(
     detailedPlan,
     filesToModify,
     risks,
-    estimatedSteps: steps.filter(s => s.tool && WRITE_TOOLS.has(s.tool)).length + steps.filter(s => !s.tool).length,
-    context: contextResult ? {
-      repoMapIncluded: contextResult.repoMapIncluded,
-      codeSearchIncluded: contextResult.codeSearchIncluded,
-      knowledgeIncluded: contextResult.knowledgeIncluded,
-      codeEntryCount: contextResult.codeEntryCount,
-      knowledgeEntryCount: contextResult.knowledgeEntryCount,
-    } : undefined,
+    estimatedSteps:
+      steps.filter((s) => s.tool && WRITE_TOOLS.has(s.tool)).length +
+      steps.filter((s) => !s.tool).length,
+    context: contextResult
+      ? {
+          repoMapIncluded: contextResult.repoMapIncluded,
+          codeSearchIncluded: contextResult.codeSearchIncluded,
+          knowledgeIncluded: contextResult.knowledgeIncluded,
+          codeEntryCount: contextResult.codeEntryCount,
+          knowledgeEntryCount: contextResult.knowledgeEntryCount,
+        }
+      : undefined,
   };
 }

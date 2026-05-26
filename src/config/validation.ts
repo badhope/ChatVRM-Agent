@@ -23,13 +23,13 @@ export interface ValidationResult {
 export function validateConfig(data: unknown): ValidationResult {
   const result = ConfigSchema.safeParse(data);
   if (!result.success) {
-    const errors = result.error.errors.map(e => ({
+    const errors = result.error.errors.map((e) => ({
       path: e.path.join('.'),
-      message: e.message
+      message: e.message,
     }));
     return {
       valid: false,
-      errors
+      errors,
     };
   }
   return { valid: true, config: result.data };
@@ -53,7 +53,7 @@ export function validateConfigWithLogging(data: unknown): ValidationResult {
   const result = validateConfig(data);
   if (!result.valid && result.errors) {
     logger.error('配置验证失败');
-    result.errors.forEach(err => {
+    result.errors.forEach((err) => {
       logger.error(`  - ${err.path}: ${err.message}`);
     });
   }

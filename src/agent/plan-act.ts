@@ -54,16 +54,18 @@ export async function runPlanAct(
     if (!config?.autoApprove) {
       try {
         const inquirer = await import('inquirer');
-        const { action } = await inquirer.default.prompt([{
-          type: 'list',
-          name: 'action',
-          message: '接下来要做什么？',
-          choices: [
-            { name: '▶ 执行计划 (Act)', value: 'act' },
-            { name: '✏️ 修改计划 (重新规划)', value: 'replan' },
-            { name: '❌ 取消', value: 'cancel' },
-          ],
-        }]);
+        const { action } = await inquirer.default.prompt([
+          {
+            type: 'list',
+            name: 'action',
+            message: '接下来要做什么？',
+            choices: [
+              { name: '▶ 执行计划 (Act)', value: 'act' },
+              { name: '✏️ 修改计划 (重新规划)', value: 'replan' },
+              { name: '❌ 取消', value: 'cancel' },
+            ],
+          },
+        ]);
 
         if (action === 'cancel') {
           output(chalk.yellow('用户取消'));
@@ -84,10 +86,15 @@ export async function runPlanAct(
 
   // === Act 阶段 ===
   output(chalk.bold('\n⚡ Act 模式 — 执行计划\n'));
-  act = await runActMode(plan ?? undefined, taskDescription, {
-    ...config?.act,
-    autoApprove: config?.autoApprove,
-  }, output);
+  act = await runActMode(
+    plan ?? undefined,
+    taskDescription,
+    {
+      ...config?.act,
+      autoApprove: config?.autoApprove,
+    },
+    output
+  );
 
   // 展示结果
   output('');

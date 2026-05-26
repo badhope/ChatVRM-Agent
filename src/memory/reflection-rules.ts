@@ -54,10 +54,38 @@ export type LLMReflectorFn = (memories: MemoryForReflection[]) => Promise<Memory
 
 /** 停用词集合 */
 const STOP_WORDS = new Set([
-  '什么', '怎么', '如何', '可以', '这个', '那个', '一个', '没有',
-  '不是', '就是', '已经', '如果', '但是', '因为', '所以', '或者',
-  'the', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'do',
-  'can', 'will', 'would', 'should', 'could', 'may', 'might',
+  '什么',
+  '怎么',
+  '如何',
+  '可以',
+  '这个',
+  '那个',
+  '一个',
+  '没有',
+  '不是',
+  '就是',
+  '已经',
+  '如果',
+  '但是',
+  '因为',
+  '所以',
+  '或者',
+  'the',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'have',
+  'has',
+  'do',
+  'can',
+  'will',
+  'would',
+  'should',
+  'could',
+  'may',
+  'might',
 ]);
 
 /** 偏好提取模式 */
@@ -67,9 +95,7 @@ const PREFERENCE_PATTERNS = [
 ];
 
 /** 事实提取模式 */
-const FACT_PATTERNS = [
-  /(?:我是|我叫|我的名字是|我姓)(.{2,10}?)(?:[。，！？\n]|$)/g,
-];
+const FACT_PATTERNS = [/(?:我是|我叫|我的名字是|我姓)(.{2,10}?)(?:[。，！？\n]|$)/g];
 
 // ============================================================
 // ReflectionEngine 类
@@ -183,14 +209,14 @@ export class ReflectionEngine {
     }
 
     // 3. 提取高频主题
-    const themes = this.extractThemes(memories.map(m => `${m.input} ${m.output}`));
+    const themes = this.extractThemes(memories.map((m) => `${m.input} ${m.output}`));
     if (themes.length > 0) {
       const topThemes = themes.slice(0, 5);
       insights.push({
         id: crypto.randomUUID(),
         type: 'pattern',
-        content: `用户常讨论的主题: ${topThemes.map(t => t.theme).join('、')}（出现 ${topThemes.reduce((s, t) => s + t.count, 0)} 次）`,
-        sourceIds: memories.map(m => m.id),
+        content: `用户常讨论的主题: ${topThemes.map((t) => t.theme).join('、')}（出现 ${topThemes.reduce((s, t) => s + t.count, 0)} 次）`,
+        sourceIds: memories.map((m) => m.id),
         confidence: Math.min(1, topThemes[0].count / memories.length),
         createdAt: Date.now(),
         accessedAt: Date.now(),
@@ -200,15 +226,19 @@ export class ReflectionEngine {
 
     // 4. 生成摘要
     if (memories.length >= 3) {
-      const timeRange = memories.length >= 2
-        ? `${memories[memories.length - 1].timestamp} ~ ${memories[0].timestamp}`
-        : memories[0].timestamp;
+      const timeRange =
+        memories.length >= 2
+          ? `${memories[memories.length - 1].timestamp} ~ ${memories[0].timestamp}`
+          : memories[0].timestamp;
 
       insights.push({
         id: crypto.randomUUID(),
         type: 'summary',
-        content: `用户在 ${timeRange} 期间进行了 ${memories.length} 次对话，主要涉及: ${themes.slice(0, 3).map(t => t.theme).join('、')}`,
-        sourceIds: memories.map(m => m.id),
+        content: `用户在 ${timeRange} 期间进行了 ${memories.length} 次对话，主要涉及: ${themes
+          .slice(0, 3)
+          .map((t) => t.theme)
+          .join('、')}`,
+        sourceIds: memories.map((m) => m.id),
         confidence: 0.8,
         createdAt: Date.now(),
         accessedAt: Date.now(),
@@ -231,7 +261,7 @@ export class ReflectionEngine {
     for (const text of texts) {
       const chineseSegments = text.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
       const englishWords = text.match(/[a-zA-Z]{2,}/g) || [];
-      const allTokens = [...chineseSegments, ...englishWords.map(w => w.toLowerCase())];
+      const allTokens = [...chineseSegments, ...englishWords.map((w) => w.toLowerCase())];
 
       for (const token of allTokens) {
         if (STOP_WORDS.has(token)) continue;
@@ -241,7 +271,7 @@ export class ReflectionEngine {
 
     return Array.from(themeMap.entries())
       .map(([theme, count]) => ({ theme, count }))
-      .filter(t => t.count >= 2)
+      .filter((t) => t.count >= 2)
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
   }

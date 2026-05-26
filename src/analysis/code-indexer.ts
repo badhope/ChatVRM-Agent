@@ -22,7 +22,12 @@ import type { CodeIndex, IndexEntry, SearchOptions, IndexData } from './indexer/
 import { INDEXABLE_KINDS } from './indexer/types.js';
 
 // 导出缓存功能
-export { CodeIndexCache, codeIndexCache, getCachedCodeIndex, invalidateCodeIndexCache } from './code-indexer-cache.js';
+export {
+  CodeIndexCache,
+  codeIndexCache,
+  getCachedCodeIndex,
+  invalidateCodeIndexCache,
+} from './code-indexer-cache.js';
 
 // ============================================================
 // MiniSearch 文档类型
@@ -56,13 +61,21 @@ const indexStore = new Map<string, IndexData>();
 /**
  * 提取 JSDoc 或文档注释
  */
-function extractDocstring(node: { previousNamedSibling?: { type: string; text: string } | null; parent?: { childCount: number; child: (i: number) => { type: string; text: string } | null } | null }, source: string): string | undefined {
+function extractDocstring(
+  node: {
+    previousNamedSibling?: { type: string; text: string } | null;
+    parent?: {
+      childCount: number;
+      child: (i: number) => { type: string; text: string } | null;
+    } | null;
+  },
+  source: string
+): string | undefined {
   const prev = node.previousNamedSibling;
-  if (prev && (
-    prev.type === 'comment' ||
-    prev.type === 'block_comment' ||
-    prev.type === 'line_comment'
-  )) {
+  if (
+    prev &&
+    (prev.type === 'comment' || prev.type === 'block_comment' || prev.type === 'line_comment')
+  ) {
     const commentText = prev.text.trim();
     if (
       commentText.startsWith('/**') ||
@@ -150,7 +163,7 @@ export async function buildCodeIndex(rootDir: string): Promise<CodeIndex> {
           row: sym.startLine,
           column: 0,
         }),
-        source,
+        source
       );
 
       entries.push({
@@ -236,7 +249,7 @@ export async function buildCodeIndex(rootDir: string): Promise<CodeIndex> {
 export function searchIndex(
   index: CodeIndex,
   query: string,
-  options?: SearchOptions,
+  options?: SearchOptions
 ): IndexEntry[] {
   const data = indexStore.get(index.id);
   if (!data) return [];
@@ -273,7 +286,7 @@ export function searchIndex(
   // 执行搜索
   let results: Array<{ id: number; score: number }>;
   try {
-    results = ms.search(query).map(r => ({
+    results = ms.search(query).map((r) => ({
       id: r.id as number,
       score: r.score,
     }));
@@ -333,7 +346,7 @@ export function searchIndex(
  */
 export async function getDefinition(
   index: CodeIndex,
-  symbolName: string,
+  symbolName: string
 ): Promise<IndexEntry | null> {
   const data = indexStore.get(index.id);
   if (!data) return null;
@@ -365,10 +378,7 @@ export async function getDefinition(
  * @param typeName - 类型名称
  * @returns 类型信息条目，未找到返回 null
  */
-export async function getTypeInfo(
-  index: CodeIndex,
-  typeName: string,
-): Promise<IndexEntry | null> {
+export async function getTypeInfo(index: CodeIndex, typeName: string): Promise<IndexEntry | null> {
   const data = indexStore.get(index.id);
   if (!data) return null;
 

@@ -13,10 +13,25 @@
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "lint": "eslint -c .eslintrc.cjs src/**/*.ts",
+    "lint:fix": "eslint -c .eslintrc.cjs src/**/*.ts --fix",
+    "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,md}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,js,jsx,json,md}'",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude 'src/__tests__/integration/**'",
+    "test:integration": "vitest run 'src/__tests__/integration/**'",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,jsx,json,md,css,scss}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=18.0.0 <23.0.0"
@@ -58,7 +73,7 @@
     "picocolors": "^1.0.0",
     "pino": "^8.17.0",
     "pino-pretty": "^10.3.0",
-    "reflect-metadata": "^0.2.1",
+    "reflect-metadata": "^0.2.2",
     "simple-git": "^3.36.0",
     "tree-sitter": "^0.25.0",
     "tree-sitter-javascript": "^0.25.0",
@@ -85,6 +100,9 @@
     "@vitest/coverage-v8": "^1.2.0",
     "@vitest/ui": "^1.2.0",
     "eslint": "^8.57.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   }

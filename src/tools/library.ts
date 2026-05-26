@@ -91,7 +91,9 @@ export class ToolLibrary {
             } catch (e: unknown) {
               toolDef = await this.parseToolFromSource(entry.name, toolPath);
               if (!toolDef) {
-                logger.warn(`无法加载工具 ${entry.name}: ${e instanceof Error ? e.message : String(e)}`);
+                logger.warn(
+                  `无法加载工具 ${entry.name}: ${e instanceof Error ? e.message : String(e)}`
+                );
                 continue;
               }
             }
@@ -112,7 +114,7 @@ export class ToolLibrary {
               tools: toolsInTool,
               dependencies: toolDef.dependencies || [],
               size: toolDef.size || 'unknown',
-              path: toolPath
+              path: toolPath,
             };
           }
         } catch (e: unknown) {
@@ -128,7 +130,7 @@ export class ToolLibrary {
       lastUpdated: new Date().toISOString(),
       totalTools: Object.keys(tools).length,
       categories: Array.from(categories).sort(),
-      tools
+      tools,
     };
 
     return this.index;
@@ -136,44 +138,87 @@ export class ToolLibrary {
 
   private categorizeTool(name: string): string {
     const categoryMap: Record<string, string[]> = {
-      'development': [
-        'code-generator', 'code-review', 'code-rag', 'coding-workflow',
-        'testing-toolkit', 'test-generator', 'debugging-workflow', 'refactoring-workflow',
-        'dependency-analyzer', 'api-dev', 'core-dev-kit', 'backend-dev-kit', 'frontend-dev-kit',
-        'fullstack-dev', 'qa-dev-kit', 'typescript', 'react'
+      development: [
+        'code-generator',
+        'code-review',
+        'code-rag',
+        'coding-workflow',
+        'testing-toolkit',
+        'test-generator',
+        'debugging-workflow',
+        'refactoring-workflow',
+        'dependency-analyzer',
+        'api-dev',
+        'core-dev-kit',
+        'backend-dev-kit',
+        'frontend-dev-kit',
+        'fullstack-dev',
+        'qa-dev-kit',
+        'typescript',
+        'react',
       ],
-      'devops': [
-        'docker', 'kubernetes', 'aws', 'aws-dev', 'gitlab', 'github', 'gitee', 'bitbucket',
-        'vercel', 'cloudflare', 'ci-cd', 'system-admin', 'terminal'
+      devops: [
+        'docker',
+        'kubernetes',
+        'aws',
+        'aws-dev',
+        'gitlab',
+        'github',
+        'gitee',
+        'bitbucket',
+        'vercel',
+        'cloudflare',
+        'ci-cd',
+        'system-admin',
+        'terminal',
       ],
-      'security': [
-        'security-auditor', 'secrets', 'auth'
+      security: ['security-auditor', 'secrets', 'auth'],
+      data: ['database', 'mongodb', 'redis', 'csv', 'json', 'yaml'],
+      ai: [
+        'agent-autonomous',
+        'agent-coordinator',
+        'agent-devkit',
+        'agent-memory',
+        'agent-reflection',
+        'agent-persistence',
+        'agent-unified-toolkit',
       ],
-      'data': [
-        'database', 'mongodb', 'redis', 'csv', 'json', 'yaml'
+      web: ['web-search', 'web-crawler', 'browser-automation', 'puppeteer', 'proxy'],
+      productivity: [
+        'markdown',
+        'documentation',
+        'template',
+        'library-manager',
+        'libraries',
+        'compression',
+        'encoding',
+        'diff',
       ],
-      'ai': [
-        'agent-autonomous', 'agent-coordinator', 'agent-devkit', 'agent-memory',
-        'agent-reflection', 'agent-persistence', 'agent-unified-toolkit'
+      analysis: [
+        'performance-optimizer',
+        'monitoring',
+        'observability-mq',
+        'message-bus',
+        'consistency-manager',
+        'search',
+        'search-tools',
+        'search-pdf-advanced',
       ],
-      'web': [
-        'web-search', 'web-crawler', 'browser-automation', 'puppeteer', 'proxy'
+      utilities: [
+        'datetime',
+        'math',
+        'regex',
+        'random',
+        'colors',
+        'filesystem',
+        'network',
+        'ssh',
+        'sentry',
+        'aliyun',
+        'clarify',
+        'thinking',
       ],
-      'productivity': [
-        'markdown', 'documentation', 'template', 'library-manager', 'libraries',
-        'compression', 'encoding', 'diff'
-      ],
-      'analysis': [
-        'performance-optimizer', 'monitoring', 'observability-mq', 'message-bus',
-        'consistency-manager', 'search', 'search-tools', 'search-pdf-advanced'
-      ],
-      'utilities': [
-        'datetime', 'math', 'regex', 'random', 'colors', 'filesystem', 'network',
-        'ssh', 'sentry', 'aliyun', 'clarify', 'thinking'
-      ],
-      'design': [
-        'ui-design-kit'
-      ]
+      design: ['ui-design-kit'],
     };
 
     for (const [category, names] of Object.entries(categoryMap)) {
@@ -194,7 +239,10 @@ export class ToolLibrary {
     }
   }
 
-  private async parseToolFromSource(name: string, filePath: string): Promise<ToolDefinition | null> {
+  private async parseToolFromSource(
+    name: string,
+    filePath: string
+  ): Promise<ToolDefinition | null> {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
 
@@ -217,7 +265,7 @@ export class ToolLibrary {
         author: authorMatch?.[1],
         tools: toolNames.length > 0 ? toolNames : [name],
         dependencies: [],
-        size: 'unknown'
+        size: 'unknown',
       };
     } catch {
       return null;
@@ -231,20 +279,20 @@ export class ToolLibrary {
 
   async getToolsByCategory(category: string): Promise<ToolMetadata[]> {
     const index = await this.loadIndex();
-    return Object.values(index.tools).filter(t => t.category === category);
+    return Object.values(index.tools).filter((t) => t.category === category);
   }
 
   async searchTools(keyword: string): Promise<ToolMetadata[]> {
     const index = await this.loadIndex();
     const lowerKeyword = keyword.toLowerCase();
 
-    return Object.values(index.tools).filter(tool => {
+    return Object.values(index.tools).filter((tool) => {
       const toolList = Array.isArray(tool.tools) ? tool.tools : [];
       return (
         tool.name.toLowerCase().includes(lowerKeyword) ||
         tool.description.toLowerCase().includes(lowerKeyword) ||
         tool.category.toLowerCase().includes(lowerKeyword) ||
-        toolList.some(t => t.toLowerCase().includes(lowerKeyword))
+        toolList.some((t) => t.toLowerCase().includes(lowerKeyword))
       );
     });
   }

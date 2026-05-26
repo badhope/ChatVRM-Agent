@@ -45,9 +45,7 @@ export interface AgentTaskResult {
  */
 @injectable()
 export class AgentService extends BaseService {
-  constructor(
-    @inject(TOKENS.ConfigManager) private config: IConfigManager
-  ) {
+  constructor(@inject(TOKENS.ConfigManager) private config: IConfigManager) {
     super();
   }
 
@@ -72,7 +70,7 @@ export class AgentService extends BaseService {
         output: result.result || '',
         steps: result.steps || [],
         changedFiles: this.extractChangedFiles(result),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     });
   }
@@ -110,7 +108,7 @@ export class AgentService extends BaseService {
         output: result.result || '',
         steps: result.steps || [],
         changedFiles: this.extractChangedFiles(result),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     });
   }

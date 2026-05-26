@@ -21,7 +21,10 @@ export interface SearchResult {
 }
 
 // 读取文件
-export async function readFile(filePath: string, encoding: BufferEncoding = 'utf-8'): Promise<FileResult> {
+export async function readFile(
+  filePath: string,
+  encoding: BufferEncoding = 'utf-8'
+): Promise<FileResult> {
   try {
     const content = await fs.readFile(filePath, encoding);
     const stat = await fs.stat(filePath);
@@ -79,10 +82,12 @@ export async function createDirectory(dirPath: string, recursive = true): Promis
 export async function listDirectory(dirPath: string): Promise<FileResult> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    const content = entries.map(e => {
-      const type = e.isDirectory() ? '📁' : e.isFile() ? '📄' : '🔗';
-      return `${type} ${e.name}`;
-    }).join('\n');
+    const content = entries
+      .map((e) => {
+        const type = e.isDirectory() ? '📁' : e.isFile() ? '📄' : '🔗';
+        return `${type} ${e.name}`;
+      })
+      .join('\n');
     return { success: true, path: dirPath, content };
   } catch (error) {
     return { success: false, path: dirPath, error: `列出目录失败: ${error}` };
@@ -116,11 +121,19 @@ export async function searchInFile(filePath: string, pattern: string): Promise<S
 }
 
 // 在目录中搜索
-export async function searchInDirectory(dirPath: string, pattern: string, filePattern: string = '**/*'): Promise<SearchResult[]> {
-  const files = await glob(filePattern, { cwd: dirPath, ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'] });
+export async function searchInDirectory(
+  dirPath: string,
+  pattern: string,
+  filePattern: string = '**/*'
+): Promise<SearchResult[]> {
+  const files = await glob(filePattern, {
+    cwd: dirPath,
+    ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+  });
   const allResults: SearchResult[] = [];
 
-  for (const file of files.slice(0, 100)) { // 限制搜索文件数量
+  for (const file of files.slice(0, 100)) {
+    // 限制搜索文件数量
     const filePath = path.join(dirPath, file);
     const results = await searchInFile(filePath, pattern);
     allResults.push(...results);
@@ -130,13 +143,18 @@ export async function searchInDirectory(dirPath: string, pattern: string, filePa
 }
 
 // 获取文件树
-export async function getFileTree(dirPath: string, maxDepth: number = 3, ignore: string[] = ['node_modules', 'dist', '.git', 'coverage', 'build']): Promise<string> {
+export async function getFileTree(
+  dirPath: string,
+  maxDepth: number = 3,
+  ignore: string[] = ['node_modules', 'dist', '.git', 'coverage', 'build']
+): Promise<string> {
   function buildTree(currentPath: string, prefix: string, depth: number): string {
     if (depth > maxDepth) return '';
 
     let result = '';
-    const entries = fsCb.readdirSync(currentPath, { withFileTypes: true })
-      .filter(e => !ignore.includes(e.name) && !e.name.startsWith('.'))
+    const entries = fsCb
+      .readdirSync(currentPath, { withFileTypes: true })
+      .filter((e) => !ignore.includes(e.name) && !e.name.startsWith('.'))
       .sort((a, b) => {
         if (a.isDirectory() && !b.isDirectory()) return -1;
         if (!a.isDirectory() && b.isDirectory()) return 1;

@@ -14,7 +14,9 @@ ${chalk.cyan('    ╚═══════════════════�
 
 export const SUBTITLE = chalk.gray('    可靠 · 诚实 · 可控的 AI 开发助手\n');
 
-export const DIVIDER = chalk.cyan('    ──────────────────────────────────────────────────────────────\n');
+export const DIVIDER = chalk.cyan(
+  '    ──────────────────────────────────────────────────────────────\n'
+);
 
 export function printHeader(): void {
   console.clear();

@@ -67,7 +67,7 @@ export class AutoCommitEngine {
     // 先尝试获取 diff，用于 AI 生成提交消息
     const diffResult = await this.git.getDiff({ staged: true });
     const configWithAI = this.config as AutoCommitConfig & { aiCommitMessage?: boolean };
-    const useAI = configWithAI.aiCommitMessage !== false;  // 默认启用
+    const useAI = configWithAI.aiCommitMessage !== false; // 默认启用
 
     let commitMessage: string;
     if (useAI && diffResult.patch.trim()) {
@@ -108,7 +108,9 @@ Diff (截取前 3000 字符):
 ${diff.slice(0, 3000)}`;
 
       const defaultProvider = configManager.getDefaultProvider();
-      const providerConfig = defaultProvider ? configManager.getProviderConfig(defaultProvider) : undefined;
+      const providerConfig = defaultProvider
+        ? configManager.getProviderConfig(defaultProvider)
+        : undefined;
 
       const response = await callLLM([{ role: 'user', content: prompt }], {
         provider: defaultProvider,
@@ -118,7 +120,10 @@ ${diff.slice(0, 3000)}`;
       });
 
       // 清理响应
-      const message = (response || '').trim().replace(/^["']|["']$/g, '').replace(/\n+/g, '\n');
+      const message = (response || '')
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .replace(/\n+/g, '\n');
       return message || this.generateCommitMessage(files, 'AI生成失败');
     } catch {
       // AI 生成失败，回退到模板
@@ -133,14 +138,13 @@ ${diff.slice(0, 3000)}`;
     const prefix = this.config.commitPrefix;
 
     // 从描述中提取简短摘要（最多50字符）
-    const summary = description.length > 50
-      ? description.substring(0, 47) + '...'
-      : description;
+    const summary = description.length > 50 ? description.substring(0, 47) + '...' : description;
 
     // 文件列表摘要
-    const fileSummary = files.length <= 3
-      ? files.join(', ')
-      : `${files.slice(0, 3).join(', ')} 等 ${files.length} 个文件`;
+    const fileSummary =
+      files.length <= 3
+        ? files.join(', ')
+        : `${files.slice(0, 3).join(', ')} 等 ${files.length} 个文件`;
 
     return `[personal-assistant] ${prefix}: ${summary}\n\n${fileSummary}\n\nCo-authored-by: ${this.config.authorName} <${this.config.authorEmail}>`;
   }
@@ -152,11 +156,11 @@ ${diff.slice(0, 3000)}`;
     let filtered = files;
 
     if (this.config.includePattern) {
-      filtered = filtered.filter(f => this.config.includePattern?.test(f) ?? false);
+      filtered = filtered.filter((f) => this.config.includePattern?.test(f) ?? false);
     }
 
     if (this.config.excludePattern) {
-      filtered = filtered.filter(f => !(this.config.excludePattern?.test(f) ?? false));
+      filtered = filtered.filter((f) => !(this.config.excludePattern?.test(f) ?? false));
     }
 
     return filtered;
@@ -173,9 +177,11 @@ ${diff.slice(0, 3000)}`;
    * 获取自指定提交以来的变更
    */
   async getChangesSince(sinceCommit?: string): Promise<{ files: string[]; diff: string }> {
-    const diff = await this.git.getDiff({ commit: sinceCommit ? `${sinceCommit}..HEAD` : undefined });
+    const diff = await this.git.getDiff({
+      commit: sinceCommit ? `${sinceCommit}..HEAD` : undefined,
+    });
     return {
-      files: diff.files.map(f => f.file),
+      files: diff.files.map((f) => f.file),
       diff: diff.patch,
     };
   }

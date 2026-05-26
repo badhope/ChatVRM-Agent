@@ -2,16 +2,24 @@ import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import { MEMORY_DIR } from '../utils/index.js';
 import { ragModule } from './rag.js';
-import { MemoryConsolidator, type ConsolidationConfig, type ConsolidationResult } from './consolidation.js';
+import {
+  MemoryConsolidator,
+  type ConsolidationConfig,
+  type ConsolidationResult,
+} from './consolidation.js';
 import fs from 'fs/promises';
 import path from 'path';
-import type { MemoryInteraction, MemoryRecord, MemoryStats, MemoryInteractionWithMeta } from './memory-types.js';
+import type {
+  MemoryInteraction,
+  MemoryRecord,
+  MemoryStats,
+  MemoryInteractionWithMeta,
+} from './memory-types.js';
 import { AsyncLock } from '../utils/async-lock.js';
 import { createLogger } from '../services/logger.js';
 import { CACHE_TTL_MS } from '../constants/index.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 import { configManager } from '../config/manager.js';
-
 
 const logger = createLogger('memory');
 
@@ -55,15 +63,17 @@ export class MemoryManager {
   async initRAG(apiKey?: string): Promise<boolean> {
     try {
       // 优先使用传入的 apiKey，其次从当前默认 provider 配置中获取
-      const key = apiKey || (() => {
-        const defaultProvider = configManager.getDefaultProvider();
-        if (defaultProvider) {
-          const providerConfig = configManager.getProviderConfig(defaultProvider);
-          if (providerConfig.apiKey) return providerConfig.apiKey;
-        }
-        // 向后兼容：仍然检查环境变量
-        return process.env.ALIYUN_API_KEY || process.env.DASHSCOPE_API_KEY;
-      })();
+      const key =
+        apiKey ||
+        (() => {
+          const defaultProvider = configManager.getDefaultProvider();
+          if (defaultProvider) {
+            const providerConfig = configManager.getProviderConfig(defaultProvider);
+            if (providerConfig.apiKey) return providerConfig.apiKey;
+          }
+          // 向后兼容：仍然检查环境变量
+          return process.env.ALIYUN_API_KEY || process.env.DASHSCOPE_API_KEY;
+        })();
       if (!key) {
         logger.warn('RAG disabled: no API Key configured for default provider');
         return false;
@@ -73,7 +83,10 @@ export class MemoryManager {
       this.ragEnabled = true;
       return true;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'RAG initialization failed');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'RAG initialization failed'
+      );
       return false;
     }
   }
@@ -130,8 +143,11 @@ export class MemoryManager {
       // 自动索引到 RAG（如果启用）
       if (this.ragEnabled && this.ragInitialized) {
         const text = `${params.input} ${params.output || ''}`;
-        await ragModule.addDocument(id, text).catch(err => {
-          logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'RAG indexing failed');
+        await ragModule.addDocument(id, text).catch((err) => {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            'RAG indexing failed'
+          );
         });
       }
     });
@@ -144,7 +160,7 @@ export class MemoryManager {
     await this.init();
     try {
       const files = await fs.readdir(this.storagePath);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter((f) => f.endsWith('.json'));
 
       const CONCURRENCY = 50;
       const records: MemoryInteraction[] = [];
@@ -172,18 +188,18 @@ export class MemoryManager {
             }
           })
         );
-        records.push(...batchResults.filter(Boolean) as MemoryInteraction[]);
+        records.push(...(batchResults.filter(Boolean) as MemoryInteraction[]));
       }
 
       // 应用遗忘曲线衰减重要性
       this.consolidator.applyForgettingCurve(
-        records.map(r => ({
+        records.map((r) => ({
           id: r.id,
           importance: r.importance ?? 0.5,
           createdAt: r.timestamp,
           stability: r.stability,
           accessCount: r.accessCount,
-        })),
+        }))
       );
 
       // 自动整合：记忆数量超过上限时触发
@@ -199,8 +215,8 @@ export class MemoryManager {
         })();
       }
 
-      return records.sort((a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      return records.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
     } catch (error) {
       logger.debug({ error }, 'Failed to load records');
@@ -214,7 +230,7 @@ export class MemoryManager {
   private async getCachedRecords(): Promise<MemoryInteraction[]> {
     return this.cacheLock.acquire(async () => {
       const now = Date.now();
-      if (this.recordCache && (now - this.cacheTimestamp) < CACHE_TTL_MS) {
+      if (this.recordCache && now - this.cacheTimestamp < CACHE_TTL_MS) {
         return this.recordCache;
       }
       this.recordCache = await this.loadAllRecords();
@@ -229,13 +245,13 @@ export class MemoryManager {
   async recall(context: string, limit = 10): Promise<MemoryRecord[]> {
     const records = await this.getCachedRecords();
     if (!context) {
-      return records.slice(0, limit).map(r => ({ interaction: r, relevance: 1 }));
+      return records.slice(0, limit).map((r) => ({ interaction: r, relevance: 1 }));
     }
 
     // 1. 关键词匹配（始终执行）
     const keywords = this.tokenize(context);
     const keywordScores: Map<string, number> = new Map();
-    
+
     for (const record of records) {
       const text = `${record.input} ${record.output}`.toLowerCase();
       let score = 0;
@@ -256,7 +272,10 @@ export class MemoryManager {
           semanticScores.set(result.id, result.score * 10); // 归一化到与关键词分数相近
         }
       } catch (error) {
-        logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Semantic search failed, falling back to keyword search');
+        logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Semantic search failed, falling back to keyword search'
+        );
       }
     }
 
@@ -264,17 +283,18 @@ export class MemoryManager {
     const now = Date.now();
     const MAX_AGE_DAYS = 90; // 超过90天的记忆权重降低
 
-    const scored: MemoryRecord[] = records.map(record => {
+    const scored: MemoryRecord[] = records.map((record) => {
       const keywordScore = keywordScores.get(record.id) || 0;
       const semanticScore = semanticScores.get(record.id) || 0;
-      
+
       // 混合公式：关键词分数 + 语义分数 * 权重
       // 如果只有关键词，使用关键词分数
       // 如果只有语义，使用语义分数
       // 如果两者都有，加权合并
-      let relevance = semanticScores.size > 0
-        ? keywordScore * 0.4 + semanticScore * 0.6  // 混合模式
-        : keywordScore;  // 纯关键词模式
+      let relevance =
+        semanticScores.size > 0
+          ? keywordScore * 0.4 + semanticScore * 0.6 // 混合模式
+          : keywordScore; // 纯关键词模式
 
       // 添加时间衰减因子（记忆新鲜度检查）
       const ageInDays = this.calculateAgeDays(record.timestamp);
@@ -289,12 +309,12 @@ export class MemoryManager {
 
       // 应用新鲜度因子
       relevance = relevance * freshnessMultiplier;
-      
+
       return { interaction: record, relevance };
     });
 
     const results = scored
-      .filter(r => r.relevance > 0)
+      .filter((r) => r.relevance > 0)
       .sort((a, b) => b.relevance - a.relevance)
       .slice(0, limit);
 
@@ -345,7 +365,7 @@ export class MemoryManager {
     const tokens: string[] = [];
     // 英文词
     const englishWords = text.match(/[a-zA-Z0-9]+/g);
-    if (englishWords) tokens.push(...englishWords.map(w => w.toLowerCase()));
+    if (englishWords) tokens.push(...englishWords.map((w) => w.toLowerCase()));
     // 中文字符提取 2-4 字子串
     const chineseChars = text.match(/[\u4e00-\u9fa5]+/g);
     if (chineseChars) {
@@ -365,12 +385,14 @@ export class MemoryManager {
   /**
    * 获取最近对话
    */
-  async getRecent(limit = 10): Promise<Array<{
-    input: string;
-    output: string;
-    time: string;
-    skill: string;
-  }>> {
+  async getRecent(limit = 10): Promise<
+    Array<{
+      input: string;
+      output: string;
+      time: string;
+      skill: string;
+    }>
+  > {
     const records = await this.loadAllRecords();
     return records.slice(0, limit).map((r: MemoryInteraction) => ({
       input: r.input || '',
@@ -400,8 +422,11 @@ export class MemoryManager {
     return {
       totalInteractions: records.length,
       uniqueTasks: uniqueTasks.size,
-      interactionsToday: records.filter(r => new Date(r.timestamp).toDateString() === today).length,
-      interactionsYesterday: records.filter(r => new Date(r.timestamp).toDateString() === yesterday).length,
+      interactionsToday: records.filter((r) => new Date(r.timestamp).toDateString() === today)
+        .length,
+      interactionsYesterday: records.filter(
+        (r) => new Date(r.timestamp).toDateString() === yesterday
+      ).length,
       indexSize: Object.keys(skillUsage).length,
       skillUsage,
       skillsUsed: Array.from(skillsUsed),

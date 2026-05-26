@@ -10,9 +10,9 @@ vi.mock('../config/manager.js', () => ({
       defaultTemperature: 0.7,
       defaultMaxTokens: 4000,
       saveHistory: true,
-      historyLimit: 100
+      historyLimit: 100,
     }));
-  }
+  },
 }));
 
 // Mock console methods to reduce noise during tests

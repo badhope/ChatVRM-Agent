@@ -94,7 +94,7 @@ export class ReferenceFinder {
 
     // Apply file pattern filters if provided
     if (options.filePatterns && options.filePatterns.length > 0) {
-      sourceFiles = sourceFiles.filter(sf =>
+      sourceFiles = sourceFiles.filter((sf) =>
         this.matchesPatterns(sf.getFilePath(), options.filePatterns!)
       );
     }
@@ -110,10 +110,10 @@ export class ReferenceFinder {
     // Filter out definition if not requested
     const filteredReferences = includeDefinition
       ? allReferences
-      : allReferences.filter(r => r.type !== 'definition');
+      : allReferences.filter((r) => r.type !== 'definition');
 
     // Get unique file count
-    const uniqueFiles = new Set(filteredReferences.map(r => r.filePath));
+    const uniqueFiles = new Set(filteredReferences.map((r) => r.filePath));
 
     return {
       symbolName,
@@ -136,14 +136,14 @@ export class ReferenceFinder {
     filePath?: string
   ): { filePath: string; line: number; column: number } | null {
     const sourceFiles = filePath
-      ? [this.project.getSourceFile(filePath)].filter(Boolean) as SourceFile[]
+      ? ([this.project.getSourceFile(filePath)].filter(Boolean) as SourceFile[])
       : this.project.getSourceFiles();
 
     for (const sourceFile of sourceFiles) {
       // Try to find by declarations
-      const declarations = sourceFile.getVariableDeclarations().filter(d =>
-        d.getName() === symbolName
-      );
+      const declarations = sourceFile
+        .getVariableDeclarations()
+        .filter((d) => d.getName() === symbolName);
       if (declarations.length > 0) {
         const decl = declarations[0];
         const lineAndCol = sourceFile.getLineAndColumnAtPos(decl.getStart());
@@ -155,9 +155,7 @@ export class ReferenceFinder {
       }
 
       // Try to find by function declarations
-      const funcs = sourceFile.getFunctions().filter(f =>
-        f.getName() === symbolName
-      );
+      const funcs = sourceFile.getFunctions().filter((f) => f.getName() === symbolName);
       if (funcs.length > 0) {
         const func = funcs[0];
         const lineAndCol = sourceFile.getLineAndColumnAtPos(func.getStart());
@@ -169,9 +167,7 @@ export class ReferenceFinder {
       }
 
       // Try to find by class declarations
-      const classes = sourceFile.getClasses().filter(c =>
-        c.getName() === symbolName
-      );
+      const classes = sourceFile.getClasses().filter((c) => c.getName() === symbolName);
       if (classes.length > 0) {
         const cls = classes[0];
         const lineAndCol = sourceFile.getLineAndColumnAtPos(cls.getStart());
@@ -183,9 +179,7 @@ export class ReferenceFinder {
       }
 
       // Try to find by interface declarations
-      const interfaces = sourceFile.getInterfaces().filter(i =>
-        i.getName() === symbolName
-      );
+      const interfaces = sourceFile.getInterfaces().filter((i) => i.getName() === symbolName);
       if (interfaces.length > 0) {
         const iface = interfaces[0];
         const lineAndCol = sourceFile.getLineAndColumnAtPos(iface.getStart());
@@ -197,9 +191,7 @@ export class ReferenceFinder {
       }
 
       // Try to find by type alias declarations
-      const typeAliases = sourceFile.getTypeAliases().filter(t =>
-        t.getName() === symbolName
-      );
+      const typeAliases = sourceFile.getTypeAliases().filter((t) => t.getName() === symbolName);
       if (typeAliases.length > 0) {
         const typeAlias = typeAliases[0];
         const lineAndCol = sourceFile.getLineAndColumnAtPos(typeAlias.getStart());
@@ -293,8 +285,10 @@ export class ReferenceFinder {
     }
 
     // Check for type reference
-    if (parent.getKindName().includes('TypeReference') ||
-        parent.getKindName().includes('TypeAlias')) {
+    if (
+      parent.getKindName().includes('TypeReference') ||
+      parent.getKindName().includes('TypeAlias')
+    ) {
       return 'type-reference';
     }
 
@@ -321,7 +315,7 @@ export class ReferenceFinder {
    * @returns True if matches any pattern
    */
   private matchesPatterns(filePath: string, patterns: string[]): boolean {
-    return patterns.some(pattern => {
+    return patterns.some((pattern) => {
       // Simple glob matching
       const regex = new RegExp(
         pattern
@@ -369,5 +363,5 @@ export async function findReferencesInFile(
     ...options,
     filePatterns: [filePath],
   });
-  return result.references.filter(r => r.filePath === path.normalize(filePath));
+  return result.references.filter((r) => r.filePath === path.normalize(filePath));
 }

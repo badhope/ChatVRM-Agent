@@ -126,7 +126,7 @@ export class ReviewManager {
 
   getReviews(
     pluginName: string,
-    options?: { sort?: 'newest' | 'oldest' | 'highest' | 'lowest'; limit?: number },
+    options?: { sort?: 'newest' | 'oldest' | 'highest' | 'lowest'; limit?: number }
   ): Review[] {
     const list = [...(this.reviews.get(pluginName) ?? [])];
     const sort = options?.sort ?? 'newest';

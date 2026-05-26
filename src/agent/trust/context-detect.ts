@@ -48,7 +48,7 @@ export function detectDatabaseContext(output: string): TrustIssue[] {
 
   for (const { pattern, desc } of patterns) {
     if (pattern.test(output)) {
-      if (!issues.some(i => i.description === desc)) {
+      if (!issues.some((i) => i.description === desc)) {
         issues.push({
           type: 'destructive',
           level: TrustLevel.RequireConfirmation,

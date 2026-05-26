@@ -5,8 +5,7 @@ import { configManager } from '../../config/manager.js';
 import { PROVIDER_INFO, PROVIDER_TYPE_LIST, type ProviderType } from '../../types.js';
 import { printHeader, printSection, printSuccess, printError, printInfo } from '../../ui/logo.js';
 
-export const initConfigCommand = new Command('init')
-  .description('初始化配置与查看');
+export const initConfigCommand = new Command('init').description('初始化配置与查看');
 
 // 初始化配置向导
 initConfigCommand
@@ -21,16 +20,18 @@ initConfigCommand
     printInfo('本向导将帮助您配置 Personal Assistant Agent\n');
 
     // 选择要配置的平台
-    const { providers } = await inquirer.prompt([{
-      type: 'checkbox',
-      name: 'providers',
-      message: '选择要配置的平台（可多选）:',
-      choices: PROVIDER_TYPE_LIST.map(type => ({
-        name: `${PROVIDER_INFO[type].displayName} (${type})`,
-        value: type,
-        checked: !!configManager.getApiKey(type)
-      }))
-    }]);
+    const { providers } = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'providers',
+        message: '选择要配置的平台（可多选）:',
+        choices: PROVIDER_TYPE_LIST.map((type) => ({
+          name: `${PROVIDER_INFO[type].displayName} (${type})`,
+          value: type,
+          checked: !!configManager.getApiKey(type),
+        })),
+      },
+    ]);
 
     // 为每个选中的平台配置API密钥
     for (const type of providers as ProviderType[]) {
@@ -40,50 +41,56 @@ initConfigCommand
       console.log(chalk.bold(`\n  🔧 配置 ${info.displayName}`));
 
       if (currentKey) {
-        const { update } = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'update',
-          message: '已配置API密钥，是否更新?',
-          default: false
-        }]);
+        const { update } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'update',
+            message: '已配置API密钥，是否更新?',
+            default: false,
+          },
+        ]);
 
         if (!update) continue;
       }
 
-      const { apiKey } = await inquirer.prompt([{
-        type: 'password',
-        name: 'apiKey',
-        message: `请输入 ${info.displayName} API密钥:`,
-        mask: '*',
-        validate: (input: string) => input.trim() !== '' || 'API密钥不能为空'
-      }]);
+      const { apiKey } = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: `请输入 ${info.displayName} API密钥:`,
+          mask: '*',
+          validate: (input: string) => input.trim() !== '' || 'API密钥不能为空',
+        },
+      ]);
 
       await configManager.setApiKey(type, apiKey);
       printSuccess(`${info.displayName} API密钥已保存`);
     }
 
     // 设置默认平台
-    const configuredProviders = PROVIDER_TYPE_LIST.filter(type =>
-      configManager.getApiKey(type)
-    );
+    const configuredProviders = PROVIDER_TYPE_LIST.filter((type) => configManager.getApiKey(type));
 
     if (configuredProviders.length > 0) {
-      const { defaultProvider } = await inquirer.prompt([{
-        type: 'list',
-        name: 'defaultProvider',
-        message: '选择默认平台:',
-        choices: [
-          { name: '不设置', value: null },
-          ...configuredProviders.map(type => ({
-            name: PROVIDER_INFO[type].displayName,
-            value: type
-          }))
-        ]
-      }]);
+      const { defaultProvider } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'defaultProvider',
+          message: '选择默认平台:',
+          choices: [
+            { name: '不设置', value: null },
+            ...configuredProviders.map((type) => ({
+              name: PROVIDER_INFO[type].displayName,
+              value: type,
+            })),
+          ],
+        },
+      ]);
 
       if (defaultProvider) {
         await configManager.setDefaultProvider(defaultProvider as ProviderType);
-        printSuccess(`默认平台已设置为: ${PROVIDER_INFO[defaultProvider as ProviderType].displayName}`);
+        printSuccess(
+          `默认平台已设置为: ${PROVIDER_INFO[defaultProvider as ProviderType].displayName}`
+        );
       }
     }
 
@@ -109,7 +116,7 @@ initConfigCommand
 
     console.log(chalk.bold('\n  🤖 AI平台配置:\n'));
 
-    PROVIDER_TYPE_LIST.forEach(type => {
+    PROVIDER_TYPE_LIST.forEach((type) => {
       const info = PROVIDER_INFO[type];
       const providerConfig = config.providers[type];
       // 本地平台不需要 API Key
@@ -121,7 +128,10 @@ initConfigCommand
         if (isLocalProvider) {
           console.log(`     ${chalk.green('✓ 本地运行，无需API Key')}`);
         } else if (providerConfig?.apiKey) {
-          const maskedKey = providerConfig.apiKey.substring(0, 8) + '...' + providerConfig.apiKey.substring(providerConfig.apiKey.length - 4);
+          const maskedKey =
+            providerConfig.apiKey.substring(0, 8) +
+            '...' +
+            providerConfig.apiKey.substring(providerConfig.apiKey.length - 4);
           console.log(`     API Key: ${maskedKey}`);
         }
       } else {

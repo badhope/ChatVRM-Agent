@@ -48,4 +48,4 @@ export const TOKENS = {
 /**
  * 令牌类型 -从 TOKENS 对象派生
  */
-export type TokenType = typeof TOKENS[keyof typeof TOKENS];
+export type TokenType = (typeof TOKENS)[keyof typeof TOKENS];

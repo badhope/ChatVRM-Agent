@@ -38,7 +38,7 @@ export class EventBus {
   on(
     hook: PluginHook,
     handler: (...args: unknown[]) => void | Promise<void>,
-    options?: HookRegistrationOptions,
+    options?: HookRegistrationOptions
   ): () => void {
     const entry: HookHandler = {
       pluginName: options?.pluginName ?? 'anonymous',
@@ -96,7 +96,7 @@ export class EventBus {
       } catch (error: unknown) {
         // Prevent one failing handler from blocking others
         logger.error(
-          `Handler error on "${hook}" from plugin "${entry.pluginName}": ${getErrorMessage(error)}`,
+          `Handler error on "${hook}" from plugin "${entry.pluginName}": ${getErrorMessage(error)}`
         );
       }
     }

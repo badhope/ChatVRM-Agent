@@ -45,9 +45,7 @@ export interface MemorySearchResult {
  */
 @injectable()
 export class MemoryService extends BaseService {
-  constructor(
-    @inject(TOKENS.MemoryManager) private memory: IMemoryManager
-  ) {
+  constructor(@inject(TOKENS.MemoryManager) private memory: IMemoryManager) {
     super();
   }
 
@@ -63,7 +61,7 @@ export class MemoryService extends BaseService {
         provider: entry.provider,
         model: entry.model,
         taskId: entry.taskId,
-        tags: entry.tags
+        tags: entry.tags,
       });
     });
   }
@@ -77,11 +75,11 @@ export class MemoryService extends BaseService {
   async search(query: string, limit: number = 10): Promise<MemoryEntry[]> {
     return this.withErrorHandling('search', async () => {
       const records = await this.memory.recall(query, limit);
-      return records.map(record => ({
+      return records.map((record) => ({
         input: record.interaction.input || '',
         output: record.interaction.output || '',
         provider: record.interaction.skillUsed || 'unknown',
-        model: 'unknown'
+        model: 'unknown',
       }));
     });
   }
@@ -104,11 +102,11 @@ export class MemoryService extends BaseService {
   async getAll(): Promise<MemoryEntry[]> {
     return this.withErrorHandling('getAll', async () => {
       const records = await this.memory.loadAllRecords();
-      return records.map(record => ({
+      return records.map((record) => ({
         input: record.input,
         output: record.output,
         provider: record.skillUsed || 'unknown',
-        model: 'unknown'
+        model: 'unknown',
       }));
     });
   }
@@ -131,7 +129,7 @@ export class MemoryService extends BaseService {
       const stats = await this.memory.getStats();
       return {
         total: stats.totalInteractions,
-        size: stats.indexSize
+        size: stats.indexSize,
       };
     });
   }

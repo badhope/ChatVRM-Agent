@@ -6,16 +6,19 @@ import type { Config } from './schemas.js';
 // 沙盒权限常量
 // ============================================================
 
-export const SANDBOX_PERMISSIONS: Record<SandboxLevel, {
-  description: string;
-  allowDelete: boolean;
-  allowSystemModify: boolean;
-  allowNetwork: boolean;
-  allowExec: boolean;
-  maxFileSize: number;
-  allowedPaths: string[];
-  blockedPaths: string[];
-}> = {
+export const SANDBOX_PERMISSIONS: Record<
+  SandboxLevel,
+  {
+    description: string;
+    allowDelete: boolean;
+    allowSystemModify: boolean;
+    allowNetwork: boolean;
+    allowExec: boolean;
+    maxFileSize: number;
+    allowedPaths: string[];
+    blockedPaths: string[];
+  }
+> = {
   minimal: {
     description: '极小权限 - 仅允许读取和执行只读操作',
     allowDelete: false,

@@ -98,7 +98,11 @@ export async function executeToolStep(
       step.args = parseToolArgsFromAI(step.tool, paramReasoning);
     }
 
-    onOutput?.(chalk.dim(`  → 执行工具: ${chalk.cyan(step.tool)} ${step.args ? JSON.stringify(step.args) : ''}...`));
+    onOutput?.(
+      chalk.dim(
+        `  → 执行工具: ${chalk.cyan(step.tool)} ${step.args ? JSON.stringify(step.args) : ''}...`
+      )
+    );
 
     // 执行工具
     const startTime = Date.now();
@@ -278,7 +282,7 @@ export function requiresConfirmation(result: ToolResult): boolean {
     /drop|丢弃/i,
   ];
 
-  return suspiciousPatterns.some(pattern => pattern.test(output));
+  return suspiciousPatterns.some((pattern) => pattern.test(output));
 }
 
 /**
@@ -300,7 +304,9 @@ export async function executeStep(
 
   // 验证工具存在（防止幻觉工具调用）
   if (!toolRegistry.has(step.tool)) {
-    throw new Error(`工具 "${step.tool}" 不存在。可用工具: ${[...toolRegistry.toolsMap.keys()].join(', ')}`);
+    throw new Error(
+      `工具 "${step.tool}" 不存在。可用工具: ${[...toolRegistry.toolsMap.keys()].join(', ')}`
+    );
   }
 
   // 防止范围蔓延：步骤数量上限检查
@@ -308,7 +314,9 @@ export async function executeStep(
   if (context['_stepCount'] !== undefined) {
     const currentCount = context['_stepCount'] as number;
     if (currentCount > maxSteps) {
-      throw new Error(`任务步骤超过上限(${maxSteps}步)，已自动停止。可能是任务范围过大，请分解任务后重试。`);
+      throw new Error(
+        `任务步骤超过上限(${maxSteps}步)，已自动停止。可能是任务范围过大，请分解任务后重试。`
+      );
     }
     context['_stepCount'] = currentCount + 1;
   } else {
@@ -341,6 +349,8 @@ export async function executeStep(
 
     return JSON.stringify(result, null, 2);
   } catch (error) {
-    throw new Error(`工具 ${step.tool} 执行失败: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `工具 ${step.tool} 执行失败: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

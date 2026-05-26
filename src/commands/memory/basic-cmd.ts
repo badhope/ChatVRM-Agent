@@ -1,10 +1,16 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { memoryManager } from '../../memory/manager.js';
-import { printHeader, printSection, printSuccess, printError, printInfo, createSpinner } from '../../ui/logo.js';
+import {
+  printHeader,
+  printSection,
+  printSuccess,
+  printError,
+  printInfo,
+  createSpinner,
+} from '../../ui/logo.js';
 
-export const memoryBasicCommand = new Command('basic')
-  .description('基础记忆操作');
+export const memoryBasicCommand = new Command('basic').description('基础记忆操作');
 
 // 查看最近记忆
 memoryBasicCommand
@@ -61,7 +67,11 @@ memoryBasicCommand
 
     results.forEach((r, i) => {
       const time = new Date(r.interaction.timestamp).toLocaleString('zh-CN');
-      console.log(chalk.gray(`  ${i + 1}. ${time}  相关度: ${chalk.yellow(r.relevance.toFixed(2))}  [${r.interaction.skillUsed}]`));
+      console.log(
+        chalk.gray(
+          `  ${i + 1}. ${time}  相关度: ${chalk.yellow(r.relevance.toFixed(2))}  [${r.interaction.skillUsed}]`
+        )
+      );
       console.log(chalk.cyan(`   问: ${(r.interaction.input || '').slice(0, 60)}`));
       console.log(chalk.green(`   答: ${(r.interaction.output || '').slice(0, 80)}`));
       console.log();
@@ -88,7 +98,9 @@ memoryBasicCommand
 
     if (stats.skillUsage && Object.keys(stats.skillUsage).length > 0) {
       console.log(chalk.gray('\n  技能使用频率:'));
-      const sorted = Object.entries(stats.skillUsage).sort((a, b) => (b[1] as number) - (a[1] as number));
+      const sorted = Object.entries(stats.skillUsage).sort(
+        (a, b) => (b[1] as number) - (a[1] as number)
+      );
       sorted.forEach(([skill, count]) => {
         console.log(`    ${chalk.cyan(skill.padEnd(30))} ${count} 次`);
       });
@@ -110,12 +122,14 @@ memoryBasicCommand
   .action(async (options: { force: boolean }) => {
     if (!options.force && process.stdin.isTTY) {
       const inquirer = await import('inquirer');
-      const { confirm } = await inquirer.default.prompt([{
-        type: 'confirm',
-        name: 'confirm',
-        message: '确定要清空所有记忆吗？此操作不可恢复',
-        default: false,
-      }]);
+      const { confirm } = await inquirer.default.prompt([
+        {
+          type: 'confirm',
+          name: 'confirm',
+          message: '确定要清空所有记忆吗？此操作不可恢复',
+          default: false,
+        },
+      ]);
       if (!confirm) return;
     }
 

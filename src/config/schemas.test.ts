@@ -5,17 +5,25 @@ import {
   MemoryConfigSchema,
   SandboxConfigSchema,
   ConfigSchema,
-  ProviderTypeSchema
+  ProviderTypeSchema,
 } from './schemas.js';
 import { validateConfig, validatePartialConfig } from './validation.js';
 
 describe('ProviderTypeSchema', () => {
   it('should validate valid provider types', () => {
     const validProviders = [
-      'openai', 'anthropic', 'google', 'aliyun', 'siliconflow',
-      'zhipu', 'baidu', 'deepseek', 'ollama', 'lmstudio'
+      'openai',
+      'anthropic',
+      'google',
+      'aliyun',
+      'siliconflow',
+      'zhipu',
+      'baidu',
+      'deepseek',
+      'ollama',
+      'lmstudio',
     ];
-    validProviders.forEach(provider => {
+    validProviders.forEach((provider) => {
       const result = ProviderTypeSchema.safeParse(provider);
       expect(result.success).toBe(true);
     });
@@ -31,49 +39,49 @@ describe('ProviderConfigSchema', () => {
   it('should validate valid provider config', () => {
     const result = ProviderConfigSchema.safeParse({
       apiKey: 'test-key',
-      timeout: 60000
+      timeout: 60000,
     });
     expect(result.success).toBe(true);
   });
 
   it('should reject invalid timeout (too low)', () => {
     const result = ProviderConfigSchema.safeParse({
-      timeout: 50
+      timeout: 50,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid timeout (too high)', () => {
     const result = ProviderConfigSchema.safeParse({
-      timeout: 400000
+      timeout: 400000,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid maxRetries (negative)', () => {
     const result = ProviderConfigSchema.safeParse({
-      maxRetries: -1
+      maxRetries: -1,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid maxRetries (too high)', () => {
     const result = ProviderConfigSchema.safeParse({
-      maxRetries: 15
+      maxRetries: 15,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid URL', () => {
     const result = ProviderConfigSchema.safeParse({
-      baseUrl: 'not-a-valid-url'
+      baseUrl: 'not-a-valid-url',
     });
     expect(result.success).toBe(false);
   });
 
   it('should accept valid URL', () => {
     const result = ProviderConfigSchema.safeParse({
-      baseUrl: 'https://api.example.com'
+      baseUrl: 'https://api.example.com',
     });
     expect(result.success).toBe(true);
   });
@@ -94,28 +102,28 @@ describe('ChatConfigSchema', () => {
       defaultTemperature: 0.5,
       defaultMaxTokens: 2000,
       saveHistory: false,
-      historyLimit: 50
+      historyLimit: 50,
     });
     expect(result.success).toBe(true);
   });
 
   it('should reject invalid temperature (too high)', () => {
     const result = ChatConfigSchema.safeParse({
-      defaultTemperature: 3.0
+      defaultTemperature: 3.0,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid temperature (negative)', () => {
     const result = ChatConfigSchema.safeParse({
-      defaultTemperature: -0.5
+      defaultTemperature: -0.5,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid maxTokens (too low)', () => {
     const result = ChatConfigSchema.safeParse({
-      defaultMaxTokens: 50
+      defaultMaxTokens: 50,
     });
     expect(result.success).toBe(false);
   });
@@ -136,21 +144,21 @@ describe('MemoryConfigSchema', () => {
   it('should validate valid memory config', () => {
     const result = MemoryConfigSchema.safeParse({
       enabled: true,
-      maxMemories: 500
+      maxMemories: 500,
     });
     expect(result.success).toBe(true);
   });
 
   it('should reject invalid maxMemories (too low)', () => {
     const result = MemoryConfigSchema.safeParse({
-      maxMemories: 5
+      maxMemories: 5,
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid maxMemories (too high)', () => {
     const result = MemoryConfigSchema.safeParse({
-      maxMemories: 50000
+      maxMemories: 50000,
     });
     expect(result.success).toBe(false);
   });
@@ -168,7 +176,7 @@ describe('MemoryConfigSchema', () => {
 describe('SandboxConfigSchema', () => {
   it('should validate valid sandbox levels', () => {
     const levels = ['minimal', 'conservative', 'balanced', 'relaxed', 'extreme'];
-    levels.forEach(level => {
+    levels.forEach((level) => {
       const result = SandboxConfigSchema.safeParse({ level });
       expect(result.success).toBe(true);
     });
@@ -176,7 +184,7 @@ describe('SandboxConfigSchema', () => {
 
   it('should reject invalid sandbox level', () => {
     const result = SandboxConfigSchema.safeParse({
-      level: 'invalid-level'
+      level: 'invalid-level',
     });
     expect(result.success).toBe(false);
   });
@@ -198,18 +206,18 @@ describe('ConfigSchema', () => {
       providers: {
         openai: {
           apiKey: 'test-key',
-          timeout: 30000
-        }
+          timeout: 30000,
+        },
       },
       chat: {
-        defaultTemperature: 0.8
+        defaultTemperature: 0.8,
       },
       memory: {
-        enabled: true
+        enabled: true,
       },
       sandbox: {
-        level: 'balanced'
-      }
+        level: 'balanced',
+      },
     });
     expect(result.success).toBe(true);
   });
@@ -227,8 +235,8 @@ describe('ConfigSchema', () => {
   it('should reject invalid nested config', () => {
     const result = ConfigSchema.safeParse({
       chat: {
-        defaultTemperature: 5.0
-      }
+        defaultTemperature: 5.0,
+      },
     });
     expect(result.success).toBe(false);
   });
@@ -239,8 +247,8 @@ describe('validateConfig', () => {
     const config = {
       defaultProvider: 'openai' as const,
       providers: {
-        openai: { apiKey: 'test' }
-      }
+        openai: { apiKey: 'test' },
+      },
     };
     const result = validateConfig(config);
     expect(result.valid).toBe(true);
@@ -250,8 +258,8 @@ describe('validateConfig', () => {
   it('should return errors for invalid config', () => {
     const config = {
       chat: {
-        defaultTemperature: 5.0
-      }
+        defaultTemperature: 5.0,
+      },
     };
     const result = validateConfig(config);
     expect(result.valid).toBe(false);
@@ -262,8 +270,8 @@ describe('validateConfig', () => {
   it('should include path in error messages', () => {
     const config = {
       chat: {
-        defaultTemperature: 5.0
-      }
+        defaultTemperature: 5.0,
+      },
     };
     const result = validateConfig(config);
     expect(result.valid).toBe(false);
@@ -277,8 +285,8 @@ describe('validatePartialConfig', () => {
   it('should validate partial config', () => {
     const result = validatePartialConfig({
       chat: {
-        defaultTemperature: 0.5
-      }
+        defaultTemperature: 0.5,
+      },
     });
     expect(result.success).toBe(true);
   });

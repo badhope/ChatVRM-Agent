@@ -87,7 +87,7 @@ import { pluginRegistry } from './registry.js';
 export function createPluginContext(
   manifest: PluginManifest,
   toolRegistry?: Map<string, ToolDefinition>,
-  configManager?: ConfigManager,
+  configManager?: ConfigManager
 ): PluginContext {
   const logger = createPluginLogger(manifest.name);
 

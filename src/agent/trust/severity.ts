@@ -89,10 +89,7 @@ export function isHighSeverity(issue: TrustIssue): boolean {
  * @param suggestion - 可选的建议文本
  * @returns 信任问题对象
  */
-export function createIssueFromPattern(
-  pattern: DetectionPattern,
-  suggestion?: string
-): TrustIssue {
+export function createIssueFromPattern(pattern: DetectionPattern, suggestion?: string): TrustIssue {
   return {
     type: pattern.type,
     level: pattern.level,

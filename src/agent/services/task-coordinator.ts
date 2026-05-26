@@ -109,11 +109,7 @@ export class TaskCoordinator implements ITaskCoordinator {
    * @param status 新状态
    * @param result 执行结果（可选）
    */
-  updateStepStatus(
-    stepIndex: number,
-    status: TaskStep['status'],
-    result?: string
-  ): void {
+  updateStepStatus(stepIndex: number, status: TaskStep['status'], result?: string): void {
     if (!this._currentTask) {
       throw new Error('No active task.');
     }
@@ -235,9 +231,9 @@ export class TaskCoordinator implements ITaskCoordinator {
     const steps = this._currentTask.steps;
     return {
       totalSteps: steps.length,
-      completedSteps: steps.filter(s => s.status === 'done').length,
-      errorSteps: steps.filter(s => s.status === 'error').length,
-      skippedSteps: steps.filter(s => s.status === 'skipped').length,
+      completedSteps: steps.filter((s) => s.status === 'done').length,
+      errorSteps: steps.filter((s) => s.status === 'error').length,
+      skippedSteps: steps.filter((s) => s.status === 'skipped').length,
       duration: this.getDuration(),
     };
   }
@@ -257,10 +253,12 @@ export class TaskCoordinator implements ITaskCoordinator {
    * @returns 是否有活动任务
    */
   hasActiveTask(): boolean {
-    return this._currentTask !== null &&
-           this._currentTask.status !== 'completed' &&
-           this._currentTask.status !== 'failed' &&
-           this._currentTask.status !== 'timeout';
+    return (
+      this._currentTask !== null &&
+      this._currentTask.status !== 'completed' &&
+      this._currentTask.status !== 'failed' &&
+      this._currentTask.status !== 'timeout'
+    );
   }
 
   /**
@@ -273,8 +271,8 @@ export class TaskCoordinator implements ITaskCoordinator {
     }
 
     return this._currentTask.steps
-      .filter(s => s.status === 'done' && s.result)
-      .map(s => s.result!);
+      .filter((s) => s.status === 'done' && s.result)
+      .map((s) => s.result!);
   }
 
   /**

@@ -58,7 +58,7 @@ describe('tokenize', () => {
 
   it('should remove duplicates', () => {
     const result = tokenize('hello hello world');
-    expect(result.filter(w => w === 'hello').length).toBe(1);
+    expect(result.filter((w) => w === 'hello').length).toBe(1);
   });
 
   it('should filter out short words', () => {

@@ -1,8 +1,5 @@
 import { MCPDiscovery, type MCPServiceInfo } from './discovery.js';
-import {
-  MCPIntegration,
-  type IntegrationResult,
-} from './integration.js';
+import { MCPIntegration, type IntegrationResult } from './integration.js';
 
 // ============================================================
 // MCP Marketplace - Manager (high-level API)
@@ -18,10 +15,7 @@ export class MCPManager {
   private discovery: MCPDiscovery;
   private integration: MCPIntegration;
 
-  constructor(
-    discovery?: MCPDiscovery,
-    integration?: MCPIntegration,
-  ) {
+  constructor(discovery?: MCPDiscovery, integration?: MCPIntegration) {
     this.discovery = discovery ?? new MCPDiscovery();
     this.integration = integration ?? new MCPIntegration(this.discovery);
   }
@@ -30,7 +24,7 @@ export class MCPManager {
 
   async search(
     query: string,
-    options?: { category?: string; limit?: number },
+    options?: { category?: string; limit?: number }
   ): Promise<MCPSearchResult[]> {
     await this.discovery.discover();
     const lower = query.toLowerCase();
@@ -66,10 +60,7 @@ export class MCPManager {
     return scored;
   }
 
-  async list(options?: {
-    category?: string;
-    verbose?: boolean;
-  }): Promise<MCPServiceInfo[]> {
+  async list(options?: { category?: string; verbose?: boolean }): Promise<MCPServiceInfo[]> {
     const all = await this.discovery.discover();
     if (!options?.category) return all;
     return all.filter((s) => s.category === options.category);

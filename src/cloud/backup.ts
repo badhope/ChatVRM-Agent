@@ -71,7 +71,9 @@ export class BackupManager {
 
         // 恢复默认提供商
         if (config.defaultProvider && typeof config.defaultProvider === 'string') {
-          await configManager.setDefaultProvider(config.defaultProvider as import('../types.js').ProviderType);
+          await configManager.setDefaultProvider(
+            config.defaultProvider as import('../types.js').ProviderType
+          );
         }
 
         // 恢复各提供商配置（仅非敏感字段）
@@ -81,12 +83,17 @@ export class BackupManager {
               const cfg = providerConfig as Record<string, any>;
               // 跳过已脱敏的 apiKey
               if (cfg.apiKey === '***REDACTED***') {
-                backupLogger.info({ provider: name }, 'Skipping API Key restore (redacted, manual config required)');
+                backupLogger.info(
+                  { provider: name },
+                  'Skipping API Key restore (redacted, manual config required)'
+                );
                 delete cfg.apiKey;
               }
               // 恢复 baseUrl, defaultModel 等配置
               if (cfg.baseUrl || cfg.defaultModel || cfg.maxRetries) {
-                const existing = configManager.getProviderConfig(name as import('../types.js').ProviderType);
+                const existing = configManager.getProviderConfig(
+                  name as import('../types.js').ProviderType
+                );
                 if (existing) {
                   if (cfg.baseUrl) existing.baseUrl = cfg.baseUrl;
                   if (cfg.defaultModel) existing.defaultModel = cfg.defaultModel;
@@ -136,7 +143,7 @@ export class BackupManager {
       const backupFile = path.join(this.backupDir, `${backupId}.json`);
       await fs.unlink(backupFile);
       const index = await this.loadIndex();
-      const filtered = index.filter(e => e.id !== backupId);
+      const filtered = index.filter((e) => e.id !== backupId);
       await fs.writeFile(this.indexFile, JSON.stringify(filtered, null, 2));
       return true;
     } catch (error) {
@@ -161,7 +168,11 @@ export class BackupManager {
       const backupFile = path.join(this.backupDir, `${id}.json`);
       await fs.writeFile(backupFile, content);
       const entry: BackupEntry = {
-        id, timestamp, type: 'auto', size, description: 'Automatic backup before sync',
+        id,
+        timestamp,
+        type: 'auto',
+        size,
+        description: 'Automatic backup before sync',
       };
       await this.updateIndex(entry);
       await this.cleanup();
@@ -174,7 +185,8 @@ export class BackupManager {
 
   async cleanup(): Promise<number> {
     const index = await this.loadIndex();
-    const autoBackups = index.filter(e => e.type === 'auto')
+    const autoBackups = index
+      .filter((e) => e.type === 'auto')
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const autoToDelete = autoBackups.slice(this.maxBackups);
     let deletedCount = 0;
@@ -215,9 +227,11 @@ export class BackupManager {
       memory = undefined;
     }
     return {
-      version: SYNC_SCHEMA_VERSION, deviceId: 'backup',
+      version: SYNC_SCHEMA_VERSION,
+      deviceId: 'backup',
       timestamp: new Date().toISOString(),
-      config: stripSecrets(JSON.parse(JSON.stringify(config))), memory,
+      config: stripSecrets(JSON.parse(JSON.stringify(config))),
+      memory,
     };
   }
 }

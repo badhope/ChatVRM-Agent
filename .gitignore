@@ -2,6 +2,7 @@
 .env
 .env.*
 .devflow/
+.personal-assistant/
 config_backup.json
 config_backup*.json
 *.key
@@ -12,7 +13,6 @@ config_backup*.json
 *_BACKUP.md
 *_COMPLETE.md
 *_REPAIR.md
-*_SETUP.md
 TEMP_*.md
 SECURITY_*.md
 CREDENTIALS_*.md
@@ -95,8 +95,13 @@ htmlcov/
 *.bak
 *.temp
 *.swp
+
+# Node.js
 node_modules/
 dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # DevFlow runtime data
 .devflow/
@@ -110,3 +115,27 @@ sdk/dist/
 
 # Packages (local)
 packages/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Vitest
+.vitest/
+
+# Build artifacts
+*.js.map
+*.d.ts.map
+
+# Runtime data directories
+runtime/
+data/
+storage/
+
+# Local configuration
+.localrc
+.local.env
+
+# Editor directories
+.project/
+.settings/

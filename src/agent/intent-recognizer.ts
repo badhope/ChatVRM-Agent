@@ -149,11 +149,13 @@ export class IntentRecognizer {
     }
 
     // 回退：正则低置信结果或默认 chat
-    return regexResult.confidence > 0.5 ? regexResult : {
-      intent: 'chat',
-      confidence: 0.5,
-      suggestedTools: [],
-    };
+    return regexResult.confidence > 0.5
+      ? regexResult
+      : {
+          intent: 'chat',
+          confidence: 0.5,
+          suggestedTools: [],
+        };
   }
 
   /**
@@ -173,7 +175,11 @@ export class IntentRecognizer {
     for (const rule of REGEX_RULES) {
       if (rule.pattern.test(lower)) {
         // fullstack 意图额外检查技术栈关键词
-        if (rule.intent === 'fullstack' && !techStackPattern.test(lower) && !fileExtPattern.test(lower)) {
+        if (
+          rule.intent === 'fullstack' &&
+          !techStackPattern.test(lower) &&
+          !fileExtPattern.test(lower)
+        ) {
           continue;
         }
         return {

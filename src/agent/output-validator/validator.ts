@@ -99,10 +99,7 @@ export class OutputValidator {
   /**
    * 使用 OutputSchema 验证
    */
-  private validateWithSchema(
-    output: string,
-    schema: OutputSchema
-  ): ValidationResult {
+  private validateWithSchema(output: string, schema: OutputSchema): ValidationResult {
     const errors: string[] = [];
     const suggestions: string[] = [];
 
@@ -169,10 +166,7 @@ export class OutputValidator {
   /**
    * 验证长度限制
    */
-  private validateLength(
-    output: string,
-    schema: OutputSchema
-  ): { errors: string[] } {
+  private validateLength(output: string, schema: OutputSchema): { errors: string[] } {
     const errors: string[] = [];
 
     if (schema.minLength !== undefined && output.length < schema.minLength) {
@@ -189,10 +183,7 @@ export class OutputValidator {
   /**
    * 验证必需内容
    */
-  private validateRequired(
-    output: string,
-    schema: OutputSchema
-  ): { errors: string[] } {
+  private validateRequired(output: string, schema: OutputSchema): { errors: string[] } {
     const errors: string[] = [];
 
     if (schema.required) {
@@ -209,10 +200,7 @@ export class OutputValidator {
   /**
    * 验证必需模式
    */
-  private validatePatterns(
-    output: string,
-    schema: OutputSchema
-  ): { errors: string[] } {
+  private validatePatterns(output: string, schema: OutputSchema): { errors: string[] } {
     const errors: string[] = [];
 
     if (schema.patterns) {
@@ -231,10 +219,7 @@ export class OutputValidator {
   /**
    * 验证禁止模式
    */
-  private validateForbidden(
-    output: string,
-    schema: OutputSchema
-  ): { errors: string[] } {
+  private validateForbidden(output: string, schema: OutputSchema): { errors: string[] } {
     const errors: string[] = [];
 
     if (schema.forbidden) {

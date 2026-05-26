@@ -34,7 +34,7 @@ export enum CircuitState {
  * Create a preset configuration for different operation types.
  */
 export function createCircuitBreakerConfig(
-  operationType: 'llm' | 'critical' | 'normal' | 'default' = 'default',
+  operationType: 'llm' | 'critical' | 'normal' | 'default' = 'default'
 ): CircuitBreakerOptions {
   switch (operationType) {
     case 'llm':

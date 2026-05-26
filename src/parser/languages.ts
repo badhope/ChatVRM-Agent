@@ -8,12 +8,7 @@ import { createLogger } from '../services/logger.js';
 const logger = createLogger('Languages');
 
 /** 支持的语言 */
-export type SupportedLanguage =
-  | 'typescript'
-  | 'tsx'
-  | 'javascript'
-  | 'javascript-jsx'
-  | 'python';
+export type SupportedLanguage = 'typescript' | 'tsx' | 'javascript' | 'javascript-jsx' | 'python';
 
 /**
  * Tree-sitter 语言对象

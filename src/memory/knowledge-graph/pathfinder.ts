@@ -9,7 +9,7 @@ import type { Entity, Relationship, EntityType, RelationshipType, PathNode } fro
  */
 function buildAdjacency(
   entities: Record<string, Entity>,
-  relationships: Relationship[],
+  relationships: Relationship[]
 ): Map<string, Array<{ neighborId: string; relType: RelationshipType }>> {
   const adjacency = new Map<string, Array<{ neighborId: string; relType: RelationshipType }>>();
 
@@ -40,7 +40,7 @@ function buildAdjacency(
 export function findAllConnected(
   entities: Record<string, Entity>,
   relationships: Relationship[],
-  entityId: string,
+  entityId: string
 ): Array<{ entity: Entity; relationship: Relationship }> {
   const results: Array<{ entity: Entity; relationship: Relationship }> = [];
 
@@ -79,7 +79,7 @@ export function findPath(
   relationships: Relationship[],
   fromId: string,
   toId: string,
-  maxDepth = 5,
+  maxDepth = 5
 ): PathNode[][] {
   if (!entities[fromId] || !entities[toId]) return [];
   if (fromId === toId) return [];

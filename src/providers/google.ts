@@ -1,5 +1,13 @@
 import { BaseProvider } from '../base.js';
-import type { ChatParams, ChatResponse, StreamChunk, ProviderConfig, Message, ImageContent, TextContent } from '../types.js';
+import type {
+  ChatParams,
+  ChatResponse,
+  StreamChunk,
+  ProviderConfig,
+  Message,
+  ImageContent,
+  TextContent,
+} from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
 import { CONNECTION_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../constants/index.js';
 
@@ -207,7 +215,7 @@ export class GoogleProvider extends BaseProvider {
                     promptTokens: data.usageMetadata.promptTokenCount || 0,
                     completionTokens: data.usageMetadata.candidatesTokenCount || 0,
                     totalTokens: data.usageMetadata.totalTokenCount || 0,
-                  }
+                  },
                 };
               }
             } catch {
@@ -252,28 +260,35 @@ export class GoogleProvider extends BaseProvider {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) return [];
-      const data = await response.json() as GoogleModelsResponse;
+      const data = (await response.json()) as GoogleModelsResponse;
       // Google 返回 { models: [{ name: "models/gemini-xxx", ... }] }
       const models = data.models || [];
       return models
-        .map(m => m.name.replace(/^models\//, ''))  // 去掉 "models/" 前缀
+        .map((m) => m.name.replace(/^models\//, '')) // 去掉 "models/" 前缀
         .sort();
     } catch {
       return [];
     }
   }
 
-  private convertMessages(messages: Message[]): { contents: GeminiContent[]; systemInstruction?: { parts: Array<{ text: string }> } } {
+  private convertMessages(messages: Message[]): {
+    contents: GeminiContent[];
+    systemInstruction?: { parts: Array<{ text: string }> };
+  } {
     const contents: GeminiContent[] = [];
     let systemInstruction: { parts: Array<{ text: string }> } | undefined;
 
     for (const msg of messages) {
       if (msg.role === 'system') {
-        const textContent = typeof msg.content === 'string'
-          ? msg.content
-          : Array.isArray(msg.content)
-            ? msg.content.filter((p): p is TextContent => typeof p !== 'string' && p.type === 'text').map(p => p.text).join('\n')
-            : String(msg.content);
+        const textContent =
+          typeof msg.content === 'string'
+            ? msg.content
+            : Array.isArray(msg.content)
+              ? msg.content
+                  .filter((p): p is TextContent => typeof p !== 'string' && p.type === 'text')
+                  .map((p) => p.text)
+                  .join('\n')
+              : String(msg.content);
         systemInstruction = { parts: [{ text: textContent }] };
       } else {
         const parts: GeminiPart[] = [];

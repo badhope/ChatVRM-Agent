@@ -44,8 +44,4 @@ export {
 } from './risk-assessor.js';
 
 // Re-export from approval submodule
-export {
-  formatRiskSummary,
-  requestApproval,
-  isInteractiveMode,
-} from './approval.js';
+export { formatRiskSummary, requestApproval, isInteractiveMode } from './approval.js';

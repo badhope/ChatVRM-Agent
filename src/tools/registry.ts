@@ -13,7 +13,6 @@ import { shellTool, sysInfoTool } from './definitions/sys-tools.js';
 import { httpTool, jsonTool, textTool, hashTool } from './definitions/data-tools.js';
 import { toolLogger } from '../services/logger.js';
 
-
 // ============================================================
 // 接口定义
 // ============================================================
@@ -161,7 +160,7 @@ export class ToolRegistry {
       };
     };
   }> {
-    return Array.from(this.tools.values()).map(tool => ({
+    return Array.from(this.tools.values()).map((tool) => ({
       type: 'function' as const,
       function: {
         name: tool.name,
@@ -169,9 +168,9 @@ export class ToolRegistry {
         parameters: {
           type: 'object',
           properties: Object.fromEntries(
-            tool.parameters.map(p => [p.name, { type: p.type, description: p.description }])
+            tool.parameters.map((p) => [p.name, { type: p.type, description: p.description }])
           ),
-          required: tool.parameters.filter(p => p.required).map(p => p.name),
+          required: tool.parameters.filter((p) => p.required).map((p) => p.name),
         },
       },
     }));
@@ -191,13 +190,14 @@ export class ToolRegistry {
       tools.push({
         name,
         description: tool.description,
-        category: name.includes('file') || name.includes('dir') || name.includes('tree')
-          ? '文件操作'
-          : name === 'shell'
-            ? '系统命令'
-            : name === 'http'
-              ? '网络'
-              : '实用工具',
+        category:
+          name.includes('file') || name.includes('dir') || name.includes('tree')
+            ? '文件操作'
+            : name === 'shell'
+              ? '系统命令'
+              : name === 'http'
+                ? '网络'
+                : '实用工具',
       });
     }
 

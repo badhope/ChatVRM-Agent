@@ -42,9 +42,18 @@ export async function detectTestFramework(projectDir: string): Promise<string> {
     if (deps['unittest'] || deps['pytest']) return 'python';
 
     // 检查测试文件
-    const hasTestDir = await fs.access(path.join(projectDir, 'test')).then(() => true).catch(() => false);
-    const hasSpecDir = await fs.access(path.join(projectDir, 'spec')).then(() => true).catch(() => false);
-    const hasPytest = await fs.access(path.join(projectDir, 'conftest.py')).then(() => true).catch(() => false);
+    const hasTestDir = await fs
+      .access(path.join(projectDir, 'test'))
+      .then(() => true)
+      .catch(() => false);
+    const hasSpecDir = await fs
+      .access(path.join(projectDir, 'spec'))
+      .then(() => true)
+      .catch(() => false);
+    const hasPytest = await fs
+      .access(path.join(projectDir, 'conftest.py'))
+      .then(() => true)
+      .catch(() => false);
 
     if (hasPytest) return 'pytest';
     if (hasTestDir || hasSpecDir) return 'unknown';
@@ -59,14 +68,29 @@ export async function detectTestFramework(projectDir: string): Promise<string> {
  * 运行测试
  */
 export async function runTests(projectDir: string, framework?: string): Promise<TestRunResult> {
-  const detected = framework || await detectTestFramework(projectDir);
+  const detected = framework || (await detectTestFramework(projectDir));
 
   const commands: Record<string, string[]> = {
-    'vitest': ['npx', 'vitest', 'run', '--reporter', 'json', '--outputFile', '/tmp/personal-assistant-test-results.json'],
-    'jest': ['npx', 'jest', '--json', '--outputFile', '/tmp/personal-assistant-test-results.json'],
-    'mocha': ['npx', 'mocha', '--reporter', 'json', '--reporter-options', 'output=/tmp/personal-assistant-test-results.json'],
-    'pytest': ['python', '-m', 'pytest', '--tb=short', '-v'],
-    'playwright': ['npx', 'playwright', 'test', '--reporter', 'json'],
+    vitest: [
+      'npx',
+      'vitest',
+      'run',
+      '--reporter',
+      'json',
+      '--outputFile',
+      '/tmp/personal-assistant-test-results.json',
+    ],
+    jest: ['npx', 'jest', '--json', '--outputFile', '/tmp/personal-assistant-test-results.json'],
+    mocha: [
+      'npx',
+      'mocha',
+      '--reporter',
+      'json',
+      '--reporter-options',
+      'output=/tmp/personal-assistant-test-results.json',
+    ],
+    pytest: ['python', '-m', 'pytest', '--tb=short', '-v'],
+    playwright: ['npx', 'playwright', 'test', '--reporter', 'json'],
   };
 
   const cmd = commands[detected];
@@ -95,9 +119,19 @@ export async function runTests(projectDir: string, framework?: string): Promise<
 /**
  * 解析测试输出
  */
-function parseTestOutput(framework: string, stdout: string, stderr: string, duration: number): TestRunResult {
+function parseTestOutput(
+  framework: string,
+  stdout: string,
+  stderr: string,
+  duration: number
+): TestRunResult {
   const result: TestRunResult = {
-    total: 0, passed: 0, failed: 0, skipped: 0, duration, failures: []
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    duration,
+    failures: [],
   };
 
   try {
@@ -120,7 +154,7 @@ function parseTestOutput(framework: string, stdout: string, stderr: string, dura
                 name: assertion.title || '',
                 status: 'failed',
                 duration: 0,
-                error: assertion.failureMessages?.join('\n') || ''
+                error: assertion.failureMessages?.join('\n') || '',
               });
             }
           }
@@ -140,16 +174,16 @@ function parseTestOutput(framework: string, stdout: string, stderr: string, dura
     result.total = Math.max(result.total, result.passed + result.failed);
 
     // 提取失败文件名
-    const failLines = stdout.split('\n').filter(l =>
-      l.includes('✗') || l.includes('FAIL') || l.includes('failed')
-    );
+    const failLines = stdout
+      .split('\n')
+      .filter((l) => l.includes('✗') || l.includes('FAIL') || l.includes('failed'));
     for (const line of failLines.slice(0, 10)) {
       result.failures.push({
         file: '',
         name: line.trim().slice(0, 100),
         status: 'failed',
         duration: 0,
-        error: ''
+        error: '',
       });
     }
   } catch {
@@ -170,7 +204,8 @@ export async function fixFailingTests(
 
   const fixes: string[] = [];
 
-  for (const failure of testResult.failures.slice(0, 5)) {  // 最多修复 5 个
+  for (const failure of testResult.failures.slice(0, 5)) {
+    // 最多修复 5 个
     try {
       // 读取测试文件
       const content = await fs.readFile(failure.file, 'utf-8');

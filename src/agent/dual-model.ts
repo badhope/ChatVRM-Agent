@@ -12,7 +12,7 @@
 import chalk from 'chalk';
 import type { ReasonerConfig } from './llm-caller.js';
 import { architectAnalyze, type ArchitectResult } from './architect.js';
-import { editorExecute, type EditorResult } from './editor.js';
+import { llmEditorExecute, type EditorResult } from './llm-code-editor.js';
 
 /** 双模型执行配置 */
 export interface DualModelConfig {
@@ -63,7 +63,9 @@ export async function runDualModel(
   try {
     architectResult = await architectAnalyze(taskDescription, context, config?.architect);
   } catch (error) {
-    throw new Error(`Architect 分析失败: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Architect 分析失败: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // 展示 Architect 结果
@@ -73,28 +75,34 @@ export async function runDualModel(
 
   if (architectResult.filesToModify.length > 0) {
     output(chalk.yellow('📝 需要修改的文件:'));
-    architectResult.filesToModify.forEach(f => output(`  - ${f}`));
+    architectResult.filesToModify.forEach((f) => output(`  - ${f}`));
   }
   if (architectResult.filesToCreate.length > 0) {
     output(chalk.green('✨ 需要新建的文件:'));
-    architectResult.filesToCreate.forEach(f => output(`  - ${f}`));
+    architectResult.filesToCreate.forEach((f) => output(`  - ${f}`));
   }
   if (architectResult.risks.length > 0) {
     output(chalk.red('⚠️  风险提示:'));
-    architectResult.risks.forEach(r => output(`  - ${r}`));
+    architectResult.risks.forEach((r) => output(`  - ${r}`));
   }
-  output(chalk.dim(`复杂度: ${'★'.repeat(architectResult.complexity)}${'☆'.repeat(5 - architectResult.complexity)} (${architectResult.complexity}/5)`));
+  output(
+    chalk.dim(
+      `复杂度: ${'★'.repeat(architectResult.complexity)}${'☆'.repeat(5 - architectResult.complexity)} (${architectResult.complexity}/5)`
+    )
+  );
 
   // === 阶段 2: 用户确认 ===
   if (!config?.skipConfirmation) {
     try {
       const inquirer = await import('inquirer');
-      const { confirmed } = await inquirer.default.prompt([{
-        type: 'confirm',
-        name: 'confirmed',
-        message: '是否让 Editor 按此方案执行修改？',
-        default: true,
-      }]);
+      const { confirmed } = await inquirer.default.prompt([
+        {
+          type: 'confirm',
+          name: 'confirmed',
+          message: '是否让 Editor 按此方案执行修改？',
+          default: true,
+        },
+      ]);
       if (!confirmed) {
         output(chalk.yellow('用户取消执行'));
         return {
@@ -113,7 +121,7 @@ export async function runDualModel(
 
   let editorResult: EditorResult;
   try {
-    editorResult = await editorExecute(architectResult, config?.editor);
+    editorResult = await llmEditorExecute(architectResult, config?.editor);
   } catch (error) {
     throw new Error(`Editor 执行失败: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -121,13 +129,13 @@ export async function runDualModel(
   // 展示 Editor 结果
   if (editorResult.success) {
     output(chalk.green('✅ 修改完成'));
-    editorResult.operations.forEach(op => {
+    editorResult.operations.forEach((op) => {
       const icon = op.type === 'create' ? chalk.green('✨') : chalk.yellow('📝');
       output(`  ${icon} ${op.type}: ${op.filePath}`);
     });
   } else {
     output(chalk.yellow('⚠️  修改完成，但遇到问题:'));
-    editorResult.issues.forEach(issue => output(`  - ${issue}`));
+    editorResult.issues.forEach((issue) => output(`  - ${issue}`));
   }
 
   if (editorResult.summary) {

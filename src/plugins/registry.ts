@@ -10,10 +10,7 @@
  * tool registry and Commander program at startup.
  */
 
-import type {
-  ToolDefinition,
-  CommandDefinition,
-} from './types.js';
+import type { ToolDefinition, CommandDefinition } from './types.js';
 import { createLogger } from '../services/logger.js';
 
 const logger = createLogger('PluginRegistry');
@@ -63,7 +60,8 @@ export class PluginRegistry {
    */
   registerCommand(pluginName: string, command: CommandDefinition): void {
     // Commander Command: name() is a function; plain object: name is a string
-    const cmdName = typeof command?.name === 'function' ? command.name() : (command?.name ?? command?._name);
+    const cmdName =
+      typeof command?.name === 'function' ? command.name() : (command?.name ?? command?._name);
     if (!cmdName) {
       throw new Error(`Plugin "${pluginName}" tried to register a command without a name`);
     }

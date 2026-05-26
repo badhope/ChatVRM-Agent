@@ -40,11 +40,11 @@ export function stripBlankLines(content: string): string {
  */
 export function detectIndentation(content: string): number {
   const lines = content.split('\n');
-  const nonEmpty = lines.filter(l => l.trim() !== '');
+  const nonEmpty = lines.filter((l) => l.trim() !== '');
 
   if (nonEmpty.length === 0) return 0;
 
-  const indentSizes = nonEmpty.map(l => {
+  const indentSizes = nonEmpty.map((l) => {
     const match = l.match(/^(\s*)/);
     return match ? match[1].length : 0;
   });
@@ -73,7 +73,7 @@ export function removeCommonIndent(content: string): string {
   const commonIndent = detectIndentation(trimmed.join('\n'));
 
   // Remove common indentation
-  const normalized = trimmed.map(l => {
+  const normalized = trimmed.map((l) => {
     if (l.trim() === '') return '';
     return l.substring(commonIndent);
   });

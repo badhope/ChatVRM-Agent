@@ -94,29 +94,29 @@ function isSyntaxNode(node: unknown): node is SyntaxNode {
 
 /** TypeScript/JavaScript 节点类型到符号类型的映射 */
 const NODE_TYPE_MAP: Record<string, SymbolKind> = {
-  'function_declaration': 'function',
-  'function_expression': 'function',
-  'arrow_function': 'function',
-  'generator_function_declaration': 'function',
-  'method_definition': 'method',
-  'method_signature': 'method',
-  'class_declaration': 'class',
-  'abstract_class_declaration': 'class',
-  'interface_declaration': 'interface',
-  'type_alias_declaration': 'type',
-  'enum_declaration': 'enum',
-  'variable_declaration': 'variable',
-  'lexical_declaration': 'variable',
-  'import_statement': 'import',
-  'import_declaration': 'import',
-  'export_statement': 'export',
-  'module_declaration': 'module',
-  'namespace_declaration': 'namespace',
-  'program': 'module',
+  function_declaration: 'function',
+  function_expression: 'function',
+  arrow_function: 'function',
+  generator_function_declaration: 'function',
+  method_definition: 'method',
+  method_signature: 'method',
+  class_declaration: 'class',
+  abstract_class_declaration: 'class',
+  interface_declaration: 'interface',
+  type_alias_declaration: 'type',
+  enum_declaration: 'enum',
+  variable_declaration: 'variable',
+  lexical_declaration: 'variable',
+  import_statement: 'import',
+  import_declaration: 'import',
+  export_statement: 'export',
+  module_declaration: 'module',
+  namespace_declaration: 'namespace',
+  program: 'module',
   // Python
-  'function_definition': 'function',
-  'class_definition': 'class',
-  'import_from_statement': 'import',
+  function_definition: 'function',
+  class_definition: 'class',
+  import_from_statement: 'import',
 };
 
 /**
@@ -128,7 +128,7 @@ const NODE_TYPE_MAP: Record<string, SymbolKind> = {
 export function extractSymbols(result: ParseResult): CodeSymbol[] {
   const symbols: CodeSymbol[] = [];
   const { tree, filePath } = result;
-  
+
   // Validate root node with type guard for runtime safety
   const rootNode = tree.rootNode;
   if (!isSyntaxNode(rootNode)) {
@@ -215,7 +215,9 @@ function extractName(node: SyntaxNode): string | null {
     case 'variable_declaration':
     case 'lexical_declaration': {
       // 取第一个声明器的名称
-      const declarator = node.childForFieldName('declarators') || node.children.find((c: SyntaxNode) => c.type === 'variable_declarator');
+      const declarator =
+        node.childForFieldName('declarators') ||
+        node.children.find((c: SyntaxNode) => c.type === 'variable_declarator');
       if (declarator) {
         const nameNode = declarator.childForFieldName('name');
         return nameNode ? nameNode.text : null;
@@ -226,7 +228,9 @@ function extractName(node: SyntaxNode): string | null {
     case 'import_declaration':
     case 'import_from_statement': {
       // 提取导入的模块路径
-      const sourceNode = node.childForFieldName('source') || node.children.find((c: SyntaxNode) => c.type === 'string');
+      const sourceNode =
+        node.childForFieldName('source') ||
+        node.children.find((c: SyntaxNode) => c.type === 'string');
       return sourceNode ? sourceNode.text.replace(/['"]/g, '') : null;
     }
     case 'export_statement': {
@@ -278,7 +282,7 @@ export function getSymbolsInRange(
   startLine: number,
   endLine: number
 ): CodeSymbol[] {
-  return symbols.filter(s => s.startLine >= startLine && s.endLine <= endLine);
+  return symbols.filter((s) => s.startLine >= startLine && s.endLine <= endLine);
 }
 
 /**
@@ -288,10 +292,7 @@ export function getSymbolsInRange(
  * @param name - Search name (case-insensitive)
  * @returns Matching symbols
  */
-export function findSymbolByName(
-  symbols: CodeSymbol[],
-  name: string
-): CodeSymbol[] {
+export function findSymbolByName(symbols: CodeSymbol[], name: string): CodeSymbol[] {
   const lower = name.toLowerCase();
-  return symbols.filter(s => s.name.toLowerCase().includes(lower));
+  return symbols.filter((s) => s.name.toLowerCase().includes(lower));
 }

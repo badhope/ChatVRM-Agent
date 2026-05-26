@@ -100,7 +100,7 @@ export function generateDiff(operation: EditOperation): DiffResult {
  * @returns Array of DiffResult, one per operation
  */
 export function generateMultiDiff(operations: EditOperation[]): DiffResult[] {
-  return operations.map(op => generateDiff(op));
+  return operations.map((op) => generateDiff(op));
 }
 
 /**
@@ -139,18 +139,14 @@ export function applyEdit(source: string, operation: EditOperation): string {
   if (normalizedActual !== normalizedExpected) {
     throw new Error(
       `Content mismatch at lines ${target.startLine}-${target.endLine}.\n` +
-      `Expected:\n${target.content}\n` +
-      `Actual:\n${actualContent}`
+        `Expected:\n${target.content}\n` +
+        `Actual:\n${actualContent}`
     );
   }
 
   // Apply the replacement
   const replacementLines = replacement.split('\n');
-  const newLines = [
-    ...lines.slice(0, startIdx),
-    ...replacementLines,
-    ...lines.slice(endIdx),
-  ];
+  const newLines = [...lines.slice(0, startIdx), ...replacementLines, ...lines.slice(endIdx)];
 
   return newLines.join('\n');
 }

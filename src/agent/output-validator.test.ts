@@ -235,9 +235,7 @@ describe('MultipleToolCallsSchema', () => {
   });
 
   it('应该验证单个工具调用的数组', () => {
-    const result = MultipleToolCallsSchema.safeParse([
-      { name: 'singleTool' },
-    ]);
+    const result = MultipleToolCallsSchema.safeParse([{ name: 'singleTool' }]);
     expect(result.success).toBe(true);
   });
 
@@ -558,10 +556,7 @@ End of document.`;
           age: z.number().positive(),
         })
       );
-      const result = validator.validate(
-        JSON.stringify({ name: 'Bob', age: 25 }),
-        'person'
-      );
+      const result = validator.validate(JSON.stringify({ name: 'Bob', age: 25 }), 'person');
       expect(result.valid).toBe(true);
     });
 
@@ -978,9 +973,7 @@ describe('DEFAULT_ZOD_SCHEMAS', () => {
     it('应该拒绝无效的 severity 值', () => {
       const schema = DEFAULT_ZOD_SCHEMAS['code-analysis'];
       const result = schema.safeParse({
-        issues: [
-          { type: 'error', severity: 'critical', message: 'Critical error' },
-        ],
+        issues: [{ type: 'error', severity: 'critical', message: 'Critical error' }],
       });
       expect(result.success).toBe(false);
     });
@@ -1162,7 +1155,11 @@ describe('边界情况测试', () => {
       const result = validator.validate(JSON.stringify(invalidData), 'nested');
       expect(result.valid).toBe(false);
       // 错误信息应该包含路径
-      expect(result.errors.some((e) => e.includes('level1') || e.includes('level2') || e.includes('value'))).toBe(true);
+      expect(
+        result.errors.some(
+          (e) => e.includes('level1') || e.includes('level2') || e.includes('value')
+        )
+      ).toBe(true);
     });
   });
 
@@ -1203,7 +1200,9 @@ describe('边界情况测试', () => {
         patterns: [/function/, /return/, /}/],
       });
 
-      expect(validator.validate('function test() { return 1; }', 'multi-patterns').valid).toBe(true);
+      expect(validator.validate('function test() { return 1; }', 'multi-patterns').valid).toBe(
+        true
+      );
       expect(validator.validate('function test() { }', 'multi-patterns').valid).toBe(false);
     });
 
@@ -1293,7 +1292,9 @@ describe('Schema 组合测试', () => {
     const PartialSchema = FullSchema.pick({ id: true, name: true });
 
     expect(PartialSchema.safeParse({ id: 1, name: 'Test' }).success).toBe(true);
-    expect(PartialSchema.safeParse({ id: 1, name: 'Test', email: 'test@example.com' }).success).toBe(true);
+    expect(
+      PartialSchema.safeParse({ id: 1, name: 'Test', email: 'test@example.com' }).success
+    ).toBe(true);
   });
 
   it('应该支持 schema omit', () => {

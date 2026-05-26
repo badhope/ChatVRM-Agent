@@ -25,14 +25,19 @@ export const memoryReflectCommand = new Command('reflect')
     }
 
     const typeLabels: Record<string, string> = {
-      fact: '📋 事实', preference: '⭐ 偏好', pattern: '📊 模式', summary: '📝 摘要',
+      fact: '📋 事实',
+      preference: '⭐ 偏好',
+      pattern: '📊 模式',
+      summary: '📝 摘要',
     };
 
     console.log();
     insights.slice(0, 15).forEach((insight, i) => {
       const label = typeLabels[insight.type] || insight.type;
       console.log(`  ${i + 1}. ${label} ${chalk.cyan(insight.content)}`);
-      console.log(`     ${chalk.gray(`置信度: ${(insight.confidence * 100).toFixed(0)}% | 引用 ${insight.sourceIds.length} 条记忆`)}`);
+      console.log(
+        `     ${chalk.gray(`置信度: ${(insight.confidence * 100).toFixed(0)}% | 引用 ${insight.sourceIds.length} 条记忆`)}`
+      );
       console.log();
     });
   });

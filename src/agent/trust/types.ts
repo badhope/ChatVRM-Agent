@@ -25,4 +25,10 @@ export interface DetectionPattern {
 /**
  * 模式类别类型
  */
-export type PatternCategory = 'filesystem' | 'network' | 'code' | 'database' | 'sensitive' | 'system';
+export type PatternCategory =
+  | 'filesystem'
+  | 'network'
+  | 'code'
+  | 'database'
+  | 'sensitive'
+  | 'system';

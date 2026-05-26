@@ -34,7 +34,11 @@ export class NetworkError extends PersonalAssistantError {
   }
 }
 
-export function formatError(error: unknown): { code: string; message: string; details?: Record<string, unknown> } {
+export function formatError(error: unknown): {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+} {
   if (error instanceof PersonalAssistantError) {
     return { code: error.code, message: error.message, details: error.details };
   }

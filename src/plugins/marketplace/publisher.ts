@@ -76,7 +76,8 @@ export async function validatePlugin(pluginDir: string): Promise<ValidateResult>
     if (existing) warnings.push(`Plugin "${manifest.name}" already exists in the registry`);
   }
   if (!manifest.author) warnings.push('No "author" field in manifest.json');
-  if (!manifest.keywords?.length) warnings.push('No "keywords" field; discoverability may be reduced');
+  if (!manifest.keywords?.length)
+    warnings.push('No "keywords" field; discoverability may be reduced');
   return { valid: errors.length === 0, errors, warnings };
 }
 
@@ -84,14 +85,24 @@ export async function publishPlugin(options: PublishOptions): Promise<PublishRes
   const resolvedDir = resolveHome(options.pluginDir);
   const validation = await validatePlugin(options.pluginDir);
   if (!validation.valid) {
-    return { success: false, name: '', version: '', error: `Validation failed: ${validation.errors.join('; ')}` };
+    return {
+      success: false,
+      name: '',
+      version: '',
+      error: `Validation failed: ${validation.errors.join('; ')}`,
+    };
   }
   const manifestPath = path.join(resolvedDir, 'manifest.json');
   const raw = await fs.readFile(manifestPath, 'utf-8');
   const manifest: PluginManifest = JSON.parse(raw);
   const existing = registryStore.get(manifest.name);
   if (existing && !options.force) {
-    return { success: false, name: manifest.name, version: manifest.version, error: `Plugin "${manifest.name}" already exists. Use --force to overwrite.` };
+    return {
+      success: false,
+      name: manifest.name,
+      version: manifest.version,
+      error: `Plugin "${manifest.name}" already exists. Use --force to overwrite.`,
+    };
   }
   const now = new Date().toISOString();
   const newVersion: RegistryVersion = { version: manifest.version, publishedAt: now };
@@ -126,10 +137,17 @@ export async function createPluginScaffold(name: string, targetDir: string): Pro
   const pluginDir = path.join(resolveHome(targetDir), name);
   await fs.mkdir(pluginDir, { recursive: true });
   const manifest: PluginManifest = {
-    name, version: '0.1.0', description: `A Personal Assistant plugin: ${name}`,
-    main: 'index.js', keywords: ['personal-assistant', 'plugin'],
+    name,
+    version: '0.1.0',
+    description: `A Personal Assistant plugin: ${name}`,
+    main: 'index.js',
+    keywords: ['personal-assistant', 'plugin'],
   };
-  await fs.writeFile(path.join(pluginDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
+  await fs.writeFile(
+    path.join(pluginDir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  );
   const indexJs = `// ${name} plugin\nexport default {\n  manifest: ${JSON.stringify(manifest, null, 4)},\n  async activate(context) {\n    context.logger.info('${name} activated');\n  },\n  async deactivate() {\n    console.log('${name} deactivated');\n  },\n};\n`;
   await fs.writeFile(path.join(pluginDir, 'index.js'), indexJs, 'utf-8');
   const readme = `# ${name}\n\n## Description\n\n${manifest.description}\n\n## Installation\n\n\`\`\`bash\npersonal-assistant plugin install ${name}\n\`\`\`\n\n## Usage\n\nThis plugin is automatically activated after installation.\n\n## Configuration\n\nNo additional configuration required.\n`;

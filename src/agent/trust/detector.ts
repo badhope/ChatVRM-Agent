@@ -13,11 +13,7 @@ import {
   PatternCategory,
 } from './patterns.js';
 import { deduplicateAndSortIssues } from './severity.js';
-import {
-  DetectionContext,
-  shouldSkipInTest,
-  detectWithContext,
-} from './context.js';
+import { DetectionContext, shouldSkipInTest, detectWithContext } from './context.js';
 
 // ==================== TrustDetector Class ====================
 
@@ -84,7 +80,7 @@ export class TrustDetector {
       const regex = new RegExp(pattern.source, pattern.flags);
       if (regex.test(output)) {
         // 避免重复添加
-        if (!issues.some(i => i.description === description)) {
+        if (!issues.some((i) => i.description === description)) {
           issues.push({
             type,
             level,

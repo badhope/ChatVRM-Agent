@@ -6,10 +6,7 @@ import { logger } from '../services/logger.js';
  * @param fn 被包装的函数
  * @returns 包装后的函数
  */
-export function logOperation<T extends (...args: unknown[]) => unknown>(
-  name: string,
-  fn: T
-): T {
+export function logOperation<T extends (...args: unknown[]) => unknown>(name: string, fn: T): T {
   return (async (...args: unknown[]) => {
     const start = Date.now();
     logger.debug({ operation: name, args }, 'Starting operation');

@@ -31,7 +31,7 @@ export function parseToolArgsFromAI(toolName: string, aiResponse: string): Recor
   }
   const tool = toolRegistry.get(toolName);
   if (tool) {
-    const requiredParams = tool.parameters.filter(p => p.required);
+    const requiredParams = tool.parameters.filter((p) => p.required);
     if (requiredParams.length === 1) {
       const trimmed = aiResponse.trim();
       if (trimmed.length > 10000) {
@@ -50,9 +50,9 @@ export function parseToolArgsFromAI(toolName: string, aiResponse: string): Recor
  */
 export function generateSummary(task: Task): string {
   const total = task.steps.length;
-  const done = task.steps.filter(s => s.status === 'done').length;
-  const failed = task.steps.filter(s => s.status === 'error').length;
-  const skipped = task.steps.filter(s => s.status === 'skipped').length;
+  const done = task.steps.filter((s) => s.status === 'done').length;
+  const failed = task.steps.filter((s) => s.status === 'error').length;
+  const skipped = task.steps.filter((s) => s.status === 'skipped').length;
   const duration = ((task.completedAt || Date.now()) - task.startedAt) / 1000;
 
   return [
@@ -61,5 +61,7 @@ export function generateSummary(task: Task): string {
     failed > 0 ? `  • 失败: ${chalk.red(failed)}` : '',
     skipped > 0 ? `  • 跳过: ${chalk.yellow(skipped)}` : '',
     `  • 耗时: ${duration.toFixed(1)}秒`,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }

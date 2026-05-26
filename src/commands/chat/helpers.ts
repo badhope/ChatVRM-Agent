@@ -32,7 +32,11 @@ export function checkApiKey(providerType: ProviderType): boolean {
 }
 
 /** 创建 provider 实例 */
-export function createProviderInstance(providerType: ProviderType, timeout = 30000, maxRetries = 2) {
+export function createProviderInstance(
+  providerType: ProviderType,
+  timeout = 30000,
+  maxRetries = 2
+) {
   const providerConfig = configManager.getProviderConfig(providerType);
   return createProvider(providerType, {
     apiKey: providerConfig.apiKey,

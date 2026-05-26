@@ -43,7 +43,7 @@ export async function safeExecRaw(
       stdout: String(stdout || '').trim(),
       stderr: String(stderr || '').trim(),
       exitCode: 0,
-      durationMs: Date.now() - startTime
+      durationMs: Date.now() - startTime,
     };
   } catch (e: unknown) {
     const error = e as { stdout?: string; stderr?: string; message?: string; code?: number };
@@ -51,7 +51,7 @@ export async function safeExecRaw(
       stdout: String(error.stdout || '').trim(),
       stderr: String(error.stderr || error.message || '').trim(),
       exitCode: error.code || 1,
-      durationMs: Date.now() - startTime
+      durationMs: Date.now() - startTime,
     };
   }
 }

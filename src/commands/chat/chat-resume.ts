@@ -20,7 +20,7 @@ export async function listInterruptedSessions(): Promise<InterruptedSession[]> {
     await fs.mkdir(SESSIONS_DIR, { recursive: true });
     const files = await fs.readdir(SESSIONS_DIR);
     const sessions: InterruptedSession[] = [];
-    
+
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
       try {
@@ -30,14 +30,14 @@ export async function listInterruptedSessions(): Promise<InterruptedSession[]> {
           sessions.push({
             id: session.id,
             savedAt: session.savedAt,
-            messageCount: session.messages?.length || 0
+            messageCount: session.messages?.length || 0,
           });
         }
       } catch (error) {
         // Skip invalid session files
       }
     }
-    
+
     return sessions.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
   } catch (error) {
     return [];
@@ -49,38 +49,40 @@ export async function listInterruptedSessions(): Promise<InterruptedSession[]> {
  */
 export async function resumeSession(sessionId?: string): Promise<void> {
   const sessions = await listInterruptedSessions();
-  
+
   if (sessions.length === 0) {
     printInfo('没有找到可恢复的对话');
     return;
   }
-  
+
   let targetSession = sessionId;
-  
+
   if (!targetSession) {
     if (sessions.length === 1) {
       targetSession = sessions[0].id;
     } else {
-      const answer = await inquirer.prompt([{
-        type: 'list',
-        name: 'session',
-        message: '选择要恢复的对话',
-        choices: sessions.map(s => ({
-          name: `${s.id} (${s.messageCount}条消息, ${new Date(s.savedAt).toLocaleString()})`,
-          value: s.id
-        }))
-      }]);
+      const answer = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'session',
+          message: '选择要恢复的对话',
+          choices: sessions.map((s) => ({
+            name: `${s.id} (${s.messageCount}条消息, ${new Date(s.savedAt).toLocaleString()})`,
+            value: s.id,
+          })),
+        },
+      ]);
       targetSession = answer.session;
     }
   }
-  
+
   const sessionFile = path.join(SESSIONS_DIR, `${targetSession}.json`);
   const content = await fs.readFile(sessionFile, 'utf-8');
   const session = JSON.parse(content);
-  
+
   printSuccess(`已恢复对话 (${session.messages.length}条历史消息)`);
   printInfo('输入 /help 查看可用命令');
-  
+
   // 启动对话并传入历史消息
   const { startInteractiveChat } = await import('./chat-start.js');
   await startInteractiveChat({ resumeMessages: session.messages });

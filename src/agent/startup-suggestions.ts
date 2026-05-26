@@ -19,12 +19,14 @@ export interface StartupSuggestionResult {
  * 运行所有健康检查并格式化为简洁的摘要，
  * 适合在 Agent 启动时展示给用户。
  */
-export async function generateStartupSuggestions(rootDir: string): Promise<StartupSuggestionResult> {
+export async function generateStartupSuggestions(
+  rootDir: string
+): Promise<StartupSuggestionResult> {
   const manager = new AutonomousGoalManager();
   const results = await manager.runHealthChecks(rootDir);
 
-  const warnings = results.filter(r => r.status === 'warning');
-  const criticals = results.filter(r => r.status === 'critical');
+  const warnings = results.filter((r) => r.status === 'warning');
+  const criticals = results.filter((r) => r.status === 'critical');
 
   // 确定整体健康状态
   let healthStatus: 'healthy' | 'warning' | 'critical';
@@ -56,9 +58,7 @@ export async function generateStartupSuggestions(rootDir: string): Promise<Start
 
   for (const issue of allIssues) {
     if (suggestions.length >= 5) break;
-    const line = issue.suggestion
-      ? `${issue.message} - ${issue.suggestion}`
-      : issue.message;
+    const line = issue.suggestion ? `${issue.message} - ${issue.suggestion}` : issue.message;
     suggestions.push(line);
   }
 
@@ -71,7 +71,9 @@ export async function generateStartupSuggestions(rootDir: string): Promise<Start
  * 当 Agent 有待处理的自主目标时，将其注入到系统提示词中，
  * 让 AI 了解项目当前的问题状态。
  */
-export function formatGoalsForSystemPrompt(goals: Array<{ description: string; priority: number }>): string {
+export function formatGoalsForSystemPrompt(
+  goals: Array<{ description: string; priority: number }>
+): string {
   if (goals.length === 0) return '';
 
   const lines = ['## 待处理事项（自主发现）'];

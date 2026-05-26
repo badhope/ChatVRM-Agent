@@ -22,7 +22,10 @@ export async function handleMenuChoice(choice: string): Promise<void> {
   switch (choice) {
     case 'interactive': {
       const resolved = resolveProvider();
-      if (!resolved) { await pause(); return; }
+      if (!resolved) {
+        await pause();
+        return;
+      }
       const { providerType, provider, modelId } = resolved;
       const info = PROVIDER_INFO[providerType];
 
@@ -34,11 +37,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
       while (true) {
-        const { input } = await inquirer.prompt([{
-          type: 'input',
-          name: 'input',
-          message: chalk.cyan('你:'),
-        }]);
+        const { input } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'input',
+            message: chalk.cyan('你:'),
+          },
+        ]);
 
         const userInput = input?.trim();
         if (!userInput) continue;
@@ -65,9 +70,11 @@ export async function handleMenuChoice(choice: string): Promise<void> {
 
         try {
           const fullContent = await streamChat(
-            provider, messages, modelId,
+            provider,
+            messages,
+            modelId,
             chatConfig.defaultTemperature,
-            chatConfig.defaultMaxTokens,
+            chatConfig.defaultMaxTokens
           );
 
           messages.push({ role: 'assistant', content: fullContent });
@@ -77,14 +84,16 @@ export async function handleMenuChoice(choice: string): Promise<void> {
 
           const memoryConfig = configManager.getMemoryConfig();
           if (memoryConfig.enabled) {
-            memoryManager.rememberChat({
-            input: userInput,
-            output: fullContent,
-            provider: providerType,
-            model: modelId,
-          }).catch((error) => {
-            logger.debug({ error }, 'Failed to remember chat');
-          });
+            memoryManager
+              .rememberChat({
+                input: userInput,
+                output: fullContent,
+                provider: providerType,
+                model: modelId,
+              })
+              .catch((error) => {
+                logger.debug({ error }, 'Failed to remember chat');
+              });
           }
         } catch (error: unknown) {
           const { message, hint } = formatApiError(error);
@@ -97,16 +106,21 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'quick-ask': {
-      const { message } = await inquirer.prompt([{
-        type: 'input',
-        name: 'message',
-        message: chalk.cyan('问题:'),
-      }]);
+      const { message } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'message',
+          message: chalk.cyan('问题:'),
+        },
+      ]);
 
       if (!message?.trim()) return;
 
       const resolved = resolveProvider();
-      if (!resolved) { await pause(); return; }
+      if (!resolved) {
+        await pause();
+        return;
+      }
       const { providerType, provider, modelId } = resolved;
       const chatConfig = configManager.getChatConfig();
 
@@ -116,19 +130,21 @@ export async function handleMenuChoice(choice: string): Promise<void> {
           [{ role: 'user', content: message }],
           modelId,
           chatConfig.defaultTemperature,
-          chatConfig.defaultMaxTokens,
+          chatConfig.defaultMaxTokens
         );
 
         const memoryConfig = configManager.getMemoryConfig();
         if (memoryConfig.enabled) {
-          memoryManager.rememberChat({
-            input: message,
-            output: fullContent,
-            provider: providerType,
-            model: modelId,
-          }).catch((error) => {
-            logger.debug({ error }, 'Failed to remember chat');
-          });
+          memoryManager
+            .rememberChat({
+              input: message,
+              output: fullContent,
+              provider: providerType,
+              model: modelId,
+            })
+            .catch((error) => {
+              logger.debug({ error }, 'Failed to remember chat');
+            });
         }
       } catch (error: unknown) {
         const { message: msg, hint } = formatApiError(error);
@@ -140,15 +156,20 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'suggest': {
-      const { task } = await inquirer.prompt([{
-        type: 'input',
-        name: 'task',
-        message: chalk.cyan('描述你的任务:'),
-      }]);
+      const { task } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'task',
+          message: chalk.cyan('描述你的任务:'),
+        },
+      ]);
       if (!task?.trim()) return;
 
       const resolved = resolveProvider();
-      if (!resolved) { await pause(); return; }
+      if (!resolved) {
+        await pause();
+        return;
+      }
       const { provider } = resolved;
 
       console.log(chalk.cyan('  搜索模型中...'));
@@ -159,7 +180,7 @@ export async function handleMenuChoice(choice: string): Promise<void> {
         } else {
           printSuccess(`找到 ${results.length} 个模型:\n`);
           results.slice(0, 10).forEach((id: string) => {
-            const builtin = PROVIDER_INFO[resolved.providerType].models.find(m => m.id === id);
+            const builtin = PROVIDER_INFO[resolved.providerType].models.find((m) => m.id === id);
             console.log(`  ${chalk.cyan(id)}${builtin ? chalk.green(' ✓') : ''}`);
           });
         }
@@ -172,11 +193,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'agent-run': {
-      const { task } = await inquirer.prompt([{
-        type: 'input',
-        name: 'task',
-        message: chalk.cyan('Agent任务:'),
-      }]);
+      const { task } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'task',
+          message: chalk.cyan('Agent任务:'),
+        },
+      ]);
       if (!task?.trim()) return;
 
       try {
@@ -188,11 +211,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'review-file': {
-      const { filePath } = await inquirer.prompt([{
-        type: 'input',
-        name: 'filePath',
-        message: chalk.cyan('文件路径:'),
-      }]);
+      const { filePath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'filePath',
+          message: chalk.cyan('文件路径:'),
+        },
+      ]);
       if (!filePath?.trim()) return;
 
       try {
@@ -204,11 +229,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'review-dir': {
-      const { dirPath } = await inquirer.prompt([{
-        type: 'input',
-        name: 'dirPath',
-        message: chalk.cyan('目录路径:'),
-      }]);
+      const { dirPath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'dirPath',
+          message: chalk.cyan('目录路径:'),
+        },
+      ]);
       if (!dirPath?.trim()) return;
 
       try {
@@ -231,27 +258,35 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     case 'tools-run': {
       try {
         const tools = toolRegistry.listTools();
-        const { toolName } = await inquirer.prompt([{
-          type: 'list',
-          name: 'toolName',
-          message: '选择工具:',
-          choices: tools.map((t: { name: string; description: string }) => ({
-            name: `${t.name} - ${t.description}`,
-            value: t.name,
-          })),
-        }]);
+        const { toolName } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'toolName',
+            message: '选择工具:',
+            choices: tools.map((t: { name: string; description: string }) => ({
+              name: `${t.name} - ${t.description}`,
+              value: t.name,
+            })),
+          },
+        ]);
 
         const tool = toolRegistry.get(toolName);
-        if (!tool) { printError(`工具 ${toolName} 不存在`); await pause(); return; }
+        if (!tool) {
+          printError(`工具 ${toolName} 不存在`);
+          await pause();
+          return;
+        }
 
         const params: Record<string, string> = {};
         for (const param of tool.parameters) {
           if (param.required) {
-            const { val } = await inquirer.prompt([{
-              type: 'input',
-              name: 'val',
-              message: `${param.name}${param.description ? ` (${param.description})` : ''}:`,
-            }]);
+            const { val } = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'val',
+                message: `${param.name}${param.description ? ` (${param.description})` : ''}:`,
+              },
+            ]);
             params[param.name] = val;
           }
         }
@@ -271,11 +306,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'file-read': {
-      const { filePath } = await inquirer.prompt([{
-        type: 'input',
-        name: 'filePath',
-        message: chalk.cyan('文件路径:'),
-      }]);
+      const { filePath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'filePath',
+          message: chalk.cyan('文件路径:'),
+        },
+      ]);
       if (!filePath?.trim()) return;
 
       try {
@@ -287,18 +324,22 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'file-write': {
-      const { filePath } = await inquirer.prompt([{
-        type: 'input',
-        name: 'filePath',
-        message: chalk.cyan('文件路径:'),
-      }]);
+      const { filePath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'filePath',
+          message: chalk.cyan('文件路径:'),
+        },
+      ]);
       if (!filePath?.trim()) return;
 
-      const { content } = await inquirer.prompt([{
-        type: 'input',
-        name: 'content',
-        message: chalk.cyan('文件内容:'),
-      }]);
+      const { content } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'content',
+          message: chalk.cyan('文件内容:'),
+        },
+      ]);
       if (!content?.trim()) return;
 
       try {
@@ -316,12 +357,14 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'file-tree': {
-      const { dirPath } = await inquirer.prompt([{
-        type: 'input',
-        name: 'dirPath',
-        message: chalk.cyan('目录路径 (默认当前目录):'),
-        default: '.',
-      }]);
+      const { dirPath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'dirPath',
+          message: chalk.cyan('目录路径 (默认当前目录):'),
+          default: '.',
+        },
+      ]);
       try {
         await runSubCommand(['files', 'tree', dirPath]);
       } catch (error: unknown) {
@@ -340,11 +383,13 @@ export async function handleMenuChoice(choice: string): Promise<void> {
     }
 
     case 'memory-search': {
-      const { query } = await inquirer.prompt([{
-        type: 'input',
-        name: 'query',
-        message: chalk.cyan('搜索关键词:'),
-      }]);
+      const { query } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'query',
+          message: chalk.cyan('搜索关键词:'),
+        },
+      ]);
       if (!query?.trim()) return;
 
       try {
@@ -366,19 +411,23 @@ export async function handleMenuChoice(choice: string): Promise<void> {
 
     case 'config-key': {
       try {
-        const providers = PROVIDER_TYPE_LIST.filter(t => PROVIDER_INFO[t].requiresApiKey);
-        const { provider } = await inquirer.prompt([{
-          type: 'list',
-          name: 'provider',
-          message: '选择平台:',
-          choices: providers.map(t => ({ name: PROVIDER_INFO[t].displayName, value: t })),
-        }]);
-        const { apiKey } = await inquirer.prompt([{
-          type: 'password',
-          name: 'apiKey',
-          message: `输入 ${PROVIDER_INFO[provider as ProviderType].displayName} API Key:`,
-          mask: '*',
-        }]);
+        const providers = PROVIDER_TYPE_LIST.filter((t) => PROVIDER_INFO[t].requiresApiKey);
+        const { provider } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'provider',
+            message: '选择平台:',
+            choices: providers.map((t) => ({ name: PROVIDER_INFO[t].displayName, value: t })),
+          },
+        ]);
+        const { apiKey } = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'apiKey',
+            message: `输入 ${PROVIDER_INFO[provider as ProviderType].displayName} API Key:`,
+            mask: '*',
+          },
+        ]);
         if (apiKey) {
           await configManager.setApiKey(provider as ProviderType, apiKey);
           printSuccess(`${PROVIDER_INFO[provider as ProviderType].displayName} API Key 已设置`);

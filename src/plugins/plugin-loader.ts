@@ -8,12 +8,7 @@ import * as fs from 'fs/promises';
 import type { Dirent } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type {
-  PluginManifest,
-  Plugin,
-  PluginContext,
-  PluginState,
-} from './types.js';
+import type { PluginManifest, Plugin, PluginContext, PluginState } from './types.js';
 import { eventBus } from './event-bus.js';
 import { pluginRegistry } from './registry.js';
 import { createLogger } from '../services/logger.js';
@@ -133,9 +128,7 @@ export class PluginLoader {
       const plugin: Plugin = mod.default ?? mod;
 
       if (!plugin.manifest || !plugin.activate) {
-        throw new Error(
-          `Plugin "${manifest.name}" must export { manifest, activate }`,
-        );
+        throw new Error(`Plugin "${manifest.name}" must export { manifest, activate }`);
       }
 
       this.plugins.set(manifest.name, plugin);
@@ -218,9 +211,7 @@ export class PluginLoader {
   /**
    * Discover, load, and activate all plugins using the given context factory.
    */
-  async activateAll(
-    contextFactory: (manifest: PluginManifest) => PluginContext,
-  ): Promise<void> {
+  async activateAll(contextFactory: (manifest: PluginManifest) => PluginContext): Promise<void> {
     const manifests = await this.discover();
 
     for (const manifest of manifests) {
@@ -230,7 +221,10 @@ export class PluginLoader {
         await this.activate(manifest.name, context);
       } catch (error: unknown) {
         const msg = getErrorMessage(error);
-        pluginLoaderLogger.error({ plugin: manifest.name, error: msg }, 'Failed to load/activate plugin');
+        pluginLoaderLogger.error(
+          { plugin: manifest.name, error: msg },
+          'Failed to load/activate plugin'
+        );
       }
     }
   }

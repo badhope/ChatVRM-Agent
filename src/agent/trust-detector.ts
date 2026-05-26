@@ -55,7 +55,4 @@ export {
 } from './trust/index.js';
 
 // Detector
-export {
-  TrustDetector,
-  detectIssues,
-} from './trust/index.js';
+export { TrustDetector, detectIssues } from './trust/index.js';

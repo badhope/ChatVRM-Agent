@@ -44,9 +44,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('递归强制删除根目录'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'destructive')).toBe(true);
+      expect(issues.some((i) => i.description.includes('递归强制删除根目录'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'destructive')).toBe(true);
     });
 
     it('should detect rm -rf (recursive force delete)', () => {
@@ -54,8 +54,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('递归强制删除'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('递归强制删除'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect Windows del command with force flag', () => {
@@ -63,7 +63,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('Windows 强制删除'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('Windows 强制删除'))).toBe(true);
     });
 
     it('should detect Windows rmdir /s command', () => {
@@ -71,7 +71,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('Windows 递归删除目录'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('Windows 递归删除目录'))).toBe(true);
     });
 
     it('should detect format disk command', () => {
@@ -79,8 +79,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('格式化磁盘'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('格式化磁盘'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect mkfs command', () => {
@@ -88,8 +88,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('创建文件系统'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('创建文件系统'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect dd disk write operation', () => {
@@ -97,8 +97,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('dd 磁盘写入'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('dd 磁盘写入'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect redirect to device file', () => {
@@ -106,7 +106,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('重定向到设备文件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('重定向到设备文件'))).toBe(true);
     });
   });
 
@@ -118,9 +118,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('远程脚本执行'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'dangerous')).toBe(true);
+      expect(issues.some((i) => i.description.includes('远程脚本执行'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'dangerous')).toBe(true);
     });
 
     it('should detect wget piped to sh', () => {
@@ -128,8 +128,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('远程脚本执行'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('远程脚本执行'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect curl to suspicious domains (pastebin)', () => {
@@ -137,8 +137,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('可疑域名'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('可疑域名'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect curl to gist.github', () => {
@@ -146,7 +146,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('可疑域名'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('可疑域名'))).toBe(true);
     });
 
     it('should detect curl to ngrok', () => {
@@ -154,7 +154,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('可疑域名'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('可疑域名'))).toBe(true);
     });
 
     it('should detect netcat listening mode', () => {
@@ -162,8 +162,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('网络监听'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('网络监听'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect SSH reverse tunnel', () => {
@@ -171,8 +171,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('SSH 反向隧道'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('SSH 反向隧道'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
   });
 
@@ -184,9 +184,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'dangerous')).toBe(true);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'dangerous')).toBe(true);
     });
 
     it('should detect Function constructor', () => {
@@ -194,8 +194,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('Function 构造函数'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('Function 构造函数'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect vm.runInNewContext', () => {
@@ -203,8 +203,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('VM'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('VM'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect child_process.exec', () => {
@@ -212,8 +212,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('子进程命令'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('子进程命令'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect require child_process module', () => {
@@ -221,8 +221,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('子进程模块'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('子进程模块'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
   });
 
@@ -234,9 +234,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('删除数据库表'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'destructive')).toBe(true);
+      expect(issues.some((i) => i.description.includes('删除数据库表'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'destructive')).toBe(true);
     });
 
     it('should detect DROP DATABASE', () => {
@@ -244,8 +244,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('删除数据库'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('删除数据库'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect TRUNCATE TABLE', () => {
@@ -253,8 +253,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('清空数据库表'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('清空数据库表'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect DELETE without WHERE clause (ending with newline)', () => {
@@ -262,8 +262,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('无 WHERE 条件'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('无 WHERE 条件'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect DELETE without WHERE clause (ending with semicolon)', () => {
@@ -271,7 +271,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('无 WHERE 条件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('无 WHERE 条件'))).toBe(true);
     });
 
     it('should detect ALTER TABLE DROP COLUMN', () => {
@@ -279,8 +279,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('删除数据库列'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('删除数据库列'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect GRANT ALL', () => {
@@ -288,8 +288,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('授予所有权限'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('授予所有权限'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
   });
 
@@ -301,9 +301,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('密码硬编码'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'sensitive')).toBe(true);
+      expect(issues.some((i) => i.description.includes('密码硬编码'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'sensitive')).toBe(true);
     });
 
     it('should detect hardcoded password (Chinese)', () => {
@@ -311,7 +311,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('密码硬编码'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('密码硬编码'))).toBe(true);
     });
 
     it('should detect hardcoded API key', () => {
@@ -319,8 +319,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('API Key'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('API Key'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect hardcoded secret key', () => {
@@ -328,7 +328,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('Secret Key'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('Secret Key'))).toBe(true);
     });
 
     it('should detect hardcoded token', () => {
@@ -336,8 +336,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('Token'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('Token'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect hardcoded private key', () => {
@@ -345,8 +345,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('私钥'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('私钥'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
   });
 
@@ -358,9 +358,9 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('管理员权限'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
-      expect(issues.some(i => i.type === 'dangerous')).toBe(true);
+      expect(issues.some((i) => i.description.includes('管理员权限'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.type === 'dangerous')).toBe(true);
     });
 
     it('should detect chmod 777', () => {
@@ -368,8 +368,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('开放所有权限'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('开放所有权限'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
 
     it('should detect chown to root', () => {
@@ -377,8 +377,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.description.includes('root'))).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.RequireConfirmation)).toBe(true);
+      expect(issues.some((i) => i.description.includes('root'))).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.RequireConfirmation)).toBe(true);
     });
   });
 
@@ -390,8 +390,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'uncertainty')).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.AutoExecute)).toBe(true);
+      expect(issues.some((i) => i.type === 'uncertainty')).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.AutoExecute)).toBe(true);
     });
 
     it('should detect uncertainty expression "我不清楚"', () => {
@@ -399,7 +399,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'uncertainty')).toBe(true);
+      expect(issues.some((i) => i.type === 'uncertainty')).toBe(true);
     });
 
     it('should detect guess expression "我猜测"', () => {
@@ -407,7 +407,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'uncertainty')).toBe(true);
+      expect(issues.some((i) => i.type === 'uncertainty')).toBe(true);
     });
 
     it('should detect uncertainty expression "我不知道"', () => {
@@ -415,7 +415,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'uncertainty')).toBe(true);
+      expect(issues.some((i) => i.type === 'uncertainty')).toBe(true);
     });
   });
 
@@ -427,8 +427,8 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'hallucination')).toBe(true);
-      expect(issues.some(i => i.level === TrustLevel.AutoExecute)).toBe(true);
+      expect(issues.some((i) => i.type === 'hallucination')).toBe(true);
+      expect(issues.some((i) => i.level === TrustLevel.AutoExecute)).toBe(true);
     });
 
     it('should detect insufficient information expression', () => {
@@ -436,7 +436,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'hallucination')).toBe(true);
+      expect(issues.some((i) => i.type === 'hallucination')).toBe(true);
     });
 
     it('should detect unable to confirm expression', () => {
@@ -444,7 +444,7 @@ describe('Pattern Detection', () => {
       const issues = detector.detect(output);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'hallucination')).toBe(true);
+      expect(issues.some((i) => i.type === 'hallucination')).toBe(true);
     });
   });
 });
@@ -462,7 +462,9 @@ describe('Severity Level Tests', () => {
     const output = 'rm -rf / && DROP TABLE users;';
     const issues = detector.detect(output);
 
-    const requireConfirmationIssues = issues.filter(i => i.level === TrustLevel.RequireConfirmation);
+    const requireConfirmationIssues = issues.filter(
+      (i) => i.level === TrustLevel.RequireConfirmation
+    );
     expect(requireConfirmationIssues.length).toBeGreaterThan(0);
   });
 
@@ -470,7 +472,7 @@ describe('Severity Level Tests', () => {
     const output = '我不确定这个方案是否可行';
     const issues = detector.detect(output);
 
-    const autoExecuteIssues = issues.filter(i => i.level === TrustLevel.AutoExecute);
+    const autoExecuteIssues = issues.filter((i) => i.level === TrustLevel.AutoExecute);
     expect(autoExecuteIssues.length).toBeGreaterThan(0);
   });
 
@@ -502,12 +504,12 @@ describe('Context-Aware Detection', () => {
 
       // 非测试环境
       const normalIssues = detector.detect(output);
-      expect(normalIssues.some(i => i.description.includes('eval()'))).toBe(true);
+      expect(normalIssues.some((i) => i.description.includes('eval()'))).toBe(true);
 
       // 测试环境
       const testContext: DetectionContext = { isTestEnvironment: true };
       const testIssues = detector.detect(output, testContext);
-      expect(testIssues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(testIssues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should suppress rm -rf detection in test environment (non-root)', () => {
@@ -515,7 +517,7 @@ describe('Context-Aware Detection', () => {
 
       // 非测试环境
       const normalIssues = detector.detect(output);
-      expect(normalIssues.some(i => i.description.includes('递归强制删除'))).toBe(true);
+      expect(normalIssues.some((i) => i.description.includes('递归强制删除'))).toBe(true);
 
       // 测试环境 - rm -rf 有 ignoreInTest 标记
       // 注意：DANGEROUS_PATTERNS 中的 rm -rf 模式没有 ignoreInTest，
@@ -524,40 +526,40 @@ describe('Context-Aware Detection', () => {
       const testIssues = detector.detect(output, testContext);
       // 验证测试环境检测逻辑被调用（ignoreInTest 生效）
       // 但由于 DANGEROUS_PATTERNS 兼容性检测，可能仍会检测到
-      expect(testIssues.some(i => i.description.includes('递归强制删除'))).toBe(true);
+      expect(testIssues.some((i) => i.description.includes('递归强制删除'))).toBe(true);
     });
 
     it('should suppress Function constructor detection in test environment', () => {
       const output = 'const fn = new Function("x", "return x;");';
 
       const normalIssues = detector.detect(output);
-      expect(normalIssues.some(i => i.description.includes('Function 构造函数'))).toBe(true);
+      expect(normalIssues.some((i) => i.description.includes('Function 构造函数'))).toBe(true);
 
       const testContext: DetectionContext = { isTestEnvironment: true };
       const testIssues = detector.detect(output, testContext);
-      expect(testIssues.some(i => i.description.includes('Function 构造函数'))).toBe(false);
+      expect(testIssues.some((i) => i.description.includes('Function 构造函数'))).toBe(false);
     });
 
     it('should suppress vm.runInNewContext detection in test environment', () => {
       const output = 'vm.runInNewContext(code);';
 
       const normalIssues = detector.detect(output);
-      expect(normalIssues.some(i => i.description.includes('VM'))).toBe(true);
+      expect(normalIssues.some((i) => i.description.includes('VM'))).toBe(true);
 
       const testContext: DetectionContext = { isTestEnvironment: true };
       const testIssues = detector.detect(output, testContext);
-      expect(testIssues.some(i => i.description.includes('VM'))).toBe(false);
+      expect(testIssues.some((i) => i.description.includes('VM'))).toBe(false);
     });
 
     it('should suppress child_process.exec detection in test environment', () => {
       const output = 'child_process.exec(cmd);';
 
       const normalIssues = detector.detect(output);
-      expect(normalIssues.some(i => i.description.includes('子进程命令'))).toBe(true);
+      expect(normalIssues.some((i) => i.description.includes('子进程命令'))).toBe(true);
 
       const testContext: DetectionContext = { isTestEnvironment: true };
       const testIssues = detector.detect(output, testContext);
-      expect(testIssues.some(i => i.description.includes('子进程命令'))).toBe(false);
+      expect(testIssues.some((i) => i.description.includes('子进程命令'))).toBe(false);
     });
   });
 
@@ -567,7 +569,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/src/utils.test.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should detect test file by .spec. extension', () => {
@@ -575,7 +577,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/src/utils.spec.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should detect test file by __tests__ directory', () => {
@@ -583,7 +585,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/__tests__/utils.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should detect test file by test/ directory', () => {
@@ -591,7 +593,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/test/utils.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should detect test file by tests/ directory', () => {
@@ -599,7 +601,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/tests/utils.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(false);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(false);
     });
 
     it('should NOT suppress detection in production files', () => {
@@ -607,7 +609,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { filePath: '/project/src/utils.ts' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('eval()'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('eval()'))).toBe(true);
     });
   });
 
@@ -617,7 +619,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'shell' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('fork 炸弹'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('fork 炸弹'))).toBe(true);
     });
 
     it('should detect overwriting /etc/passwd in shell context', () => {
@@ -625,7 +627,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'shell' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('系统密码文件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('系统密码文件'))).toBe(true);
     });
 
     it('should detect overwriting /etc/shadow in shell context', () => {
@@ -633,7 +635,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'exec' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('系统影子文件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('系统影子文件'))).toBe(true);
     });
 
     it('should detect DELETE in database context', () => {
@@ -641,7 +643,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'database' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('删除操作'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('删除操作'))).toBe(true);
     });
 
     it('should detect UPDATE in database context', () => {
@@ -649,7 +651,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'sql' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('更新操作'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('更新操作'))).toBe(true);
     });
 
     it('should detect INSERT in database context', () => {
@@ -657,7 +659,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'db' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('插入操作'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('插入操作'))).toBe(true);
     });
 
     it('should detect modifying /etc/passwd in file context', () => {
@@ -665,7 +667,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'writeFile' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('系统关键配置文件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('系统关键配置文件'))).toBe(true);
     });
 
     it('should detect .env file operation in file context', () => {
@@ -673,7 +675,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'file' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('环境变量文件'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('环境变量文件'))).toBe(true);
     });
 
     it('should detect SSH directory operation in file context', () => {
@@ -681,7 +683,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'write' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('SSH'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('SSH'))).toBe(true);
     });
 
     it('should detect Bearer Token in network context', () => {
@@ -689,7 +691,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'http' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('Bearer Token'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('Bearer Token'))).toBe(true);
     });
 
     it('should detect API Key in header in network context', () => {
@@ -697,7 +699,7 @@ describe('Context-Aware Detection', () => {
       const context: DetectionContext = { toolUsed: 'fetch' };
 
       const issues = detector.detect(output, context);
-      expect(issues.some(i => i.description.includes('API Key'))).toBe(true);
+      expect(issues.some((i) => i.description.includes('API Key'))).toBe(true);
     });
   });
 });
@@ -984,14 +986,14 @@ describe('Edge Cases', () => {
     const output = '这是一个安全的输出，没有任何危险操作。';
     const issues = detector.detect(output);
     // 可能检测到不确定性表述，但不应有危险操作
-    expect(issues.every(i => i.type !== 'destructive' && i.type !== 'dangerous')).toBe(true);
+    expect(issues.every((i) => i.type !== 'destructive' && i.type !== 'dangerous')).toBe(true);
   });
 
   it('should handle very long input', () => {
     const output = 'const x = 1;\n'.repeat(10000) + 'rm -rf /';
     const issues = detector.detect(output);
     expect(issues.length).toBeGreaterThan(0);
-    expect(issues.some(i => i.type === 'destructive')).toBe(true);
+    expect(issues.some((i) => i.type === 'destructive')).toBe(true);
   });
 
   it('should handle special characters', () => {
@@ -1003,7 +1005,7 @@ describe('Edge Cases', () => {
   it('should handle Unicode characters', () => {
     const output = '密码 = "测试密码🔥"';
     const issues = detector.detect(output);
-    expect(issues.some(i => i.type === 'sensitive')).toBe(true);
+    expect(issues.some((i) => i.type === 'sensitive')).toBe(true);
   });
 
   it('should deduplicate identical issues', () => {
@@ -1011,7 +1013,7 @@ describe('Edge Cases', () => {
     const issues = detector.detect(output);
 
     // 相同类型和描述的问题应该被去重
-    const sudoIssues = issues.filter(i => i.description.includes('管理员权限'));
+    const sudoIssues = issues.filter((i) => i.description.includes('管理员权限'));
     expect(sudoIssues.length).toBe(1);
   });
 });
@@ -1037,12 +1039,17 @@ describe('Utility Functions', () => {
     it('should return filesystem patterns', () => {
       const patterns = getPatternsByCategory('filesystem');
       expect(patterns.length).toBeGreaterThan(0);
-      expect(patterns.every(p => p.description.includes('删除') ||
-        p.description.includes('格式化') ||
-        p.description.includes('文件系统') ||
-        p.description.includes('dd') ||
-        p.description.includes('重定向') ||
-        p.description.includes('Windows'))).toBe(true);
+      expect(
+        patterns.every(
+          (p) =>
+            p.description.includes('删除') ||
+            p.description.includes('格式化') ||
+            p.description.includes('文件系统') ||
+            p.description.includes('dd') ||
+            p.description.includes('重定向') ||
+            p.description.includes('Windows')
+        )
+      ).toBe(true);
     });
 
     it('should return network patterns', () => {
@@ -1097,7 +1104,7 @@ describe('Custom Patterns', () => {
     });
 
     const issues = detector.detect('This is a CUSTOM_DANGEROUS_PATTERN test');
-    expect(issues.some(i => i.description === '自定义危险模式')).toBe(true);
+    expect(issues.some((i) => i.description === '自定义危险模式')).toBe(true);
   });
 
   it('should respect ignoreInTest for custom patterns', () => {
@@ -1112,11 +1119,11 @@ describe('Custom Patterns', () => {
 
     // 非测试环境应该检测到
     const normalIssues = detector.detect('CUSTOM_PATTERN');
-    expect(normalIssues.some(i => i.description === '自定义模式')).toBe(true);
+    expect(normalIssues.some((i) => i.description === '自定义模式')).toBe(true);
 
     // 测试环境应该忽略
     const testIssues = detector.detect('CUSTOM_PATTERN', { isTestEnvironment: true });
-    expect(testIssues.some(i => i.description === '自定义模式')).toBe(false);
+    expect(testIssues.some((i) => i.description === '自定义模式')).toBe(false);
   });
 });
 
@@ -1126,13 +1133,13 @@ describe('Backward Compatibility', () => {
   it('detectIssues function should work without context', () => {
     const issues = detectIssues('rm -rf /');
     expect(issues.length).toBeGreaterThan(0);
-    expect(issues.some(i => i.type === 'destructive')).toBe(true);
+    expect(issues.some((i) => i.type === 'destructive')).toBe(true);
   });
 
   it('detectIssues function should work with context', () => {
     const issues = detectIssues('sudo command', { toolUsed: 'shell' });
     expect(issues.length).toBeGreaterThan(0);
-    expect(issues.some(i => i.type === 'dangerous')).toBe(true);
+    expect(issues.some((i) => i.type === 'dangerous')).toBe(true);
   });
 
   it('TrustDetector.analyze should be alias of detect', () => {

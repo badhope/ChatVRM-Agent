@@ -39,11 +39,7 @@ export interface ITaskCoordinator {
    * @param status 新状态
    * @param result 执行结果（可选）
    */
-  updateStepStatus(
-    stepIndex: number,
-    status: TaskStep['status'],
-    result?: string
-  ): void;
+  updateStepStatus(stepIndex: number, status: TaskStep['status'], result?: string): void;
 
   /**
    * 标记任务完成
@@ -240,10 +236,7 @@ export interface ILearningEngine {
 /**
  * 状态转换监听器
  */
-export type StateTransitionListener = (
-  from: ExecutionPhase,
-  to: ExecutionPhase
-) => void;
+export type StateTransitionListener = (from: ExecutionPhase, to: ExecutionPhase) => void;
 
 /**
  * 状态管理器 - 负责 Agent 状态管理
