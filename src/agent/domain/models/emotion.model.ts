@@ -24,6 +24,7 @@ export interface EmotionalState {
   intensity: number;
   history: EmotionalEvent[];
   mood: number;
+  lastDecay: number;
 }
 
 /** 情绪建议接口 */

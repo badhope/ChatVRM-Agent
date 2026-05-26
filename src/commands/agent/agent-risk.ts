@@ -9,7 +9,7 @@ import {
   backupFile,
   rollback,
 } from '../../agent/change-control.js';
-import type { ChangeAction } from '../../agent/risk-rules.js';
+import type { ChangeAction } from '../../agent/infrastructure/common/risk-rules.js';
 
 export const agentRiskCommand = new Command('risk').description('风险评估与变更控制');
 

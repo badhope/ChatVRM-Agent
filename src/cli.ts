@@ -35,8 +35,11 @@ import path from 'path';
 import fs from 'fs/promises';
 import { syncManager } from './cloud/sync-manager.js';
 import { DEVFLOW_DIR } from './utils/index.js';
-import { decisionReflector } from './agent/decision-reflector.js';
+import { DecisionController } from './agent/interfaces/controllers/decision.controller.js';
 import { SHUTDOWN_DELAY_MS } from './constants/index.js';
+
+// 创建决策控制器实例
+const decisionController = new DecisionController();
 
 // 全局状态追踪
 let currentSessionId: string | null = null;
@@ -80,7 +83,7 @@ const cleanup = async () => {
     }
 
     // 3. 保存决策历史
-    await decisionReflector.save();
+    await decisionController.saveDecisions();
     console.log('✓ 决策历史已保存');
 
     // 4. 执行最后一次同步（非阻塞，最多等待 3 秒）

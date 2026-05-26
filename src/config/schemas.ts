@@ -81,8 +81,11 @@ export const CircuitBreakerConfigSchema = z.object({
 // Main Config Schema
 // ============================================================
 
+export const LanguageSchema = z.enum(['en', 'zh']).default('en');
+
 export const ConfigSchema = z.object({
   version: z.string().default('1.0'),
+  language: LanguageSchema.default('en'),
   defaultProvider: ProviderTypeSchema.optional(),
   providers: z.record(ProviderTypeSchema, ProviderConfigSchema).default({}),
   chat: ChatConfigSchema.default({}),
@@ -103,3 +106,4 @@ export type MemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 export type SandboxLevel = z.infer<typeof SandboxLevelSchema>;
 export type CircuitBreakerConfig = z.infer<typeof CircuitBreakerConfigSchema>;
+export type Language = z.infer<typeof LanguageSchema>;

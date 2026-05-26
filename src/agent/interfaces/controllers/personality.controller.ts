@@ -6,13 +6,15 @@
 import type { AgentIdentity, PersonalityTraits } from '../../domain/models/personality.model';
 import { PersonalityApplicationService } from '../../application/services/personality.application.service';
 import { JsonPersonalityRepository } from '../../infrastructure/repositories/personality.repository';
+import { PersonalityService } from '../../domain/services/personality.service';
 
 export class PersonalityController {
   private personalityService: PersonalityApplicationService;
+  private repository: JsonPersonalityRepository;
 
   constructor() {
-    const repository = new JsonPersonalityRepository();
-    this.personalityService = new PersonalityApplicationService(repository);
+    this.repository = new JsonPersonalityRepository();
+    this.personalityService = new PersonalityApplicationService(this.repository);
   }
 
   /**
@@ -20,6 +22,20 @@ export class PersonalityController {
    */
   async initialize(): Promise<AgentIdentity> {
     return this.personalityService.initialize();
+  }
+
+  /**
+   * 加载人格身份（向后兼容）
+   */
+  async loadIdentity(): Promise<AgentIdentity> {
+    return this.initialize();
+  }
+
+  /**
+   * 保存人格身份（向后兼容）
+   */
+  async saveIdentity(identity: AgentIdentity): Promise<void> {
+    await this.repository.saveIdentity(identity);
   }
 
   /**
@@ -44,6 +60,34 @@ export class PersonalityController {
    */
   getPersonalityPrompt(identity: AgentIdentity): string {
     return this.personalityService.getPersonalityPrompt(identity);
+  }
+
+  /**
+   * 获取沟通风格指导
+   */
+  getCommunicationGuidance(identity: AgentIdentity): string {
+    return PersonalityService.getCommunicationGuidance(identity);
+  }
+
+  /**
+   * 获取代码风格指导
+   */
+  getCodeStyleGuidance(identity: AgentIdentity): string {
+    return PersonalityService.getCodeStyleGuidance(identity);
+  }
+
+  /**
+   * 获取风险评估指导
+   */
+  getRiskGuidance(identity: AgentIdentity): string {
+    return PersonalityService.getRiskGuidance(identity);
+  }
+
+  /**
+   * 增加交互计数
+   */
+  incrementInteractions(identity: AgentIdentity): AgentIdentity {
+    return PersonalityService.incrementInteractions(identity);
   }
 
   /**

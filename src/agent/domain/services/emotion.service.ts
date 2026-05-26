@@ -6,6 +6,15 @@
 import type { Emotion, EmotionalEvent, EmotionalState, EmotionSuggestion } from '../models/emotion.model.js';
 import { EMOTION_DESCRIPTION, EMOTION_PRIORITY, MOOD_DELTA } from '../models/emotion.model.js';
 
+// 全局情绪状态
+let globalEmotionalState: EmotionalState = {
+  current: 'neutral',
+  intensity: 0,
+  mood: 0,
+  history: [],
+  lastDecay: Date.now(),
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -22,14 +31,23 @@ function createHistoryEntry(emotion: Emotion, intensity: number, reason: string)
 }
 
 export class EmotionService {
+  /**
+   * 创建历史记录
+   */
   static createHistoryEntry(emotion: Emotion, intensity: number, reason: string): EmotionalEvent {
     return createHistoryEntry(emotion, intensity, reason);
   }
 
+  /**
+   * 数值限制
+   */
   static clamp(value: number, min: number, max: number): number {
     return clamp(value, min, max);
   }
 
+  /**
+   * 获取行为建议
+   */
   static getBehaviorSuggestions(emotion: Emotion): EmotionSuggestion {
     const suggestions: Record<Emotion, EmotionSuggestion> = {
       frustrated: {
@@ -59,16 +77,110 @@ export class EmotionService {
     return suggestions[emotion];
   }
 
-  static getEmotionalContext(state: EmotionalState): string {
-    if (state.current === 'neutral' && Math.abs(state.mood) < 0.1) return '';
+  /**
+   * 获取情绪上下文
+   */
+  static getEmotionalContext(state?: EmotionalState): string {
+    const st = state || globalEmotionalState;
+    if (st.current === 'neutral' && Math.abs(st.mood) < 0.1) return '';
     const parts: string[] = ['[当前情绪状态]'];
     parts.push(
-      `情绪: ${EMOTION_DESCRIPTION[state.current]} (强度: ${Math.round(state.intensity * 100)}%)`
+      `情绪: ${EMOTION_DESCRIPTION[st.current]} (强度: ${Math.round(st.intensity * 100)}%)`
     );
-    if (state.mood > 0.2) parts.push('整体心情: 积极');
-    else if (state.mood < -0.2) parts.push('整体心情: 消极');
-    const suggestions = this.getBehaviorSuggestions(state.current);
-    if (suggestions.behavior) parts.push(`行为建议: ${suggestions.behavior}`);
+    if (st.mood > 0.2) parts.push('整体心情: 积极');
+    else if (st.mood < -0.2) parts.push('整体心情: 消极');
+    const suggest = this.getBehaviorSuggestions(st.current);
+    if (suggest.behavior) parts.push(`行为建议: ${suggest.behavior}`);
     return parts.join('\n');
+  }
+
+  /**
+   * 获取当前情绪状态
+   */
+  static getState(): EmotionalState {
+    return { ...globalEmotionalState };
+  }
+
+  /**
+   * 设置情绪状态
+   */
+  static setState(state: EmotionalState): void {
+    globalEmotionalState = { ...state };
+  }
+
+  /**
+   * 情绪衰减
+   */
+  static applyDecay(): void {
+    const now = Date.now();
+    const timePassed = (now - globalEmotionalState.lastDecay) / 1000 / 60; // 分钟
+
+    if (timePassed > 1) {
+      const decayFactor = Math.max(0, 1 - timePassed / 60); // 1小时完全衰减
+      globalEmotionalState.intensity *= decayFactor;
+      globalEmotionalState.mood *= decayFactor;
+      globalEmotionalState.lastDecay = now;
+
+      if (globalEmotionalState.intensity < 0.1) {
+        globalEmotionalState.current = 'neutral';
+      }
+    }
+  }
+
+  /**
+   * 更新情绪（通用方法）
+   */
+  static updateEmotion(emotion: Emotion, intensity: number, reason: string = 'unknown'): void {
+    // 情绪衰减
+    this.applyDecay();
+
+    // 立即设置情绪
+    globalEmotionalState.current = emotion;
+    globalEmotionalState.intensity = clamp(intensity, 0, 1);
+
+    // 更新心情
+    const moodDelta = MOOD_DELTA[emotion] || 0;
+    globalEmotionalState.mood = clamp(globalEmotionalState.mood + moodDelta * intensity, -1, 1);
+
+    // 记录历史
+    globalEmotionalState.history.push(createHistoryEntry(emotion, intensity, reason));
+    if (globalEmotionalState.history.length > 100) {
+      globalEmotionalState.history.shift();
+    }
+  }
+
+  /**
+   * 用户表扬
+   */
+  static onUserPraise(reason: string = '用户表扬'): void {
+    this.updateEmotion('confident', 0.8, reason);
+  }
+
+  /**
+   * 用户纠正
+   */
+  static onUserCorrection(reason: string = '用户纠正'): void {
+    this.updateEmotion('cautious', 0.6, reason);
+  }
+
+  /**
+   * 新挑战
+   */
+  static onNewChallenge(reason: string = '新挑战'): void {
+    this.updateEmotion('curious', 0.5, reason);
+  }
+
+  /**
+   * 任务成功
+   */
+  static onTaskSuccess(reason: string = '任务成功'): void {
+    this.updateEmotion('excited', 0.7, reason);
+  }
+
+  /**
+   * 任务失败
+   */
+  static onTaskFailure(reason: string = '任务失败'): void {
+    this.updateEmotion('frustrated', 0.6, reason);
   }
 }

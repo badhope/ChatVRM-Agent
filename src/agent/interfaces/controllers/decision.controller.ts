@@ -10,13 +10,19 @@ import type {
 } from '../../application/dtos/decision.dto';
 import { DecisionApplicationService } from '../../application/services/decision.application.service';
 import { JsonDecisionRepository } from '../../infrastructure/repositories/decision.repository';
+import { JsonExperienceRepository } from '../../infrastructure/repositories/experience.repository';
+import { ExperienceService } from '../../domain/services/experience.service';
+import type { Experience } from '../../domain/models/experience.model';
 
 export class DecisionController {
   private decisionService: DecisionApplicationService;
+  private decisionRepository: JsonDecisionRepository;
+  private experienceRepository: JsonExperienceRepository;
 
   constructor() {
-    const repository = new JsonDecisionRepository();
-    this.decisionService = new DecisionApplicationService(repository);
+    this.decisionRepository = new JsonDecisionRepository();
+    this.experienceRepository = new JsonExperienceRepository();
+    this.decisionService = new DecisionApplicationService(this.decisionRepository);
   }
 
   /**
@@ -24,6 +30,20 @@ export class DecisionController {
    */
   async initialize(): Promise<void> {
     await this.decisionService.initialize();
+  }
+
+  /**
+   * 加载决策（向后兼容）
+   */
+  async loadDecisions(): Promise<void> {
+    await this.initialize();
+  }
+
+  /**
+   * 保存决策（向后兼容）
+   */
+  async saveDecisions(): Promise<void> {
+    await this.saveAll();
   }
 
   /**
@@ -52,6 +72,14 @@ export class DecisionController {
   }
 
   /**
+   * 获取指定任务的决策（向后兼容）
+   */
+  async getDecisionsByTask(taskId: string): Promise<any[]> {
+    const decisions = await this.decisionRepository.getDecisionsByTask(taskId);
+    return decisions;
+  }
+
+  /**
    * 获取决策统计
    */
   async getDecisionStats() {
@@ -77,5 +105,26 @@ export class DecisionController {
    */
   async saveAll(): Promise<void> {
     return this.decisionService.saveAll();
+  }
+
+  /**
+   * 添加经验记录（向后兼容）
+   */
+  async addExperience(experience: Experience): Promise<void> {
+    await this.experienceRepository.addExperience(experience);
+  }
+
+  /**
+   * 加载经验记录（向后兼容）
+   */
+  async loadExperiences(): Promise<Experience[]> {
+    return this.experienceRepository.getAllExperiences();
+  }
+
+  /**
+   * 获取经验记录数量（向后兼容）
+   */
+  async getExperienceCount(): Promise<number> {
+    return this.experienceRepository.getExperienceCount();
   }
 }

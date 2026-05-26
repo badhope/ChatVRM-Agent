@@ -7,7 +7,7 @@ import { DEVFLOW_DIR } from '../utils/index.js';
 import type { ManagerProviderConfig, SandboxLevel } from './config-types.js';
 import { SANDBOX_PERMISSIONS, DEFAULT_CONFIG } from './defaults.js';
 import { validateConfigWithLogging } from './validation.js';
-import type { Config } from './schemas.js';
+import type { Config, Language } from './schemas.js';
 import { DEFAULT_TIMEOUT_MS } from '../constants/index.js';
 import { createLogger } from '../services/logger.js';
 
@@ -16,7 +16,7 @@ const logger = createLogger('config');
 // Re-export 类型和常量
 export type { ManagerProviderConfig, SandboxLevel };
 export { SANDBOX_PERMISSIONS, DEFAULT_CONFIG };
-export type { Config } from './schemas.js';
+export type { Config, Language } from './schemas.js';
 
 /**
  * 配置管理器
@@ -255,9 +255,19 @@ export class ConfigManager {
     return JSON.parse(JSON.stringify(this.config));
   }
 
+  getLanguage(): Language {
+    return this.config.language;
+  }
+
+  async setLanguage(language: Language): Promise<void> {
+    this.config.language = language;
+    await this.save();
+  }
+
   private mergeConfig(defaults: Config, loaded: Partial<Config>): Config {
     return {
       version: loaded.version || defaults.version,
+      language: loaded.language || defaults.language,
       providers: { ...defaults.providers, ...loaded.providers },
       defaultProvider: loaded.defaultProvider || defaults.defaultProvider,
       chat: { ...defaults.chat, ...loaded.chat },

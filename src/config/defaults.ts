@@ -77,6 +77,7 @@ export const SANDBOX_PERMISSIONS: Record<
 
 export const DEFAULT_CONFIG: Config = {
   version: '1.0',
+  language: 'en',
   providers: {
     openai: { timeout: 30000, maxRetries: 3 },
     anthropic: { timeout: 30000, maxRetries: 3 },

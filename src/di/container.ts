@@ -16,9 +16,29 @@ import { AgentService } from '../services/agent-service.js';
 import { MemoryService } from '../services/memory-service.js';
 import { CompressionService } from '../services/compression-service.js';
 
-// 导入人格与情绪系统
-import { PersonalityManager } from '../agent/personality.js';
-import { EmotionalStateManager } from '../agent/emotional-state.js';
+// ========== 导入新架构 (DDD) ==========
+// Repositories
+import { JsonPersonalityRepository } from '../agent/infrastructure/repositories/personality.repository.js';
+import { JsonDecisionRepository } from '../agent/infrastructure/repositories/decision.repository.js';
+import { JsonExperienceRepository } from '../agent/infrastructure/repositories/experience.repository.js';
+
+// Domain Services
+import { PersonalityService } from '../agent/domain/services/personality.service.js';
+import { EmotionService } from '../agent/domain/services/emotion.service.js';
+import { DecisionService } from '../agent/domain/services/decision.service.js';
+import { ExperienceService } from '../agent/domain/services/experience.service.js';
+
+// Application Services
+import { PersonalityApplicationService } from '../agent/application/services/personality.application.service.js';
+import { EmotionApplicationService } from '../agent/application/services/emotion.application.service.js';
+import { DecisionApplicationService } from '../agent/application/services/decision.application.service.js';
+import { ExperienceApplicationService } from '../agent/application/services/experience.application.service.js';
+
+// Controllers
+import { PersonalityController } from '../agent/interfaces/controllers/personality.controller.js';
+import { DecisionController } from '../agent/interfaces/controllers/decision.controller.js';
+
+// ========== 旧架构已删除，使用新的 DDD 架构 ==========
 
 // 导入 Agent 核心组件
 import { ContextManager } from '../agent/context-manager.js';
@@ -96,20 +116,6 @@ export function registerServices(): void {
     { useClass: CompressionService },
     { lifecycle: Lifecycle.Singleton }
   );
-
-  // PersonalityManager - 单例
-  container.register(
-    TOKENS.PersonalityManager,
-    { useClass: PersonalityManager },
-    { lifecycle: Lifecycle.Singleton }
-  );
-
-  // EmotionalStateManager - 单例
-  container.register(
-    TOKENS.EmotionalStateManager,
-    { useClass: EmotionalStateManager },
-    { lifecycle: Lifecycle.Singleton }
-  );
 }
 
 /**
@@ -131,6 +137,83 @@ export function registerAgentServices(): void {
 }
 
 /**
+ * 注册新架构 (DDD) 层到 DI 容器
+ */
+export function registerDDDServices(): void {
+  // ========== Repositories (Infrastructure Layer) ==========
+  // Personality Repository
+  container.register(
+    TOKENS.PersonalityRepository,
+    { useClass: JsonPersonalityRepository },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Decision Repository
+  container.register(
+    TOKENS.DecisionRepository,
+    { useClass: JsonDecisionRepository },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Experience Repository
+  container.register(
+    TOKENS.ExperienceRepository,
+    { useClass: JsonExperienceRepository },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // ========== Domain Services (Domain Layer) ==========
+  // Personality Service - 静态类，无需注册
+  // Emotion Service - 静态类，无需注册
+  // Decision Service - 静态类，无需注册
+  // Experience Service - 静态类，无需注册
+
+  // ========== Application Services (Application Layer) ==========
+  // Personality Application Service
+  container.register(
+    TOKENS.PersonalityApplicationService,
+    { useClass: PersonalityApplicationService },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Emotion Application Service
+  container.register(
+    TOKENS.EmotionApplicationService,
+    { useClass: EmotionApplicationService },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Decision Application Service
+  container.register(
+    TOKENS.DecisionApplicationService,
+    { useClass: DecisionApplicationService },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Experience Application Service
+  container.register(
+    TOKENS.ExperienceApplicationService,
+    { useClass: ExperienceApplicationService },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // ========== Controllers (Interface Layer) ==========
+  // Personality Controller
+  container.register(
+    TOKENS.PersonalityController,
+    { useClass: PersonalityController },
+    { lifecycle: Lifecycle.Singleton }
+  );
+
+  // Decision Controller
+  container.register(
+    TOKENS.DecisionController,
+    { useClass: DecisionController },
+    { lifecycle: Lifecycle.Singleton }
+  );
+}
+
+/**
  * 初始化所有依赖注入注册
  * 在应用启动时调用
  */
@@ -138,6 +221,7 @@ export function initializeContainer(): void {
   registerCoreServices();
   registerServices();
   registerAgentServices();
+  registerDDDServices(); // 添加新架构服务
 }
 
 /**
@@ -181,17 +265,58 @@ export function getMemoryService(): MemoryService {
   return container.resolve<MemoryService>(TOKENS.MemoryService);
 }
 
-export function getPersonalityManager(): PersonalityManager {
-  return container.resolve<PersonalityManager>(TOKENS.PersonalityManager);
+// 旧 API 的向后兼容，返回新的控制器
+export function getPersonalityManager(): any {
+  return getPersonalityController();
 }
 
-export function getEmotionalStateManager(): EmotionalStateManager {
-  return container.resolve<EmotionalStateManager>(TOKENS.EmotionalStateManager);
+export function getEmotionalStateManager(): any {
+  return getEmotionApplicationService();
 }
 
 // Agent 组件访问函数
 export function getContextManager(): ContextManager {
   return container.resolve<ContextManager>(TOKENS.ContextManager);
+}
+
+// ========== 新架构 (DDD) 访问函数 ==========
+// Repositories
+export function getPersonalityRepository(): JsonPersonalityRepository {
+  return container.resolve<JsonPersonalityRepository>(TOKENS.PersonalityRepository);
+}
+
+export function getDecisionRepository(): JsonDecisionRepository {
+  return container.resolve<JsonDecisionRepository>(TOKENS.DecisionRepository);
+}
+
+export function getExperienceRepository(): JsonExperienceRepository {
+  return container.resolve<JsonExperienceRepository>(TOKENS.ExperienceRepository);
+}
+
+// Application Services
+export function getPersonalityApplicationService(): PersonalityApplicationService {
+  return container.resolve<PersonalityApplicationService>(TOKENS.PersonalityApplicationService);
+}
+
+export function getEmotionApplicationService(): EmotionApplicationService {
+  return container.resolve<EmotionApplicationService>(TOKENS.EmotionApplicationService);
+}
+
+export function getDecisionApplicationService(): DecisionApplicationService {
+  return container.resolve<DecisionApplicationService>(TOKENS.DecisionApplicationService);
+}
+
+export function getExperienceApplicationService(): ExperienceApplicationService {
+  return container.resolve<ExperienceApplicationService>(TOKENS.ExperienceApplicationService);
+}
+
+// Controllers
+export function getPersonalityController(): PersonalityController {
+  return container.resolve<PersonalityController>(TOKENS.PersonalityController);
+}
+
+export function getDecisionController(): DecisionController {
+  return container.resolve<DecisionController>(TOKENS.DecisionController);
 }
 
 // 导出容器实例（用于高级用例）

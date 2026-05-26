@@ -8,6 +8,13 @@ import { createDefaultIdentity, DEFAULT_PERSONALITY } from '../models/personalit
 
 export class PersonalityService {
   /**
+   * 创建默认身份
+   */
+  static createDefaultIdentity(): AgentIdentity {
+    return createDefaultIdentity();
+  }
+
+  /**
    * 初始化人格
    */
   static initializePersonality(): AgentIdentity {

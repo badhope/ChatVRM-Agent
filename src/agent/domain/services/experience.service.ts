@@ -164,4 +164,29 @@ export class ExperienceService {
 
     return relevant.slice(0, limit);
   }
+
+  /**
+   * 生成行为指导（向后兼容）
+   */
+  static generateBehaviorGuidelines(experiences: Experience[]): string {
+    if (experiences.length === 0) {
+      return '';
+    }
+
+    const guidelines: string[] = [];
+    const patterns = this.extractPatterns(experiences);
+
+    if (patterns.successPatterns.length > 0) {
+      guidelines.push(`成功经验: ${patterns.successPatterns.slice(0, 5).join('; ')}`);
+    }
+
+    if (patterns.failurePatterns.length > 0) {
+      guidelines.push(`需要注意: ${patterns.failurePatterns.slice(0, 5).join('; ')}`);
+    }
+
+    const successRate = this.calculateSuccessRate(experiences);
+    guidelines.push(`历史成功率: ${Math.round(successRate * 100)}% (${experiences.length}次任务)`);
+
+    return guidelines.join('\n');
+  }
 }

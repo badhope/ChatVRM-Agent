@@ -37,6 +37,29 @@ export const TOKENS = {
   MemoryService: Symbol('MemoryService'),
   CompressionService: Symbol('CompressionService'),
 
+  // ========== 新架构 (DDD) ==========
+  // Repositories
+  PersonalityRepository: Symbol('PersonalityRepository'),
+  DecisionRepository: Symbol('DecisionRepository'),
+  ExperienceRepository: Symbol('ExperienceRepository'),
+
+  // Domain Services
+  PersonalityService: Symbol('PersonalityService'),
+  EmotionService: Symbol('EmotionService'),
+  DecisionService: Symbol('DecisionService'),
+  ExperienceService: Symbol('ExperienceService'),
+
+  // Application Services
+  PersonalityApplicationService: Symbol('PersonalityApplicationService'),
+  EmotionApplicationService: Symbol('EmotionApplicationService'),
+  DecisionApplicationService: Symbol('DecisionApplicationService'),
+  ExperienceApplicationService: Symbol('ExperienceApplicationService'),
+
+  // Controllers
+  PersonalityController: Symbol('PersonalityController'),
+  DecisionController: Symbol('DecisionController'),
+
+  // ========== 旧架构（保留兼容，待删除） ==========
   // 人格与情绪
   PersonalityManager: Symbol('PersonalityManager'),
   EmotionalStateManager: Symbol('EmotionalStateManager'),

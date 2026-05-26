@@ -81,6 +81,7 @@ export class EmotionApplicationService {
       intensity: snapshot.context.intensity,
       mood: snapshot.context.mood,
       history: snapshot.context.history,
+      lastDecay: Date.now(),
     };
   }
 

@@ -71,3 +71,7 @@ export interface Decision {
   timestamp: Date;
   outcome?: DecisionOutcome;
 }
+
+// 导出缺失的类型
+export type DecisionContext = Record<string, unknown>;
+export type DecisionResult = DecisionOutcome;

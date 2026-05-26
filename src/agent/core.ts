@@ -7,7 +7,7 @@
  * - tool-executor: 工具执行
  * - response-parser: 响应解析
  *
- * 保持向后兼容性，所有原有导出保持不变。
+ * 使用新的 DDD 架构重构
  */
 
 import { container } from '../di/container.js';
@@ -15,25 +15,30 @@ import { TOKENS } from '../di/tokens.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { MemoryManager } from '../memory/manager.js';
 import { KnowledgeGraph } from '../memory/knowledge-graph.js';
-import { reasonWithSelfCorrection } from './reasoner.js';
-import { DecisionReflector } from './decision-reflector.js';
-import { detectIssues, generateTrustReport, askUserConfirmation, TrustLevel } from './trust.js';
-import { ContextManager } from './context-manager.js';
-import { ContextBuilder, type KnowledgeEntry } from './context-builder.js';
-import { ChangeControlManager } from './change-control.js';
+import { reasonWithSelfCorrection } from './infrastructure/common/reasoner.js';
+import { detectIssues, generateTrustReport, askUserConfirmation, TrustLevel, type TrustIssue } from './infrastructure/trust/trust.js';
+import { ContextManager } from './infrastructure/common/context-manager.js';
+import { ContextBuilder, type KnowledgeEntry } from './infrastructure/common/context-builder.js';
+import { ChangeControlManager } from './infrastructure/change-control/index.js';
 import { DirtyProtect, AutoCommitEngine, CheckpointManager } from '../git/index.js';
 import { agentLogger } from '../services/logger.js';
-import { ExperienceStore, type Experience } from './experience-store.js';
-import { PersonalityManager } from './personality.js';
-import { EmotionalStateManager } from './emotional-state.js';
 import { projectConfigLoader } from '../config/project-config.js';
-import { intentRecognizer } from './intent-recognizer.js';
-import { planTask } from './task-planner.js';
-import { generateSummary, parseToolArgsFromAI } from './agent-utils.js';
+import { intentRecognizer } from './infrastructure/common/intent-recognizer.js';
+import { planTask } from './infrastructure/common/task-planner.js';
+import { generateSummary, parseToolArgsFromAI } from './infrastructure/common/agent-utils.js';
 import { DEFAULT_CONTEXT_TOKENS, TASK_TIMEOUT_MS } from '../constants/index.js';
 import chalk from 'chalk';
 import type { TaskStep, Task } from './types.js';
 import type { CodeIndex } from '../analysis/indexer/types.js';
+
+// ========== 导入新架构 (DDD) ==========
+import { PersonalityController } from './interfaces/controllers/personality.controller.js';
+import { DecisionController } from './interfaces/controllers/decision.controller.js';
+import { EmotionService } from './domain/services/emotion.service.js';
+import { ExperienceService } from './domain/services/experience.service.js';
+import { PersonalityService } from './domain/services/personality.service.js';
+import type { AgentIdentity, PersonalityTraits } from './domain/models/personality.model.js';
+import type { Experience } from './domain/models/experience.model.js';
 
 // 导入核心子模块
 import {
@@ -45,18 +50,18 @@ import {
   type ToolResult,
   type StepExecutionContext,
   type AgentExecutionResult,
-} from './core/types.js';
+} from './infrastructure/core/types.js';
 
-import { AgentStateMachine, createStateMachine } from './core/state-machine.js';
-import { executeToolStep, executeReasoningStep } from './core/tool-executor.js';
+import { AgentStateMachine, createStateMachine } from './infrastructure/core/state-machine.js';
+import { executeToolStep, executeReasoningStep } from './infrastructure/core/tool-executor.js';
 
 // Re-export 类型（向后兼容）
 export type { TaskStep, Task } from './types.js';
 
 // Re-export 意图识别器（向后兼容）
-export { intentRecognizer } from './intent-recognizer.js';
-export { planTask } from './task-planner.js';
-export { executeStep } from './core/tool-executor.js';
+export { intentRecognizer } from './infrastructure/common/intent-recognizer.js';
+export { planTask } from './infrastructure/common/task-planner.js';
+export { executeStep } from './infrastructure/core/tool-executor.js';
 
 // Re-export 核心子模块类型
 export {
@@ -66,9 +71,9 @@ export {
   type AgentContext,
   type ToolCall,
   type ToolResult,
-} from './core/types.js';
+} from './infrastructure/core/types.js';
 
-export { AgentStateMachine, createStateMachine } from './core/state-machine.js';
+export { AgentStateMachine, createStateMachine } from './infrastructure/core/state-machine.js';
 
 /**
  * Agent 执行器 - 运行完整的 Agent 循环
@@ -88,10 +93,11 @@ export class AgentExecutor {
   private changedFiles: string[] = [];
   private rootDir: string;
   private builtContext: string = '';
-  private decisionReflector: DecisionReflector;
-  private experienceStore: ExperienceStore;
-  private personalityManager: PersonalityManager;
-  private emotionalState: EmotionalStateManager;
+
+  // ========== 新架构 (DDD) ==========
+  private personalityController: PersonalityController;
+  private decisionController: DecisionController;
+  private agentIdentity: AgentIdentity;
   private behaviorGuidelines: string = '';
   private stateMachine: AgentStateMachine;
 
@@ -123,10 +129,11 @@ export class AgentExecutor {
     this.autoCommit = new AutoCommitEngine(this.rootDir);
     this.changeControl = new ChangeControlManager();
     this.knowledgeGraph = new KnowledgeGraph();
-    this.decisionReflector = new DecisionReflector();
-    this.experienceStore = new ExperienceStore();
-    this.personalityManager = new PersonalityManager();
-    this.emotionalState = new EmotionalStateManager();
+
+    // ========== 新架构初始化 ==========
+    this.personalityController = new PersonalityController();
+    this.decisionController = new DecisionController();
+    this.agentIdentity = PersonalityService.createDefaultIdentity();
     this.stateMachine = createStateMachine(this.task.id);
 
     // ChangeControl 默认启用
@@ -183,19 +190,23 @@ export class AgentExecutor {
    * 初始化：加载配置和经验
    */
   private async initialize(): Promise<void> {
-    // 情绪衰减（同步）
-    this.emotionalState.decay();
+    // 情绪衰减（使用新的 EmotionService）
+    EmotionService.applyDecay();
 
     // 并行加载非关键系统
-    const loaders = [this.loadPersonality(), this.decisionReflector.load(), this.loadExperience()];
+    const loaders = [
+      this.loadPersonality(),
+      this.decisionController.loadDecisions(),
+      this.loadExperience()
+    ];
 
     await Promise.allSettled(loaders);
   }
 
   private async loadPersonality(): Promise<void> {
     try {
-      await this.personalityManager.load();
-      this.personalityManager.incrementInteractions();
+      this.agentIdentity = await this.personalityController.loadIdentity();
+      this.agentIdentity = PersonalityService.incrementInteractions(this.agentIdentity);
     } catch {
       // non-critical
     }
@@ -203,11 +214,11 @@ export class AgentExecutor {
 
   private async loadExperience(): Promise<void> {
     try {
-      await this.experienceStore.load();
-      this.behaviorGuidelines = await this.experienceStore.generateBehaviorGuidelines();
+      const experiences = await this.decisionController.loadExperiences();
+      this.behaviorGuidelines = ExperienceService.generateBehaviorGuidelines(experiences);
       if (this.behaviorGuidelines) {
         agentLogger.info(
-          { taskId: this.task.id, experienceCount: this.experienceStore.getExperienceCount() },
+          { taskId: this.task.id, experienceCount: experiences.length },
           'Loaded experience-based behavior guidelines'
         );
       }
@@ -410,11 +421,11 @@ export class AgentExecutor {
         }
         this.output(chalk.green(`  ✓ 用户确认通过`));
       } else {
-        const autoExecuteIssues = issues.filter((issue) => issue.level === TrustLevel.AutoExecute);
+        const autoExecuteIssues = issues.filter((issue: TrustIssue) => issue.level === TrustLevel.AutoExecute);
         if (autoExecuteIssues.length > 0) {
           this.output(
             chalk.dim(
-              `  ℹ 信任提示: ${autoExecuteIssues.map((issue) => issue.description).join(', ')}`
+              `  ℹ 信任提示: ${autoExecuteIssues.map((issue: TrustIssue) => issue.description).join(', ')}`
             )
           );
         }
@@ -512,7 +523,7 @@ export class AgentExecutor {
         .map((s) => `[${s.description}]: ${s.result?.substring(0, 200) ?? ''}`)
         .join('\n');
 
-      const taskReflection = await this.decisionReflector.reflectOnTask(
+      const taskReflection = await this.decisionController.reflectOnTask(
         this.task.id,
         this.task.userInput,
         executionSummary
@@ -549,13 +560,13 @@ export class AgentExecutor {
     overallRating: number;
   }): Promise<void> {
     try {
-      const improvementReport = await this.decisionReflector.generateImprovementReport();
+      const improvementReport = await this.decisionController.generateImprovementReport();
       if (improvementReport) {
         agentLogger.info({ report: improvementReport }, '改进报告已生成');
       }
 
-      const lessons = await this.decisionReflector.learnFromExperience(this.task.id);
-      const taskDecisions = await this.decisionReflector.getDecisionsByTask(this.task.id);
+      const lessons = await this.decisionController.learnFromExperience(this.task.id);
+      const taskDecisions = await this.decisionController.getDecisionsByTask(this.task.id);
 
       const experienceDecisions = taskDecisions.map((d) => ({
         context: d.description,
@@ -603,7 +614,7 @@ export class AgentExecutor {
         emotionalTone,
       };
 
-      await this.experienceStore.addExperience(experience);
+      await this.decisionController.addExperience(experience);
 
       agentLogger.info(
         {
@@ -639,7 +650,7 @@ export class AgentExecutor {
     );
 
     // 更新情绪状态
-    this.emotionalState.onTaskSuccess(this.task.userInput);
+    EmotionService.onTaskSuccess(this.task.userInput);
 
     // 保存到记忆
     await this.saveToMemory(summary);
@@ -660,8 +671,8 @@ export class AgentExecutor {
     }
 
     // 保存状态
-    await this.decisionReflector.save();
-    await this.personalityManager.save();
+    await this.decisionController.saveDecisions();
+    await this.personalityController.saveIdentity(this.agentIdentity);
   }
 
   /**
@@ -684,10 +695,10 @@ export class AgentExecutor {
     agentLogger.error({ taskId: this.task.id, error: this.task.result }, 'Task failed');
 
     // 更新情绪状态
-    this.emotionalState.onTaskFailure(this.task.result || '未知错误');
+    EmotionService.onTaskFailure(this.task.result || '未知错误');
 
     // 即使失败也保存已记录的决策
-    this.decisionReflector.save().catch((error) => {
+    this.decisionController.saveDecisions().catch((error) => {
       agentLogger.warn(
         { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
         'Failed to save decisions'
@@ -754,21 +765,22 @@ export class AgentExecutor {
     const parts: string[] = [];
 
     // 注入人格描述
-    const personalityPrompt = this.personalityManager.getPersonalityPrompt();
+    const personalityPrompt = PersonalityService.getPersonalityPrompt(this.agentIdentity);
     if (personalityPrompt) {
       parts.push(`[Agent 人格]\n${personalityPrompt}`);
     }
 
     // 注入情绪状态
-    const emotionalContext = this.emotionalState.getEmotionalContext();
+    const emotionalContext = EmotionService.getEmotionalContext();
     if (emotionalContext) {
       parts.push(emotionalContext);
     }
 
     // 注入行为指导
     if (this.behaviorGuidelines) {
+      const experienceCount = await this.decisionController.getExperienceCount();
       parts.push(
-        `[行为指导（基于${this.experienceStore.getExperienceCount()}次历史经验自动生成）]\n${this.behaviorGuidelines}`
+        `[行为指导（基于${experienceCount}次历史经验自动生成）]\n${this.behaviorGuidelines}`
       );
     }
 

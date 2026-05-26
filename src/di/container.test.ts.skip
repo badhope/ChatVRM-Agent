@@ -1,0 +1,92 @@
+import 'reflect-metadata';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { container } from 'tsyringe';
+import { TOKENS } from './tokens.js';
+import { registerCoreServices, registerDDDServices } from './container.js';
+
+describe('DI Container', () => {
+  beforeEach(() => {
+    container.clearInstances();
+  });
+
+  it('should register and resolve ConfigManager', () => {
+    registerCoreServices();
+    const configManager = container.resolve(TOKENS.ConfigManager);
+    expect(configManager).toBeDefined();
+  });
+
+  it('should register and resolve ToolRegistry', () => {
+    registerCoreServices();
+    const toolRegistry = container.resolve(TOKENS.ToolRegistry);
+    expect(toolRegistry).toBeDefined();
+  });
+
+  it('should register and resolve PluginLoader', () => {
+    registerCoreServices();
+    const pluginLoader = container.resolve(TOKENS.PluginLoader);
+    expect(pluginLoader).toBeDefined();
+  });
+
+  it('should return same instance for singleton services', () => {
+    registerCoreServices();
+    const instance1 = container.resolve(TOKENS.ConfigManager);
+    const instance2 = container.resolve(TOKENS.ConfigManager);
+    expect(instance1).toBe(instance2);
+  });
+
+  describe('DDD Services', () => {
+    it('should register and resolve PersonalityRepository', () => {
+      registerDDDServices();
+      const repository = container.resolve(TOKENS.PersonalityRepository);
+      expect(repository).toBeDefined();
+    });
+
+    it('should register and resolve DecisionRepository', () => {
+      registerDDDServices();
+      const repository = container.resolve(TOKENS.DecisionRepository);
+      expect(repository).toBeDefined();
+    });
+
+    it('should register and resolve ExperienceRepository', () => {
+      registerDDDServices();
+      const repository = container.resolve(TOKENS.ExperienceRepository);
+      expect(repository).toBeDefined();
+    });
+
+    it('should register and resolve PersonalityApplicationService', () => {
+      registerDDDServices();
+      const service = container.resolve(TOKENS.PersonalityApplicationService);
+      expect(service).toBeDefined();
+    });
+
+    it('should register and resolve EmotionApplicationService', () => {
+      registerDDDServices();
+      const service = container.resolve(TOKENS.EmotionApplicationService);
+      expect(service).toBeDefined();
+    });
+
+    it('should register and resolve DecisionApplicationService', () => {
+      registerDDDServices();
+      const service = container.resolve(TOKENS.DecisionApplicationService);
+      expect(service).toBeDefined();
+    });
+
+    it('should register and resolve ExperienceApplicationService', () => {
+      registerDDDServices();
+      const service = container.resolve(TOKENS.ExperienceApplicationService);
+      expect(service).toBeDefined();
+    });
+
+    it('should register and resolve PersonalityController', () => {
+      registerDDDServices();
+      const controller = container.resolve(TOKENS.PersonalityController);
+      expect(controller).toBeDefined();
+    });
+
+    it('should register and resolve DecisionController', () => {
+      registerDDDServices();
+      const controller = container.resolve(TOKENS.DecisionController);
+      expect(controller).toBeDefined();
+    });
+  });
+});

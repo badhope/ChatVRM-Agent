@@ -10,13 +10,17 @@ import { printHeader, printSection, printSuccess, printError, printInfo } from '
 import { memoryManager } from '../../memory/manager.js';
 import { checkApiKey, createProviderInstance, getChatParams } from './helpers.js';
 import { executeSlashCommand } from '../slash-commands.js';
-import { PersonalityManager } from '../../agent/personality.js';
-import { EmotionalStateManager } from '../../agent/emotional-state.js';
 import { setCurrentSession } from '../../cli.js';
 import type { IProviderFactory, IConfigManager } from '../../services/interfaces.js';
 import type { BaseProvider } from '../../base.js';
 import { getErrorMessage } from '../../utils/error-handling.js';
 import { createLogger } from '../../services/logger.js';
+
+// ========== 导入新架构 (DDD) ==========
+import { PersonalityController } from '../../agent/interfaces/controllers/personality.controller.js';
+import { EmotionService } from '../../agent/domain/services/emotion.service.js';
+import { PersonalityService } from '../../agent/domain/services/personality.service.js';
+import type { AgentIdentity } from '../../agent/domain/models/personality.model.js';
 
 const logger = createLogger('ChatStart');
 
@@ -33,8 +37,8 @@ interface ChatContext {
   modelId: string;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
   sessionId: string;
-  personalityManager: PersonalityManager;
-  emotionalState: EmotionalStateManager;
+  personalityController: PersonalityController;
+  agentIdentity: AgentIdentity;
   provider: BaseProvider;
   chatParams: ReturnType<typeof getChatParams>;
   memoryConfig: ReturnType<typeof configManager.getMemoryConfig>;
@@ -174,15 +178,14 @@ async function initializeChatContext(
   const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   setCurrentSession(sessionId, messages);
 
-  // 初始化人格和情绪系统
-  const personalityManager = new PersonalityManager();
-  const emotionalState = new EmotionalStateManager();
-  await personalityManager.load();
-  personalityManager.incrementInteractions();
+  // ========== 初始化新架构 (DDD) ==========
+  const personalityController = new PersonalityController();
+  const agentIdentity = await personalityController.loadIdentity();
+  const updatedIdentity = PersonalityService.incrementInteractions(agentIdentity);
 
   // 注入人格 system prompt
   if (!resumeMessages) {
-    injectPersonalityPrompt(messages, personalityManager);
+    injectPersonalityPrompt(messages, updatedIdentity);
   }
 
   return {
@@ -190,8 +193,8 @@ async function initializeChatContext(
     modelId,
     messages,
     sessionId,
-    personalityManager,
-    emotionalState,
+    personalityController,
+    agentIdentity: updatedIdentity,
     provider,
     chatParams,
     memoryConfig,
@@ -203,12 +206,12 @@ async function initializeChatContext(
  */
 function injectPersonalityPrompt(
   messages: ChatContext['messages'],
-  personalityManager: PersonalityManager
+  agentIdentity: AgentIdentity
 ): void {
-  const personalityPrompt = personalityManager.getPersonalityPrompt();
-  const commGuidance = personalityManager.getCommunicationGuidance();
-  const codeGuidance = personalityManager.getCodeStyleGuidance();
-  const riskGuidance = personalityManager.getRiskGuidance();
+  const personalityPrompt = PersonalityService.getPersonalityPrompt(agentIdentity);
+  const commGuidance = PersonalityService.getCommunicationGuidance(agentIdentity);
+  const codeGuidance = PersonalityService.getCodeStyleGuidance(agentIdentity);
+  const riskGuidance = PersonalityService.getRiskGuidance(agentIdentity);
 
   if (personalityPrompt) {
     messages.push({
@@ -225,7 +228,6 @@ async function runChatLoop(context: ChatContext): Promise<void> {
   const {
     messages,
     sessionId,
-    emotionalState,
     provider,
     modelId,
     chatParams,
@@ -351,7 +353,6 @@ async function processUserInput(userInput: string, context: ChatContext): Promis
   const {
     messages,
     sessionId,
-    emotionalState,
     provider,
     modelId,
     chatParams,
@@ -368,8 +369,8 @@ async function processUserInput(userInput: string, context: ChatContext): Promis
   setCurrentSession(sessionId, messages);
 
   // 更新情绪状态
-  updateEmotionalState(emotionalState, userInput);
-  injectEmotionalContext(messages, emotionalState);
+  updateEmotionalState(userInput);
+  injectEmotionalContext(messages);
 
   try {
     const fullContent = await streamAIResponse(provider, messages, modelId, chatParams);
@@ -438,25 +439,22 @@ async function injectMemoryContext(
 /**
  * 更新情绪状态
  */
-function updateEmotionalState(emotionalState: EmotionalStateManager, userInput: string): void {
+function updateEmotionalState(userInput: string): void {
   if (/谢谢|感谢|厉害|不错|好的|很好|棒|perfect|great|thanks/i.test(userInput)) {
-    emotionalState.onUserPraise(userInput);
+    EmotionService.onUserPraise(userInput);
   } else if (/不对|错了|不是这样|纠正|修正|wrong|incorrect/i.test(userInput)) {
-    emotionalState.onUserCorrection(userInput);
+    EmotionService.onUserCorrection(userInput);
   } else if (/新|挑战|试试|尝试|从零|novel|challenge/i.test(userInput)) {
-    emotionalState.onNewChallenge(userInput);
+    EmotionService.onNewChallenge(userInput);
   }
-  emotionalState.decay();
+  EmotionService.applyDecay();
 }
 
 /**
  * 注入情绪上下文
  */
-function injectEmotionalContext(
-  messages: ChatContext['messages'],
-  emotionalState: EmotionalStateManager
-): void {
-  const emotionalContext = emotionalState.getEmotionalContext();
+function injectEmotionalContext(messages: ChatContext['messages']): void {
+  const emotionalContext = EmotionService.getEmotionalContext();
   if (!emotionalContext) return;
 
   const emotionSysIdx = messages.findIndex(
@@ -567,7 +565,7 @@ async function compressMessagesIfNeeded(
  * 清理对话资源
  */
 async function cleanupChat(context: ChatContext): Promise<void> {
-  await context.personalityManager.save().catch((error) => {
+  await context.personalityController.saveIdentity(context.agentIdentity).catch((error) => {
     logger.debug({ error }, 'Failed to save personality');
   });
 }

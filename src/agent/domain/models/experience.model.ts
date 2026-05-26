@@ -23,3 +23,7 @@ export interface Experience {
   patterns: string[];
   emotionalTone: EmotionalTone;
 }
+
+// 添加缺失的类型
+export type ExperiencePattern = string;
+export type LearningInsight = string;
