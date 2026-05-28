@@ -1,5 +1,4 @@
 import type { ProviderType } from '../types.js';
-import { PROJECT_DIR } from '../utils/index.js';
 
 // ============================================================
 // 配置类型定义

@@ -6,7 +6,7 @@
 
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { printBreadcrumb, printFancyDivider, printFancyList, ICONS } from './visual-enhanced.js';
+import { printBreadcrumb, printFancyDivider, ICONS } from './visual-enhanced.js';
 
 // ==================== 导航历史记录 ====================
 interface NavHistoryItem {
@@ -114,7 +114,6 @@ export async function showMultiLevelMenu(
     showHome = true,
     showHistory = false,
     showBreadcrumb = true,
-    enableSearch = false,
   } = options;
 
   // 显示面包屑导航
@@ -277,7 +276,7 @@ export async function runGuidedFlow(
           ]);
           break;
 
-        case 'input':
+        case 'input': {
           const inputAnswer = await inquirer.prompt([
             {
               type: 'input',
@@ -289,8 +288,9 @@ export async function runGuidedFlow(
           ]);
           result.data[`step_${i}`] = inputAnswer.value;
           break;
+        }
 
-        case 'confirm':
+        case 'confirm': {
           const confirmAnswer = await inquirer.prompt([
             {
               type: 'confirm',
@@ -301,6 +301,7 @@ export async function runGuidedFlow(
           ]);
           result.data[`step_${i}`] = confirmAnswer.value;
           break;
+        }
 
         case 'select':
           if (step.options) {

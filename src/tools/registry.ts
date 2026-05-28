@@ -11,6 +11,8 @@ import {
 } from './definitions/file-tools.js';
 import { shellTool, sysInfoTool } from './definitions/sys-tools.js';
 import { httpTool, jsonTool, textTool, hashTool } from './definitions/data-tools.js';
+import { batchReadTool, batchWriteTool, copyMoveTool } from './definitions/advanced-tools.js';
+import { codeQualityTool } from './definitions/quality-tools.js';
 import { toolLogger } from '../services/logger.js';
 
 // ============================================================
@@ -66,12 +68,18 @@ export class ToolRegistry {
     this.register(fileTreeTool);
     this.register(fileInfoTool);
     this.register(deleteFileTool);
+    // 批量操作
+    this.register(batchReadTool);
+    this.register(batchWriteTool);
+    this.register(copyMoveTool);
     // 实用工具
     this.register(sysInfoTool);
     this.register(httpTool);
     this.register(jsonTool);
     this.register(textTool);
     this.register(hashTool);
+    // 代码质量工具
+    this.register(codeQualityTool);
   }
 
   /**

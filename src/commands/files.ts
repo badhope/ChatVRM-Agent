@@ -12,7 +12,7 @@ import {
   copyFile,
   moveFile,
 } from '../files/manager.js';
-import { printHeader, printSection, printSuccess, printError, printInfo } from '../ui/logo.js';
+import { printSuccess, printError, printInfo } from '../ui/logo.js';
 
 const filesCommand = new Command('files').alias('f').description('文件操作');
 

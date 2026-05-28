@@ -3,10 +3,10 @@
  * 接口层 - 暴露人格系统的公共 API
  */
 
-import type { AgentIdentity, PersonalityTraits } from '../../domain/models/personality.model';
-import { PersonalityApplicationService } from '../../application/services/personality.application.service';
-import { JsonPersonalityRepository } from '../../infrastructure/repositories/personality.repository';
-import { PersonalityService } from '../../domain/services/personality.service';
+import type { AgentIdentity, PersonalityTraits } from '../../domain/models/personality.model.js';
+import { PersonalityApplicationService } from '../../application/services/personality.application.service.js';
+import { JsonPersonalityRepository } from '../../infrastructure/repositories/personality.repository.js';
+import { PersonalityService } from '../../domain/services/personality.service.js';
 
 export class PersonalityController {
   private personalityService: PersonalityApplicationService;

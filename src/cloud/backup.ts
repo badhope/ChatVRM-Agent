@@ -15,12 +15,13 @@ import { createLogger } from '../services/logger.js';
 
 const backupLogger = createLogger('Backup');
 
-function stripSecrets(config: Record<string, any>): Record<string, any> {
+function stripSecrets(config: Record<string, unknown>): Record<string, unknown> {
   const sanitized = { ...config };
-  if (sanitized.providers) {
-    for (const [key, provider] of Object.entries(sanitized.providers)) {
+  if (sanitized.providers && typeof sanitized.providers === 'object' && sanitized.providers !== null) {
+    const providers = sanitized.providers as Record<string, unknown>;
+    for (const [key, provider] of Object.entries(providers)) {
       if (provider && typeof provider === 'object' && 'apiKey' in provider) {
-        sanitized.providers[key] = { ...provider, apiKey: '***REDACTED***' };
+        providers[key] = { ...(provider as Record<string, unknown>), apiKey: '***REDACTED***' };
       }
     }
   }
@@ -67,7 +68,7 @@ export class BackupManager {
       // 恢复配置
       if (data.config) {
         await configManager.init();
-        const config = data.config as Record<string, any>;
+        const config = data.config as Record<string, unknown>;
 
         // 恢复默认提供商
         if (config.defaultProvider && typeof config.defaultProvider === 'string') {
@@ -77,17 +78,17 @@ export class BackupManager {
         }
 
         // 恢复各提供商配置（仅非敏感字段）
-        if (config.providers) {
-          for (const [name, providerConfig] of Object.entries(config.providers)) {
+        if (config.providers && typeof config.providers === 'object' && config.providers !== null) {
+          for (const [name, providerConfig] of Object.entries(config.providers as Record<string, unknown>)) {
             if (providerConfig && typeof providerConfig === 'object') {
-              const cfg = providerConfig as Record<string, any>;
+              const cfg = providerConfig as Record<string, unknown>;
               // 跳过已脱敏的 apiKey
               if (cfg.apiKey === '***REDACTED***') {
                 backupLogger.info(
                   { provider: name },
                   'Skipping API Key restore (redacted, manual config required)'
                 );
-                delete cfg.apiKey;
+                delete (cfg as { apiKey?: string }).apiKey;
               }
               // 恢复 baseUrl, defaultModel 等配置
               if (cfg.baseUrl || cfg.defaultModel || cfg.maxRetries) {
@@ -95,9 +96,9 @@ export class BackupManager {
                   name as import('../types.js').ProviderType
                 );
                 if (existing) {
-                  if (cfg.baseUrl) existing.baseUrl = cfg.baseUrl;
-                  if (cfg.defaultModel) existing.defaultModel = cfg.defaultModel;
-                  if (cfg.maxRetries) existing.maxRetries = cfg.maxRetries;
+                  if (typeof cfg.baseUrl === 'string') existing.baseUrl = cfg.baseUrl;
+                  if (typeof cfg.defaultModel === 'string') existing.defaultModel = cfg.defaultModel;
+                  if (typeof cfg.maxRetries === 'number') existing.maxRetries = cfg.maxRetries;
                 }
               }
             }
@@ -111,7 +112,7 @@ export class BackupManager {
       if (data.memory?.conversations && Array.isArray(data.memory.conversations)) {
         await memoryManager.init();
         let restoredCount = 0;
-        for (const record of data.memory.conversations as Array<Record<string, any>>) {
+        for (const record of data.memory.conversations as Array<Record<string, unknown>>) {
           try {
             if (record.id && record.timestamp) {
               const filePath = path.join(MEMORY_DIR, `${record.id}.json`);

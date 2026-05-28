@@ -9,11 +9,6 @@ const logger = createLogger('MemoryConsolidation');
 // 基于 Ebbinghaus 遗忘曲线: retention = e^(-t/S)
 // ============================================================
 
-/** Get error message safely from unknown error */
-function getErrorMsg(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export interface ConsolidationConfig {
   enabled: boolean;
   decayFactor: number; // 每天重要性衰减系数 (0-1, 默认 0.95)
@@ -148,7 +143,6 @@ export class MemoryConsolidator {
    */
   extractPatterns(memories: DecayableMemory[]): string[] {
     const patterns: string[] = [];
-    const tagCounts: Record<string, number> = {};
 
     for (const memory of memories) {
       // 统计访问频率模式

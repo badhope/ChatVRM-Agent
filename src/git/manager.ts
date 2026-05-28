@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
-import simpleGit, { SimpleGit, StatusResult, LogResult, DefaultLogFields } from 'simple-git';
-import path from 'path';
+import { simpleGit, SimpleGit, StatusResult, LogResult, DefaultLogFields } from 'simple-git';
 import { gitLogger } from '../services/logger.js';
 import type { GitCommit, GitDiff, GitStatus, GitResult } from './types.js';
 import { getErrorMessage } from '../utils/error-handling.js';
@@ -566,7 +565,7 @@ export class GitManager {
   /**
    * 映射 simple-git 状态到内部状态
    */
-  private mapStatus(file: string): 'added' | 'modified' | 'deleted' {
+  private mapStatus(_file: string): 'added' | 'modified' | 'deleted' {
     // simple-git 的 status 返回的是文件路径，我们需要通过其他方式判断状态
     // 这里简化处理，默认为 modified
     return 'modified';

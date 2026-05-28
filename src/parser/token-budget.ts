@@ -8,7 +8,6 @@
 
 import * as path from 'path';
 import type { CodeSymbol } from './symbols.js';
-import { estimateTokens } from '../utils/tokens.js';
 
 /** Default maximum token budget */
 const DEFAULT_MAX_TOKENS = 4096;

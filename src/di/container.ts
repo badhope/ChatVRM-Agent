@@ -22,12 +22,6 @@ import { JsonPersonalityRepository } from '../agent/infrastructure/repositories/
 import { JsonDecisionRepository } from '../agent/infrastructure/repositories/decision.repository.js';
 import { JsonExperienceRepository } from '../agent/infrastructure/repositories/experience.repository.js';
 
-// Domain Services
-import { PersonalityService } from '../agent/domain/services/personality.service.js';
-import { EmotionService } from '../agent/domain/services/emotion.service.js';
-import { DecisionService } from '../agent/domain/services/decision.service.js';
-import { ExperienceService } from '../agent/domain/services/experience.service.js';
-
 // Application Services
 import { PersonalityApplicationService } from '../agent/application/services/personality.application.service.js';
 import { EmotionApplicationService } from '../agent/application/services/emotion.application.service.js';
@@ -266,11 +260,11 @@ export function getMemoryService(): MemoryService {
 }
 
 // 旧 API 的向后兼容，返回新的控制器
-export function getPersonalityManager(): any {
+export function getPersonalityManager(): unknown {
   return getPersonalityController();
 }
 
-export function getEmotionalStateManager(): any {
+export function getEmotionalStateManager(): unknown {
   return getEmotionApplicationService();
 }
 

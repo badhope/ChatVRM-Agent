@@ -1,11 +1,10 @@
 /**
- * 代码解析模块 - 统一导出
+ * 代码解析模块 - 统一导出（简化版）
  *
- * 基于 ts-morph 的 TypeScript 代码解析引擎，提供准确的
- * 类型分析、引用查找和依赖图构建功能。
+ * 简化版：移除 tree-sitter 依赖，使用 ts-morph 进行 TypeScript 解析
  */
 
-// Language utilities (still used for multi-language support)
+// Language utilities
 export {
   initLanguages,
   getLanguageByExtension,
@@ -15,13 +14,9 @@ export {
 } from './languages.js';
 export type { SupportedLanguage, LanguageInfo } from './languages.js';
 
-// Parser engine (tree-sitter based for multi-language)
-export { parseSource, updateParse, parseFile, parseFiles } from './engine.js';
-export type { ParseResult } from './engine.js';
-
-// Symbol extraction (tree-sitter based)
-export { extractSymbols, getSymbolsInRange, findSymbolByName } from './symbols.js';
-export type { CodeSymbol, SymbolKind } from './symbols.js';
+// Parser engine (simplified)
+export { parseFile, clearCache } from './engine.js';
+export type { ParseResult, SymbolInfo } from './engine.js';
 
 // Cache
 export { parseCache } from './cache.js';
@@ -51,7 +46,3 @@ export {
   formatFileMap,
 } from './token-budget.js';
 export type { TokenBudget } from './token-budget.js';
-
-// Repo map generator
-export { generateRepoMap } from './repo-map.js';
-export type { RepoMapOptions, RepoMapResult } from './repo-map.js';

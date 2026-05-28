@@ -5,7 +5,6 @@ import {
   printSection,
   printSuccess,
   printError,
-  printInfo,
   printWarning,
 } from '../ui/logo.js';
 import { printSteps, printKeyValue } from '../ui/display.js';
@@ -16,6 +15,7 @@ import { configManager } from '../config/manager.js';
 import { agentTrustCommand } from './agent/agent-trust.js';
 import { agentRiskCommand } from './agent/agent-risk.js';
 import type { ProviderType } from '../types.js';
+import { assessTaskComplexity, shouldUseDualAgent } from '../agent/index.js';
 
 const agentCommand = new Command('agent').description('Agent 核心循环 - 智能理解、规划、执行任务');
 
@@ -35,6 +35,8 @@ agentCommand
   .option('--editor-model <model>', 'Editor 使用的模型（快速编码模型）')
   .option('-y, --yes', '跳过确认直接执行', false)
   .option('--plan-first', '先规划后执行（Plan/Act 模式）', false)
+  .option('--dual-agent', '使用双 Agent 协作模式（Planning + Execution）', false)
+  .option('--da', '使用双 Agent 协作模式（Planning + Execution）', false)
   .action(
     async (
       task: string,
@@ -49,6 +51,8 @@ agentCommand
         editorModel?: string;
         yes?: boolean;
         planFirst?: boolean;
+        dualAgent?: boolean;
+        da?: boolean;
       }
     ) => {
       try {
@@ -58,6 +62,38 @@ agentCommand
 
         // 初始化配置
         await configManager.init();
+
+        // 评估任务复杂度
+        const complexityAssessment = assessTaskComplexity(task);
+        const useDualAgentFlag = options.dualAgent || options.da;
+        const useDualAgent = shouldUseDualAgent(complexityAssessment, useDualAgentFlag);
+
+        // === 双 Agent 协作模式 ===
+        if (useDualAgent) {
+          console.log(chalk.cyan('  🤖 双 Agent 协作模式: Planning + Execution\n'));
+          console.log(chalk.gray(`  任务复杂度: ${complexityAssessment.score}/100`));
+          console.log(chalk.gray(`  评估: ${complexityAssessment.reason}`));
+          if (useDualAgentFlag) {
+            console.log(chalk.gray('  (用户强制启用双 Agent 模式)\n'));
+          } else {
+            console.log(chalk.gray('  (自动启用双 Agent 模式)\n'));
+          }
+
+          // 动态导入AgentExecutor并使用双Agent选项
+          const { AgentExecutor } = await import('../agent/core.js');
+          const executor = new AgentExecutor(task, undefined, undefined, {
+            useDualAgent: true,
+          });
+
+          const result = await executor.run();
+          
+          console.log();
+          printKeyValue([
+            { key: '任务状态', value: result.status === 'completed' ? chalk.green('成功') : chalk.red('失败') },
+            { key: '任务结果', value: result.result || '无' },
+          ]);
+          return;
+        }
 
         // === 双模型模式 ===
         if (options.architect) {

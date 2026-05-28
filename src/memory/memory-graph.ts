@@ -44,11 +44,6 @@ const IMPORTANCE_THRESHOLD = 0.05;
 // 内部类型
 // ============================================================
 
-/** 节点属性 */
-interface NodeAttrs {
-  node: MemoryNode;
-}
-
 /** 边属性 */
 interface EdgeAttrs {
   edge: MemoryEdge;
@@ -76,9 +71,9 @@ interface EdgeAttrs {
  * 持久化位置：~/.personal-assistant/memory/graph.json
  */
 export class MemoryGraph {
-  private graph: GraphWrapper;
-  private nodes: Record<string, MemoryNode> = {}; // 用于快速查找
-  private initialized = false;
+  protected graph: GraphWrapper;
+  protected nodes: Record<string, MemoryNode> = {}; // 用于快速查找
+  protected initialized = false;
   private initLock = new AsyncLock();
   private saveLock = new AsyncLock();
   private stateLock = new AsyncLock();
@@ -107,7 +102,7 @@ export class MemoryGraph {
   /**
    * 从磁盘加载图谱数据
    */
-  private async load(): Promise<void> {
+  protected async load(): Promise<void> {
     try {
       const data = await fs.readFile(GRAPH_FILE, 'utf-8');
       const parsed: GraphData = JSON.parse(data);
@@ -118,7 +113,7 @@ export class MemoryGraph {
   }
 
   /** 从数据加载到图中 */
-  private loadFromData(data: GraphData): void {
+  protected loadFromData(data: GraphData): void {
     this.nodes = data.nodes || {};
     this.graph.clear();
 
@@ -545,3 +540,412 @@ export class MemoryGraph {
 // ============================================================
 
 export const memoryGraph = new MemoryGraph();
+
+// ============================================================
+// 长期记忆系统增强
+// ============================================================
+
+/**
+ * 记忆关联网络
+ */
+export interface MemoryAssociation {
+  sourceId: string;
+  targetId: string;
+  strength: number;
+  type: 'temporal' | 'semantic' | 'causal' | 'structural';
+  createdAt: string;
+}
+
+/**
+ * 记忆摘要
+ */
+export interface MemorySummary {
+  id: string;
+  content: string;
+  keyPoints: string[];
+  sentiment: 'positive' | 'neutral' | 'negative';
+  topics: string[];
+  sourceNodeIds: string[];
+  createdAt: string;
+}
+
+/**
+ * 增强版记忆图谱
+ */
+export class MemoryGraphEnhanced extends MemoryGraph {
+  private associations: MemoryAssociation[] = [];
+  private summaries: MemorySummary[] = [];
+  private readonly MAX_ASSOCIATIONS = 500;
+  private readonly MAX_SUMMARIES = 100;
+
+  /**
+   * 增强节点访问 - 更新重要性评分
+   */
+  async accessNode(id: string, interactionQuality?: number): Promise<MemoryNode | null> {
+    const node = await this.getNode(id);
+    if (!node) return null;
+
+    // 访问时增加重要性
+    const qualityBoost = interactionQuality ?? 0.1;
+    node.importance = Math.min(1.0, node.importance + qualityBoost);
+
+    // 记录时间衰减
+    node.accessedAt = new Date().toISOString();
+
+    // 保存更新
+    await this.save();
+    return node;
+  }
+
+  /**
+   * 智能更新重要性评分
+   * 基于访问频率、内容质量和时间因素
+   */
+  async updateImportanceScore(id: string): Promise<number> {
+    const node = await this.getNode(id);
+    if (!node) return 0;
+
+    const now = Date.now();
+    const lastAccess = new Date(node.accessedAt).getTime();
+    const timeSinceAccess = now - lastAccess;
+
+    // 时间衰减因子（24小时为基准）
+    const hourFactor = timeSinceAccess / (24 * 60 * 60 * 1000);
+    const timeDecay = Math.exp(-0.1 * hourFactor);
+
+    // 基础重要性（保持在一定范围）
+    const baseImportance = node.importance * timeDecay;
+
+    // 根据节点类型调整
+    let typeMultiplier = 1.0;
+    switch (node.type) {
+      case 'fact':
+        typeMultiplier = 1.2; // 事实通常更重要
+        break;
+      case 'preference':
+        typeMultiplier = 1.1; // 偏好中等重要
+        break;
+      case 'experience':
+        typeMultiplier = 0.9; // 经历可以更快遗忘
+        break;
+      case 'relation':
+        typeMultiplier = 1.0; // 关系保持中等
+        break;
+    }
+
+    const newImportance = baseImportance * typeMultiplier;
+    node.importance = Math.max(0.01, Math.min(1.0, newImportance));
+
+    await this.save();
+    return node.importance;
+  }
+
+  /**
+   * 精细化遗忘机制
+   * 支持多种遗忘策略
+   */
+  async intelligentDecay(
+    strategy: 'aggressive' | 'balanced' | 'conservative' = 'balanced'
+  ): Promise<{
+    removed: number;
+    decayed: number;
+    preserved: number;
+  }> {
+    await this.init();
+
+    let decayFactor: number;
+    let threshold: number;
+
+    switch (strategy) {
+      case 'aggressive':
+        decayFactor = 0.85;
+        threshold = 0.1;
+        break;
+      case 'balanced':
+        decayFactor = 0.92;
+        threshold = 0.05;
+        break;
+      case 'conservative':
+        decayFactor = 0.97;
+        threshold = 0.02;
+        break;
+    }
+
+    let removed = 0;
+    let decayed = 0;
+    let preserved = 0;
+
+    const toRemove: string[] = [];
+
+    for (const [id, node] of Object.entries(this.nodes)) {
+      // 检查是否过期
+      if (isExpired(node)) {
+        toRemove.push(id);
+        removed++;
+        continue;
+      }
+
+      // 应用衰减
+      const oldImportance = node.importance;
+      node.importance *= decayFactor;
+
+      if (node.importance < threshold) {
+        toRemove.push(id);
+        removed++;
+      } else if (node.importance < oldImportance) {
+        decayed++;
+      } else {
+        preserved++;
+      }
+    }
+
+    // 删除低于阈值的节点
+    for (const id of toRemove) {
+      delete this.nodes[id];
+      this.graph.removeNode(id);
+    }
+
+    if (removed > 0) {
+      await this.save();
+    }
+
+    return { removed, decayed, preserved };
+  }
+
+  /**
+   * 构建记忆关联网络
+   * 基于时间、语义和结构关系
+   */
+  async buildAssociationNetwork(): Promise<void> {
+    await this.init();
+
+    const nodeList = Object.values(this.nodes);
+    this.associations = [];
+
+    // 基于时间关联（相近时间创建的节点）
+    const timeThreshold = 60 * 60 * 1000; // 1小时内
+    for (let i = 0; i < nodeList.length; i++) {
+      for (let j = i + 1; j < nodeList.length; j++) {
+        const timeDiff = Math.abs(
+          new Date(nodeList[i].createdAt).getTime() - new Date(nodeList[j].createdAt).getTime()
+        );
+        if (timeDiff < timeThreshold) {
+          this.associations.push({
+            sourceId: nodeList[i].id,
+            targetId: nodeList[j].id,
+            strength: 1 - timeDiff / timeThreshold,
+            type: 'temporal',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    // 基于内容相似度（简单关键词匹配）
+    for (let i = 0; i < nodeList.length; i++) {
+      for (let j = i + 1; j < nodeList.length; j++) {
+        const similarity = this.computeSimilarity(nodeList[i].content, nodeList[j].content);
+        if (similarity > 0.3) {
+          this.associations.push({
+            sourceId: nodeList[i].id,
+            targetId: nodeList[j].id,
+            strength: similarity,
+            type: 'semantic',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    // 基于图结构（共同邻居）
+    const edgeList = Array.from(this.graph.edges());
+    for (const edge of edgeList) {
+      const id1 = edge.v;
+      const id2 = edge.w;
+      const neighbors1 = new Set(this.graph.neighbors(id1));
+      const neighbors2 = new Set(this.graph.neighbors(id2));
+      let common = 0;
+      for (const n of neighbors1) {
+        if (neighbors2.has(n)) common++;
+      }
+      if (common > 0) {
+        this.associations.push({
+          sourceId: id1,
+          targetId: id2,
+          strength: Math.min(1, common / Math.max(neighbors1.size, neighbors2.size)),
+          type: 'structural',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 限制关联数量
+    if (this.associations.length > this.MAX_ASSOCIATIONS) {
+      this.associations.sort((a, b) => b.strength - a.strength);
+      this.associations = this.associations.slice(0, this.MAX_ASSOCIATIONS);
+    }
+  }
+
+  /**
+   * 计算文本相似度（简单实现）
+   */
+  private computeSimilarity(text1: string, text2: string): number {
+    const tokens1 = new Set(tokenize(text1));
+    const tokens2 = new Set(tokenize(text2));
+
+    const intersection = new Set([...tokens1].filter(x => tokens2.has(x)));
+    const union = new Set([...tokens1, ...tokens2]);
+
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  /**
+   * 获取关联
+   */
+  getAssociations(nodeId?: string): MemoryAssociation[] {
+    if (nodeId) {
+      return this.associations.filter(
+        a => a.sourceId === nodeId || a.targetId === nodeId
+      );
+    }
+    return this.associations;
+  }
+
+  /**
+   * 生成记忆摘要
+   */
+  async generateSummary(nodeIds: string[]): Promise<MemorySummary> {
+    const nodes = nodeIds.map(id => this.nodes[id]).filter(Boolean);
+    if (nodes.length === 0) {
+      throw new Error('No valid nodes provided');
+    }
+
+    // 提取关键点（简单实现：前3个节点的内容）
+    const keyPoints = nodes.slice(0, 3).map(n => n.content);
+
+    // 简单情感分析（基于关键词）
+    const positiveWords = ['好', '喜欢', '开心', '成功', '棒', '优秀'];
+    const negativeWords = ['坏', '讨厌', '失败', '问题', '错误', '糟糕'];
+    let positiveCount = 0;
+    let negativeCount = 0;
+    for (const node of nodes) {
+      for (const word of positiveWords) {
+        if (node.content.includes(word)) positiveCount++;
+      }
+      for (const word of negativeWords) {
+        if (node.content.includes(word)) negativeCount++;
+      }
+    }
+
+    let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+    if (positiveCount > negativeCount) sentiment = 'positive';
+    else if (negativeCount > positiveCount) sentiment = 'negative';
+
+    // 提取主题（基于标签）
+    const allTags = nodes.flatMap(n => n.tags);
+    const topicCounts = new Map<string, number>();
+    for (const tag of allTags) {
+      topicCounts.set(tag, (topicCounts.get(tag) || 0) + 1);
+    }
+    const topics = Array.from(topicCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([topic]) => topic);
+
+    const summary: MemorySummary = {
+      id: generateId(),
+      content: nodes.map(n => n.content).join(' ').substring(0, 500),
+      keyPoints,
+      sentiment,
+      topics,
+      sourceNodeIds: nodeIds,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.summaries.push(summary);
+
+    // 限制摘要数量
+    if (this.summaries.length > this.MAX_SUMMARIES) {
+      this.summaries.shift();
+    }
+
+    return summary;
+  }
+
+  /**
+   * 获取所有摘要
+   */
+  getSummaries(): MemorySummary[] {
+    return this.summaries;
+  }
+
+  /**
+   * 获取记忆检索优化排序
+   * 综合考虑相关性、重要性、时间衰减
+   */
+  async enhancedSearch(query: string, limit = 20): Promise<SearchResult[]> {
+    await this.init();
+
+    if (!query.trim()) return [];
+
+    const queryTokens = tokenize(query);
+    const now = Date.now();
+    const results: SearchResult[] = [];
+
+    for (const node of Object.values(this.nodes)) {
+      if (isExpired(node)) continue;
+
+      // 基础相关性分数
+      const contentScore = computeRelevance(queryTokens, node.content);
+      const tagScore = computeRelevance(queryTokens, node.tags.join(' ')) * 0.5;
+
+      // 重要性分数
+      const importanceScore = node.importance;
+
+      // 时间衰减分数（越近访问越高）
+      const lastAccess = new Date(node.accessedAt).getTime();
+      const daysSinceAccess = (now - lastAccess) / (24 * 60 * 60 * 1000);
+      const recencyScore = Math.exp(-0.05 * daysSinceAccess);
+
+      // 关联强度分数
+      const nodeAssociations = this.associations.filter(
+        a => a.sourceId === node.id || a.targetId === node.id
+      );
+      const associationScore = nodeAssociations.length > 0
+        ? nodeAssociations.reduce((sum, a) => sum + a.strength, 0) / nodeAssociations.length
+        : 0;
+
+      // 综合分数
+      const totalScore = contentScore * 0.4 + tagScore * 0.2 +
+                        importanceScore * 0.2 + recencyScore * 0.1 +
+                        associationScore * 0.1;
+
+      if (totalScore > 0) {
+        results.push({ node, score: totalScore });
+      }
+    }
+
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, limit);
+  }
+
+  /**
+   * 获取高价值记忆（重要性高且最近的）
+   */
+  async getHighValueMemories(limit = 10): Promise<MemoryNode[]> {
+    await this.init();
+
+    const nodes = Object.values(this.nodes)
+      .filter(n => !isExpired(n))
+      .map(n => ({
+        node: n,
+        score: n.importance * (1 + 1 / (1 + (Date.now() - new Date(n.accessedAt).getTime()) / (24 * 60 * 60 * 1000)))
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    return nodes.slice(0, limit).map(item => item.node);
+  }
+}
+
+/** 增强版记忆图谱全局单例 */
+export const memoryGraphEnhanced = new MemoryGraphEnhanced();

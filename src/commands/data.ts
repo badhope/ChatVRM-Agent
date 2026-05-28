@@ -1,16 +1,10 @@
 import { Command } from 'commander';
 import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
 import { memoryManager } from '../memory/manager.js';
 import { KnowledgeGraph } from '../memory/knowledge-graph.js';
-import { ragModule } from '../memory/rag.js';
-import { backupManager } from '../cloud/backup.js';
 import { configManager } from '../config/manager.js';
 import { printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
 import { getErrorMessage } from '../utils/error-handling.js';
-
-const DATA_DIR = path.join(os.homedir(), '.personal-assistant');
 
 export const dataCommand = new Command('data').description('数据管理（导出、导入、重置）');
 
@@ -21,7 +15,7 @@ dataCommand
   .action(async (opts) => {
     try {
       printInfo('正在导出数据...');
-      const exportData: Record<string, any> = {
+      const exportData: Record<string, unknown> = {
         version: '1.0',
         exportedAt: new Date().toISOString(),
       };

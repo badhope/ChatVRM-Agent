@@ -31,11 +31,6 @@ export type {
 // 知识图谱类
 // ============================================================
 
-/** 实体节点属性 */
-interface EntityNodeAttrs {
-  entity: Entity;
-}
-
 /** 关系边属性 */
 interface RelationEdgeAttrs {
   relationship: Relationship;
@@ -47,10 +42,10 @@ interface RelationEdgeAttrs {
  * 持久化到 ~/.personal-assistant/memory/knowledge.json
  */
 export class KnowledgeGraph {
-  private storagePath: string;
-  private graph: GraphWrapper;
-  private entities: Record<string, Entity> = {}; // 用于快速查找
-  private initialized = false;
+  protected storagePath: string;
+  protected graph: GraphWrapper;
+  protected entities: Record<string, Entity> = {}; // 用于快速查找
+  protected initialized = false;
   private initLock = new AsyncLock();
   private saveLock = new AsyncLock();
   private stateLock = new AsyncLock();
@@ -113,7 +108,7 @@ export class KnowledgeGraph {
   }
 
   /** 从图中获取所有关系 */
-  private getAllRelationshipsFromGraph(): Relationship[] {
+  protected getAllRelationshipsFromGraph(): Relationship[] {
     const relationships: Relationship[] = [];
     for (const edge of this.graph.edges()) {
       const attrs = this.graph.getEdgeAttrs<RelationEdgeAttrs>(edge.v, edge.w);
@@ -440,3 +435,391 @@ export class KnowledgeGraph {
 
 /** 知识图谱全局单例 */
 export const knowledgeGraph = new KnowledgeGraph();
+
+// ============================================================
+// 知识版本管理
+// ============================================================
+
+/** 版本记录 */
+export interface VersionRecord {
+  version: number;
+  timestamp: string;
+  operation: 'add_entity' | 'update_entity' | 'delete_entity' | 'add_relation' | 'delete_relation';
+  entityId?: string;
+  relationshipId?: string;
+  data: unknown;
+}
+
+// ============================================================
+// 知识推理引擎
+// ============================================================
+
+/**
+ * 知识推理结果
+ */
+export interface InferenceResult {
+  type: 'transitive' | 'similarity' | 'association';
+  fromEntity: Entity;
+  toEntity: Entity;
+  confidence: number;
+  path?: PathNode[];
+}
+
+/**
+ * 知识冲突信息
+ */
+export interface KnowledgeConflict {
+  type: 'entity_conflict' | 'relationship_conflict' | 'attribute_conflict';
+  entityIds: string[];
+  conflictDetails: string;
+  severity: 'low' | 'medium' | 'high';
+  suggestedResolution?: string;
+}
+
+/**
+ * 知识图谱增强类
+ */
+export class KnowledgeGraphEnhanced extends KnowledgeGraph {
+  private versions: VersionRecord[] = [];
+  private currentVersion = 0;
+  private conflicts: KnowledgeConflict[] = [];
+  private readonly MAX_VERSIONS = 100;
+
+  /**
+   * 添加实体（带版本记录）
+   */
+  async addEntityWithVersion(
+    type: EntityType,
+    label: string,
+    attributes?: Record<string, string>
+  ): Promise<Entity> {
+    const entity = await this.addEntity(type, label, attributes);
+
+    // 记录版本
+    this.recordVersion({
+      version: ++this.currentVersion,
+      timestamp: new Date().toISOString(),
+      operation: 'add_entity',
+      entityId: entity.id,
+      data: entity,
+    });
+
+    return entity;
+  }
+
+  /**
+   * 记录版本
+   */
+  private recordVersion(record: VersionRecord): void {
+    this.versions.push(record);
+    if (this.versions.length > this.MAX_VERSIONS) {
+      this.versions.shift();
+    }
+  }
+
+  /**
+   * 获取版本历史
+   */
+  getVersionHistory(limit = 10): VersionRecord[] {
+    return this.versions.slice(-limit);
+  }
+
+  /**
+   * 回滚到指定版本
+   */
+  async rollback(version: number): Promise<boolean> {
+    const targetVersion = this.versions.find(v => v.version === version);
+    if (!targetVersion) {
+      return false;
+    }
+
+    // 清除后续版本
+    this.versions = this.versions.filter(v => v.version <= version);
+
+    // 重新初始化图谱
+    await this.init();
+    return true;
+  }
+
+  /**
+   * 推理：查找两个实体之间的传递关系
+   */
+  async inferTransitiveRelation(
+    fromId: string,
+    toId: string
+  ): Promise<InferenceResult | null> {
+    await this.init();
+
+    const paths = await this.findPaths(fromId, toId, 5);
+    if (paths.length === 0) {
+      return null;
+    }
+
+    const shortestPath = paths[0];
+    const fromEntity = await this.getEntity(fromId);
+    const toEntity = await this.getEntity(toId);
+
+    if (!fromEntity || !toEntity) {
+      return null;
+    }
+
+    // 计算置信度：基于路径长度和关系权重
+    let confidence = 1.0;
+    for (let i = 0; i < shortestPath.length - 1; i++) {
+      const attrs = this['graph'].getEdgeAttrs<RelationEdgeAttrs>(
+        shortestPath[i].entityId,
+        shortestPath[i + 1].entityId
+      );
+      if (attrs?.relationship) {
+        confidence *= attrs.relationship.weight;
+      } else {
+        confidence *= 0.5;
+      }
+    }
+
+    return {
+      type: 'transitive',
+      fromEntity,
+      toEntity,
+      confidence: Math.max(0.1, confidence),
+      path: shortestPath,
+    };
+  }
+
+  /**
+   * 推理：查找相似实体
+   */
+  async findSimilarEntities(entityId: string, limit = 5): Promise<Entity[]> {
+    await this.init();
+    const entity = await this.getEntity(entityId);
+    if (!entity) {
+      return [];
+    }
+
+    // 获取相关实体
+    const related = await this.getRelatedEntities(entityId);
+    const similarEntities: Array<{ entity: Entity; score: number }> = [];
+
+    for (const { entity: relatedEntity, relationship } of related) {
+      // 根据关系类型和权重计算相似度得分
+      let score = relationship.weight;
+      if (relatedEntity.type === entity.type) {
+        score *= 1.5; // 同类型实体相似度更高
+      }
+
+      similarEntities.push({ entity: relatedEntity, score });
+    }
+
+    // 按得分排序并返回前N个
+    return similarEntities
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(item => item.entity);
+  }
+
+  /**
+   * 检测知识冲突
+   */
+  async detectConflicts(): Promise<KnowledgeConflict[]> {
+    await this.init();
+    this.conflicts = [];
+
+    // 检测实体冲突：同名不同类型
+    const entityLabels = new Map<string, Entity[]>();
+    for (const entity of Object.values(this.entities)) {
+      const key = entity.label.toLowerCase();
+      if (!entityLabels.has(key)) {
+        entityLabels.set(key, []);
+      }
+      entityLabels.get(key)!.push(entity);
+    }
+
+    for (const [label, entities] of entityLabels) {
+      if (entities.length > 1) {
+        const types = new Set(entities.map(e => e.type));
+        if (types.size > 1) {
+          this.conflicts.push({
+            type: 'entity_conflict',
+            entityIds: entities.map(e => e.id),
+            conflictDetails: `实体 "${label}" 被标记为多个类型: ${Array.from(types).join(', ')}`,
+            severity: 'medium',
+            suggestedResolution: '请确认实体的正确类型并手动合并或删除重复实体',
+          });
+        }
+      }
+    }
+
+    // 检测关系冲突：同一对实体之间的矛盾关系
+    const relationshipPairs = new Map<string, Relationship[]>();
+    const allRelationships = this.getAllRelationshipsFromGraph();
+
+    for (const rel of allRelationships) {
+      const key = `${rel.fromId}:${rel.toId}`;
+      if (!relationshipPairs.has(key)) {
+        relationshipPairs.set(key, []);
+      }
+      relationshipPairs.get(key)!.push(rel);
+    }
+
+    for (const [key, relationships] of relationshipPairs) {
+      if (relationships.length > 1) {
+        const types = new Set(relationships.map(r => r.type));
+        if (types.size > 1) {
+          this.conflicts.push({
+            type: 'relationship_conflict',
+            entityIds: key.split(':'),
+            conflictDetails: `实体对之间存在多个不同类型的关系: ${Array.from(types).join(', ')}`,
+            severity: 'low',
+            suggestedResolution: '这些关系可能都是有效的，请根据上下文判断',
+          });
+        }
+      }
+    }
+
+    return this.conflicts;
+  }
+
+  /**
+   * 获取所有冲突
+   */
+  getAllConflicts(): KnowledgeConflict[] {
+    return this.conflicts;
+  }
+
+  /**
+   * 解决冲突
+   */
+  async resolveConflict(
+    conflictId: number,
+    resolution: 'keep_first' | 'keep_last' | 'merge' | 'delete'
+  ): Promise<boolean> {
+    if (conflictId < 0 || conflictId >= this.conflicts.length) {
+      return false;
+    }
+
+    const conflict = this.conflicts[conflictId];
+
+    switch (conflict.type) {
+      case 'entity_conflict':
+        if (resolution === 'keep_first' || resolution === 'keep_last') {
+          const keepId = resolution === 'keep_first'
+            ? conflict.entityIds[0]
+            : conflict.entityIds[conflict.entityIds.length - 1];
+          for (const id of conflict.entityIds) {
+            if (id !== keepId) {
+              await this.removeEntity(id);
+            }
+          }
+        }
+        break;
+
+      case 'relationship_conflict':
+        if (resolution === 'keep_first' || resolution === 'keep_last') {
+          const relationships = this.getAllRelationshipsFromGraph();
+          const relevantRels = relationships.filter(r =>
+            conflict.entityIds.includes(r.fromId) && conflict.entityIds.includes(r.toId)
+          );
+          const keepId = resolution === 'keep_first'
+            ? relevantRels[0].id
+            : relevantRels[relevantRels.length - 1].id;
+          for (const rel of relevantRels) {
+            if (rel.id !== keepId) {
+              await this.removeRelationship(rel.id);
+            }
+          }
+        }
+        break;
+    }
+
+    // 从冲突列表中移除
+    this.conflicts.splice(conflictId, 1);
+    return true;
+  }
+
+  /**
+   * 导出图谱为可视化格式（JSON）
+   */
+  async exportForVisualization(): Promise<{
+    nodes: Array<{
+      id: string;
+      label: string;
+      type: string;
+      attributes: Record<string, string>;
+    }>;
+    edges: Array<{
+      source: string;
+      target: string;
+      type: string;
+      weight: number;
+    }>;
+  }> {
+    await this.init();
+
+    const nodes = Object.values(this.entities).map(entity => ({
+      id: entity.id,
+      label: entity.label,
+      type: entity.type,
+      attributes: entity.attributes,
+    }));
+
+    const edges = this.getAllRelationshipsFromGraph().map(rel => ({
+      source: rel.fromId,
+      target: rel.toId,
+      type: rel.type,
+      weight: rel.weight,
+    }));
+
+    return { nodes, edges };
+  }
+
+  /**
+   * 获取推荐实体
+   * 基于用户的历史交互推荐可能感兴趣的实体
+   */
+  async getRecommendations(entityId: string, limit = 5): Promise<Entity[]> {
+    await this.init();
+    const entity = await this.getEntity(entityId);
+    if (!entity) {
+      return [];
+    }
+
+    // 获取直接相关的实体
+    const directRelated = await this.getRelatedEntities(entityId);
+
+    // 获取这些相关实体的相关实体（二度关联）
+    const secondDegreeEntities = new Set<string>();
+    for (const { entity: related } of directRelated) {
+      const secondDegree = await this.getRelatedEntities(related.id);
+      for (const { entity: secondEntity } of secondDegree) {
+        if (secondEntity.id !== entityId && !directRelated.some(r => r.entity.id === secondEntity.id)) {
+          secondDegreeEntities.add(secondEntity.id);
+        }
+      }
+    }
+
+    // 按类型权重排序推荐
+    const recommendations: Array<{ entity: Entity; score: number }> = [];
+    for (const secondId of secondDegreeEntities) {
+      const secondEntity = await this.getEntity(secondId);
+      if (secondEntity) {
+        // 类型匹配权重
+        let score = 0.5;
+        if (secondEntity.type === entity.type) {
+          score += 0.3;
+        }
+        if (secondEntity.type === 'tech') {
+          score += 0.2; // 技术实体优先级更高
+        }
+        recommendations.push({ entity: secondEntity, score });
+      }
+    }
+
+    return recommendations
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(item => item.entity);
+  }
+}
+
+/** 增强版知识图谱全局单例 */
+export const knowledgeGraphEnhanced = new KnowledgeGraphEnhanced();

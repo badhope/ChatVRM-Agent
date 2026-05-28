@@ -8,7 +8,6 @@ import type {
   TextContent,
 } from '../types.js';
 import { PROVIDER_INFO } from '../types.js';
-import { CONNECTION_TIMEOUT_MS } from '../constants/index.js';
 
 interface BaiduResponse {
   id: string;
@@ -22,11 +21,6 @@ interface BaiduResponse {
   };
   is_truncated: boolean;
   need_clear_history: boolean;
-}
-
-interface BaiduTokenResponse {
-  access_token: string;
-  expires_in: number;
 }
 
 export class BaiduProvider extends BaseProvider {
@@ -125,7 +119,6 @@ export class BaiduProvider extends BaseProvider {
   }
 
   async *stream(params: ChatParams): AsyncGenerator<StreamChunk> {
-    const model = params.model || this.getDefaultModel();
     const accessToken = await this.getAccessToken();
 
     const body = {

@@ -1,22 +1,17 @@
 /**
- * Code Indexer
+ * Code Indexer (简化版)
  *
- * 使用 MiniSearch 构建可搜索的内存代码索引。
- * 解析源文件，提取符号和代码块，通过 MiniSearch 的 BM25 算法进行全文搜索。
- *
- * 相比之前的自定义倒排索引实现：
- * - 使用 MiniSearch 内置的 BM25 排序（更优的相关性评分）
- * - 支持前缀匹配和模糊搜索
- * - 减少自定义代码量
+ * 简化版：暂时移除对 tree-sitter 的依赖，使用简单的文件索引
  */
 
 import * as path from 'path';
+import * as fs from 'fs';
 import MiniSearch from 'minisearch';
-import { parseFiles } from '../parser/engine.js';
 import { extractSymbols } from '../parser/symbols.js';
 import { chunkFiles } from './semantic-chunker.js';
 import { collectSourceFiles } from '../utils/file-system.js';
 import { globMatch } from '../utils/glob.js';
+import { parseFile } from '../parser/engine.js';
 
 import type { CodeIndex, IndexEntry, SearchOptions, IndexData } from './indexer/types.js';
 import { INDEXABLE_KINDS } from './indexer/types.js';
@@ -59,56 +54,7 @@ interface CodeSearchEntry {
 const indexStore = new Map<string, IndexData>();
 
 /**
- * 提取 JSDoc 或文档注释
- */
-function extractDocstring(
-  node: {
-    previousNamedSibling?: { type: string; text: string } | null;
-    parent?: {
-      childCount: number;
-      child: (i: number) => { type: string; text: string } | null;
-    } | null;
-  },
-  source: string
-): string | undefined {
-  const prev = node.previousNamedSibling;
-  if (
-    prev &&
-    (prev.type === 'comment' || prev.type === 'block_comment' || prev.type === 'line_comment')
-  ) {
-    const commentText = prev.text.trim();
-    if (
-      commentText.startsWith('/**') ||
-      commentText.startsWith('"""') ||
-      commentText.startsWith("'''") ||
-      commentText.startsWith('# ')
-    ) {
-      return commentText;
-    }
-  }
-
-  const parent = node.parent;
-  if (parent) {
-    let prevUnnamed: { type: string; text: string } | null = null;
-    for (let i = 0; i < parent.childCount; i++) {
-      const child = parent.child(i);
-      if (child && (child.type === 'comment' || child.type === 'block_comment')) {
-        prevUnnamed = child;
-      }
-    }
-    if (prevUnnamed) {
-      const commentText = prevUnnamed.text.trim();
-      if (commentText.startsWith('/**')) {
-        return commentText;
-      }
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * 构建可搜索的代码索引
+ * 构建可搜索的代码索引（简化版）
  *
  * @param rootDir - 项目根目录的绝对路径
  * @returns 构建好的代码索引
@@ -133,50 +79,44 @@ export async function buildCodeIndex(rootDir: string): Promise<CodeIndex> {
     return emptyIndex;
   }
 
-  // 解析所有文件
-  const parseResults = await parseFiles(filePaths);
-
-  // 提取符号并构建条目
+  // 解析所有文件（简化版）
   const entries: IndexEntry[] = [];
   let symbolCount = 0;
 
-  for (const [filePath, result] of parseResults) {
-    const symbols = extractSymbols(result);
-    const source = result.source;
+  for (const filePath of filePaths) {
+    try {
+      const source = fs.readFileSync(filePath, 'utf-8');
+      const result = await parseFile(filePath, source);
+      const symbols = extractSymbols(result, filePath);
 
-    // 添加文件条目
-    const fileName = path.basename(filePath);
-    entries.push({
-      type: 'file',
-      name: fileName,
-      filePath,
-      score: 0,
-    });
-
-    // 添加符号条目
-    for (const sym of symbols) {
-      if (!INDEXABLE_KINDS.has(sym.kind)) continue;
-      if (!sym.name || sym.name.startsWith('(')) continue;
-
-      const docstring = extractDocstring(
-        result.tree.rootNode.descendantForPosition({
-          row: sym.startLine,
-          column: 0,
-        }),
-        source
-      );
-
+      // 添加文件条目
+      const fileName = path.basename(filePath);
       entries.push({
-        type: 'symbol',
-        name: sym.name,
+        type: 'file',
+        name: fileName,
         filePath,
-        line: sym.startLine + 1,
-        kind: sym.kind,
-        signature: sym.signature,
-        docstring,
         score: 0,
       });
-      symbolCount++;
+
+      // 添加符号条目
+      for (const sym of symbols) {
+        if (!INDEXABLE_KINDS.has(sym.kind)) continue;
+        if (!sym.name || sym.name.startsWith('(')) continue;
+
+        entries.push({
+          type: 'symbol',
+          name: sym.name,
+          filePath,
+          line: sym.startLine + 1,
+          kind: sym.kind,
+          signature: sym.signature,
+          docstring: '',
+          score: 0,
+        });
+        symbolCount++;
+      }
+    } catch {
+      continue;
     }
   }
 

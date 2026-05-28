@@ -9,6 +9,7 @@ import wrapAnsi from 'wrap-ansi';
 // ==================== 内部工具 ====================
 
 /** ANSI 转义码正则，用于去除颜色码计算文本真实宽度 */
+// eslint-disable-next-line no-control-regex
 const ANSI_REGEX = /\x1B\[[0-9;]*m/g;
 
 /**

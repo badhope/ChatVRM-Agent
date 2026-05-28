@@ -5,7 +5,7 @@
  */
 
 import chalk from 'chalk';
-import { printFancyError, printFancyCard, printFancyDivider, ICONS } from './visual-enhanced.js';
+import { printFancyCard, printFancyDivider, ICONS } from './visual-enhanced.js';
 
 // ==================== 错误分类 ====================
 export type ErrorType =

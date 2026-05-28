@@ -8,10 +8,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { locateEditTarget } from './edit-target.js';
 import type { EditTarget } from './edit-target.js';
 import { applyEdit, applyMultipleEdits, generateDiff } from './diff-generator.js';
-import type { EditOperation, DiffResult } from './diff-generator.js';
+import type { EditOperation } from './diff-generator.js';
 import { parseSearchReplaceBlocks, type SearchReplaceBlock } from './search-replace/parser.js';
 import { normalizeContent } from './search-replace/normalizer.js';
 import { getErrorMessage } from '../utils/error-handling.js';
@@ -212,10 +211,10 @@ export async function executeMultipleSearchReplace(
 
     if (!filePath) {
       // No file path available - report error for each block
-      for (const block of groupBlocks) {
+      for (let i = 0; i < groupBlocks.length; i++) {
         results.push({
           success: false,
-          filePath: block.filePath || '',
+          filePath: groupBlocks[i].filePath || '',
           applied: false,
           error: 'No file path specified and no default file path provided',
         });
@@ -227,7 +226,7 @@ export async function executeMultipleSearchReplace(
     try {
       source = await fs.readFile(filePath, 'utf8');
     } catch {
-      for (const block of groupBlocks) {
+      for (let i = 0; i < groupBlocks.length; i++) {
         results.push({
           success: false,
           filePath,
@@ -240,13 +239,11 @@ export async function executeMultipleSearchReplace(
 
     // Build all edit operations for this file
     const operations: EditOperation[] = [];
-    let allFound = true;
     const blockTargets: Array<{ block: SearchReplaceBlock; target: EditTarget }> = [];
 
     for (const block of groupBlocks) {
       const target = findSearchTarget(filePath, source, block.search, block.isRegex);
       if (!target) {
-        allFound = false;
         results.push({
           success: false,
           filePath,
@@ -268,7 +265,6 @@ export async function executeMultipleSearchReplace(
     try {
       const newContent = applyMultipleEdits(source, operations);
       const diffs = operations.map((op) => generateDiff(op));
-      const combinedDiff = diffs.map((d) => d.unifiedDiff).join('\n');
 
       // Write the new content
       await fs.writeFile(filePath, newContent, 'utf8');
@@ -285,7 +281,7 @@ export async function executeMultipleSearchReplace(
         });
       }
     } catch (err: unknown) {
-      for (const { block } of blockTargets) {
+      for (let i = 0; i < blockTargets.length; i++) {
         results.push({
           success: false,
           filePath,

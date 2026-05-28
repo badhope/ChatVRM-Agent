@@ -117,7 +117,7 @@ function calculateMaxDepth(content: string): number {
  */
 function calculateHalsteadMetrics(content: string): CodeMetrics['halstead'] {
   // 操作符
-  const operatorPattern = /[\+\-\*\/\%\=\!\<\>\&\|\^\~\?\:\,\;\.]+/g;
+    const operatorPattern = /[+*/%=!<>|&^~?:;,.;-]+/g;
   const operators = content.match(operatorPattern) || [];
   const uniqueOperators = new Set(operators);
 

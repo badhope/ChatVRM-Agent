@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { GitManager, AutoCommitEngine, DirtyProtect, CheckpointManager } from '../git/index.js';
+import { GitManager, AutoCommitEngine, CheckpointManager } from '../git/index.js';
 import type { GitCheckpoint } from '../git/types.js';
 import {
   printHeader,
@@ -337,7 +337,7 @@ gitCommand
     printSection('Git 集成配置');
 
     const engine = new AutoCommitEngine(process.cwd());
-    const config = engine.getConfig();
+    engine.getConfig();
 
     if (options.enable) {
       engine.updateConfig({ enabled: true });

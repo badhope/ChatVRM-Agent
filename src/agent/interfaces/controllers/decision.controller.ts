@@ -7,12 +7,12 @@ import type {
   DecisionRequest,
   DecisionResponse,
   RecordDecisionOutcomeRequest,
-} from '../../application/dtos/decision.dto';
-import { DecisionApplicationService } from '../../application/services/decision.application.service';
-import { JsonDecisionRepository } from '../../infrastructure/repositories/decision.repository';
-import { JsonExperienceRepository } from '../../infrastructure/repositories/experience.repository';
-import { ExperienceService } from '../../domain/services/experience.service';
-import type { Experience } from '../../domain/models/experience.model';
+} from '../../application/dtos/decision.dto.js';
+import { DecisionApplicationService } from '../../application/services/decision.application.service.js';
+import { JsonDecisionRepository } from '../../infrastructure/repositories/decision.repository.js';
+import { JsonExperienceRepository } from '../../infrastructure/repositories/experience.repository.js';
+import { ExperienceService } from '../../domain/services/experience.service.js';
+import type { Experience } from '../../domain/models/experience.model.js';
 
 export class DecisionController {
   private decisionService: DecisionApplicationService;

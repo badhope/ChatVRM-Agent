@@ -145,7 +145,7 @@ export class DependencyGraph {
 
     // Exported declarations (export function, export class, etc.)
     const exportedDecls = sourceFile.getExportedDeclarations();
-    for (const [name, declarations] of exportedDecls) {
+    for (const [name] of exportedDecls) {
       if (name && !dep.exports.includes(name)) {
         dep.exports.push(name);
       }

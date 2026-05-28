@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { configManager } from '../config/manager.js';
-import { printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
+import { printSuccess, printInfo, printWarning } from '../ui/logo.js';
 
 export const testCommand = new Command('test').description('测试自动化（运行/生成/修复）');
 

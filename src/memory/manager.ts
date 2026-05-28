@@ -13,7 +13,6 @@ import type {
   MemoryInteraction,
   MemoryRecord,
   MemoryStats,
-  MemoryInteractionWithMeta,
 } from './memory-types.js';
 import { AsyncLock } from '../utils/async-lock.js';
 import { createLogger } from '../services/logger.js';
@@ -280,7 +279,6 @@ export class MemoryManager {
     }
 
     // 3. 混合评分
-    const now = Date.now();
     const MAX_AGE_DAYS = 90; // 超过90天的记忆权重降低
 
     const scored: MemoryRecord[] = records.map((record) => {

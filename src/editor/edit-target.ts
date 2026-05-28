@@ -8,7 +8,6 @@
 import * as fs from 'fs/promises';
 import { parseFile } from '../parser/engine.js';
 import { extractSymbols, findSymbolByName } from '../parser/symbols.js';
-import type { CodeSymbol } from '../parser/symbols.js';
 
 /** Represents a precise location in a file to be edited */
 export interface EditTarget {
@@ -140,9 +139,9 @@ export async function locateEditTarget(
 
   // Strategy 1: Find by symbol name using AST
   if (options.symbolName) {
-    const parseResult = await parseFile(filePath);
+    const parseResult = await parseFile(filePath, source);
     if (parseResult) {
-      const symbols = extractSymbols(parseResult);
+      const symbols = extractSymbols(parseResult, filePath);
       let matches = findSymbolByName(symbols, options.symbolName);
 
       // Filter by symbol kind if specified

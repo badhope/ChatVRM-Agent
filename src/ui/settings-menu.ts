@@ -6,6 +6,8 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { i18n, type Language } from '../i18n/index.js';
 import { configManager } from '../config/manager.js';
+import type { ProviderType } from '../types.js';
+import type { SandboxLevel } from '../config/config-types.js';
 import {
   printFancyTitle,
   printFancyDivider,
@@ -203,7 +205,7 @@ async function showProviderSettings(): Promise<void> {
     ]);
 
     if (apiKey.key.trim()) {
-      await configManager.setApiKey(answer.choice as any, apiKey.key);
+      await configManager.setApiKey(answer.choice as ProviderType, apiKey.key);
       printFancySuccess('API Key saved successfully!');
       
       await inquirer.prompt([
@@ -330,7 +332,7 @@ async function showSandboxSettings(): Promise<void> {
     },
   ]);
 
-  await configManager.setSandboxLevel(answers.level as any);
+  await configManager.setSandboxLevel(answers.level as SandboxLevel);
 
   printFancySuccess('Sandbox settings saved!');
 

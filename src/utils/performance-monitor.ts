@@ -7,7 +7,7 @@ export interface PerformanceMetric {
   durationMs: number;
   category: string;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PerformanceReport {
@@ -41,7 +41,7 @@ class PerformanceMonitor {
     const startTime = performance.now();
     const timestamp = Date.now();
 
-    return (metadata?: Record<string, any>): PerformanceMetric => {
+    return (metadata?: Record<string, unknown>): PerformanceMetric => {
       const durationMs = performance.now() - startTime;
       const metric: PerformanceMetric = {
         name,
@@ -153,7 +153,7 @@ class PerformanceMonitor {
     name: string,
     category: string,
     fn: () => Promise<T>,
-    metadata?: Record<string, any>
+    _metadata?: Record<string, unknown>
   ): Promise<T> {
     const end = this.startMeasurement(name, category);
     try {
@@ -173,7 +173,7 @@ class PerformanceMonitor {
     name: string,
     category: string,
     fn: () => T,
-    metadata?: Record<string, any>
+    _metadata?: Record<string, unknown>
   ): T {
     const end = this.startMeasurement(name, category);
     try {

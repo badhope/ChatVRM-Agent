@@ -12,7 +12,6 @@
 
 import { container } from '../di/container.js';
 import { TOKENS } from '../di/tokens.js';
-import type { ToolRegistry } from '../tools/registry.js';
 import type { MemoryManager } from '../memory/manager.js';
 import { KnowledgeGraph } from '../memory/knowledge-graph.js';
 import { reasonWithSelfCorrection } from './infrastructure/common/reasoner.js';
@@ -25,7 +24,9 @@ import { agentLogger } from '../services/logger.js';
 import { projectConfigLoader } from '../config/project-config.js';
 import { intentRecognizer } from './infrastructure/common/intent-recognizer.js';
 import { planTask } from './infrastructure/common/task-planner.js';
-import { generateSummary, parseToolArgsFromAI } from './infrastructure/common/agent-utils.js';
+import { generateSummary } from './infrastructure/common/agent-utils.js';
+import { assessTaskComplexity, shouldUseDualAgent } from './infrastructure/common/task-complexity.js';
+import { CollaborationManager } from './infrastructure/common/collaboration-manager.js';
 import { DEFAULT_CONTEXT_TOKENS, TASK_TIMEOUT_MS } from '../constants/index.js';
 import chalk from 'chalk';
 import type { TaskStep, Task } from './types.js';
@@ -37,19 +38,13 @@ import { DecisionController } from './interfaces/controllers/decision.controller
 import { EmotionService } from './domain/services/emotion.service.js';
 import { ExperienceService } from './domain/services/experience.service.js';
 import { PersonalityService } from './domain/services/personality.service.js';
-import type { AgentIdentity, PersonalityTraits } from './domain/models/personality.model.js';
+import type { AgentIdentity } from './domain/models/personality.model.js';
 import type { Experience } from './domain/models/experience.model.js';
 
 // 导入核心子模块
 import {
   ExecutionPhase,
-  type AgentConfig,
-  type AgentState,
-  type AgentContext,
-  type ToolCall,
   type ToolResult,
-  type StepExecutionContext,
-  type AgentExecutionResult,
 } from './infrastructure/core/types.js';
 
 import { AgentStateMachine, createStateMachine } from './infrastructure/core/state-machine.js';
@@ -101,6 +96,10 @@ export class AgentExecutor {
   private behaviorGuidelines: string = '';
   private stateMachine: AgentStateMachine;
 
+  // ========== 双Agent模式 ==========
+  private useDualAgent: boolean;
+  private collaborationManager: CollaborationManager;
+
   constructor(
     userInput: string,
     onStepChange?: (step: TaskStep) => void,
@@ -110,6 +109,7 @@ export class AgentExecutor {
       enableRepoMap?: boolean;
       enableKnowledgeGraph?: boolean;
       enableChangeControl?: boolean;
+      useDualAgent?: boolean;
     }
   ) {
     this.task = {
@@ -136,6 +136,20 @@ export class AgentExecutor {
     this.agentIdentity = PersonalityService.createDefaultIdentity();
     this.stateMachine = createStateMachine(this.task.id);
 
+    // ========== 双Agent模式初始化 ==========
+    this.collaborationManager = new CollaborationManager();
+    
+    // 评估任务复杂度，决定是否使用双Agent模式
+    const assessment = assessTaskComplexity(userInput);
+    this.useDualAgent = shouldUseDualAgent(assessment, options?.useDualAgent);
+    
+    if (this.useDualAgent) {
+      agentLogger.info(
+        { taskId: this.task.id, assessment },
+        'Using dual-agent collaboration mode'
+      );
+    }
+
     // ChangeControl 默认启用
     if (options?.enableChangeControl === false) {
       this.changeControl.setEnabled(false);
@@ -144,6 +158,11 @@ export class AgentExecutor {
 
   async run(): Promise<Task> {
     agentLogger.info({ taskId: this.task.id, input: this.task.userInput }, 'Starting agent task');
+
+    // 如果使用双Agent模式，直接使用CollaborationManager执行
+    if (this.useDualAgent) {
+      return this.runWithDualAgent();
+    }
 
     // 初始化阶段
     this.stateMachine.transitionTo(ExecutionPhase.INITIALIZING);
@@ -920,6 +939,86 @@ export class AgentExecutor {
    */
   getStateMachine(): AgentStateMachine {
     return this.stateMachine;
+  }
+
+  /**
+   * 使用双Agent协作模式执行任务
+   */
+  private async runWithDualAgent(): Promise<Task> {
+    this.output(chalk.cyan('🤖 启用双Agent协作模式...'));
+
+    try {
+      // 评估任务并获取推荐意图
+      const assessment = assessTaskComplexity(this.task.userInput);
+      const intent = assessment.recommendedIntent || 'general';
+      
+      this.output(chalk.dim(`  任务复杂度评分: ${assessment.score}/100`));
+      this.output(chalk.dim(`  推荐意图: ${intent}`));
+
+      // 使用CollaborationManager执行
+      const result = await this.collaborationManager.startCollaboration(
+        this.task.userInput,
+        intent,
+        {
+          maxDepth: 3,
+          maxSubtasks: 10,
+          onStatusUpdate: (taskId: string, status: string, progress?: number) => {
+            this.output(chalk.dim(`  [${status}] ${progress !== undefined ? `${progress}%` : ''}`));
+          },
+        }
+      );
+
+      // 转换结果为Task格式
+      this.task.status = result.success ? 'completed' : 'failed';
+      this.task.result = result.summary || '';
+      
+      if (result.success) {
+        this.output(chalk.green('\n✓ 双Agent协作任务完成!'));
+        if (result.summary) {
+          this.output(chalk.dim(`\n${result.summary}`));
+        }
+        this.stateMachine.transitionTo(ExecutionPhase.COMPLETED);
+      } else {
+        this.output(chalk.red('\n✗ 双Agent协作任务失败'));
+        this.stateMachine.transitionTo(ExecutionPhase.FAILED);
+      }
+
+      return this.task;
+    } catch (error) {
+      agentLogger.error(
+        { taskId: this.task.id, error: error instanceof Error ? error.message : String(error) },
+        'Dual-agent collaboration failed, falling back to single-agent'
+      );
+      
+      // 双Agent失败时，回退到单Agent模式
+      this.output(chalk.yellow('双Agent模式失败，回退到单Agent模式...'));
+      this.useDualAgent = false;
+      
+      // 重新执行单Agent流程
+      this.stateMachine.transitionTo(ExecutionPhase.INITIALIZING);
+      await this.initialize();
+      
+      await this.createGitCheckpoint();
+      this.stateMachine.transitionTo(ExecutionPhase.UNDERSTANDING);
+      await this.understandTask();
+      this.stateMachine.transitionTo(ExecutionPhase.PLANNING);
+      await this.planSteps();
+      this.stateMachine.transitionTo(ExecutionPhase.EXECUTING);
+      const executionSuccess = await this.executeSteps();
+      
+      if (executionSuccess) {
+        this.stateMachine.transitionTo(ExecutionPhase.VALIDATING);
+        this.validateResults();
+        this.stateMachine.transitionTo(ExecutionPhase.REFLECTING);
+        await this.reflectAndLearn();
+        this.completeTask();
+        this.stateMachine.transitionTo(ExecutionPhase.COMPLETED);
+      } else {
+        this.stateMachine.transitionTo(ExecutionPhase.FAILED);
+      }
+      
+      return this.task;
+    }
   }
 }
 

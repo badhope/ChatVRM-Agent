@@ -1,39 +1,43 @@
 /**
- * Semantic Code Chunker
+ * Semantic Code Chunker (简化版)
  *
- * Splits source files into semantically meaningful chunks using tree-sitter
- * AST analysis. Each top-level declaration (function, class, interface, etc.)
- * becomes a chunk, with import statements grouped together and leading
- * comments attached to their following declarations.
+ * 简化版：暂时返回空结果，移除对 tree-sitter 的依赖
  */
 
-import { parseFile } from '../parser/engine.js';
-import { extractSymbols } from '../parser/symbols.js';
-
+import * as fs from 'fs';
 import type { CodeChunk, ChunkOptions } from './chunker/types.js';
-import { DEFAULT_MAX_CHUNK_TOKENS, DEFAULT_MIN_CHUNK_LINES } from './chunker/types.js';
-import { buildChunks } from './chunker/chunk-builder.js';
 
 /**
- * Split a single file into semantically meaningful chunks.
+ * Split a single file into semantically meaningful chunks (simplified)
  */
-export async function chunkFile(filePath: string, options?: ChunkOptions): Promise<CodeChunk[]> {
-  const parseResult = await parseFile(filePath);
-  if (!parseResult) return [];
-
-  const { tree, source } = parseResult;
-  const rootNode = tree.rootNode;
-  const symbols = extractSymbols(parseResult);
-
-  return buildChunks(rootNode, source, filePath, symbols, {
-    maxChunkTokens: options?.maxChunkTokens ?? DEFAULT_MAX_CHUNK_TOKENS,
-    minChunkLines: options?.minChunkLines ?? DEFAULT_MIN_CHUNK_LINES,
-    respectBoundaries: options?.respectBoundaries ?? true,
-  });
+export async function chunkFile(filePath: string, _options?: ChunkOptions): Promise<CodeChunk[]> {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return [];
+    }
+    const content = fs.readFileSync(filePath, 'utf-8');
+    // 暂时返回一个包含整个文件内容的 chunk
+    return [
+      {
+        id: `${filePath}#0`,
+        name: filePath,
+        type: 'module',
+        filePath,
+        startLine: 1,
+        endLine: content.split('\n').length,
+        content,
+        tokens: content.split(/\s+/).length,
+        nestingLevel: 0,
+        dependencies: [],
+      },
+    ];
+  } catch {
+    return [];
+  }
 }
 
 /**
- * Chunk multiple files into semantically meaningful pieces.
+ * Chunk multiple files into semantically meaningful pieces
  */
 export async function chunkFiles(
   filePaths: string[],
@@ -41,19 +45,10 @@ export async function chunkFiles(
 ): Promise<Map<string, CodeChunk[]>> {
   const result = new Map<string, CodeChunk[]>();
 
-  const batchSize = 10;
-  for (let i = 0; i < filePaths.length; i += batchSize) {
-    const batch = filePaths.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(async (fp) => {
-        const chunks = await chunkFile(fp, options);
-        return [fp, chunks] as const;
-      })
-    );
-    for (const [fp, fileChunks] of batchResults) {
-      if (fileChunks.length > 0) {
-        result.set(fp, fileChunks);
-      }
+  for (const filePath of filePaths) {
+    const chunks = await chunkFile(filePath, options);
+    if (chunks.length > 0) {
+      result.set(filePath, chunks);
     }
   }
 
@@ -61,7 +56,7 @@ export async function chunkFiles(
 }
 
 /**
- * Retrieve a chunk by its unique ID.
+ * Retrieve a chunk by its unique ID
  */
 export function getChunkById(chunks: Map<string, CodeChunk[]>, id: string): CodeChunk | null {
   for (const fileChunks of chunks.values()) {
@@ -73,7 +68,7 @@ export function getChunkById(chunks: Map<string, CodeChunk[]>, id: string): Code
 }
 
 /**
- * Find chunks relevant to a text query using simple text matching.
+ * Find chunks relevant to a text query using simple text matching
  */
 export function findRelevantChunks(
   chunks: Map<string, CodeChunk[]>,
@@ -87,16 +82,8 @@ export function findRelevantChunks(
     for (const chunk of fileChunks) {
       let score = 0;
 
-      if (chunk.name && chunk.name.toLowerCase() === lowerQuery) {
-        score += 100;
-      } else if (chunk.name && chunk.name.toLowerCase().startsWith(lowerQuery)) {
-        score += 80;
-      } else if (chunk.name && chunk.name.toLowerCase().includes(lowerQuery)) {
+      if (chunk.name && chunk.name.toLowerCase().includes(lowerQuery)) {
         score += 60;
-      }
-
-      if (chunk.type.toLowerCase().includes(lowerQuery)) {
-        score += 40;
       }
 
       if (chunk.content.toLowerCase().includes(lowerQuery)) {
@@ -111,13 +98,6 @@ export function findRelevantChunks(
     }
   }
 
-  scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    if (a.chunk.filePath !== b.chunk.filePath) {
-      return a.chunk.filePath.localeCompare(b.chunk.filePath);
-    }
-    return a.chunk.startLine - b.chunk.startLine;
-  });
-
+  scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, maxResults).map((s) => s.chunk);
 }

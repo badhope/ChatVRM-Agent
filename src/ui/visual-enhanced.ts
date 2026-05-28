@@ -140,8 +140,9 @@ export function printFancyDivider(label?: string, color: 'cyan' | 'green' | 'yel
   const rightLine = '═'.repeat(Math.max(0, rightWidth));
 
   // 安全地访问 chalk 颜色
-  const colorFn = chalk[color as keyof typeof chalk] as (text: string) => string;
-  const boldColorFn = (chalk as any)[color].bold as (text: string) => string;
+  const baseColor = chalk[color as keyof typeof chalk] as unknown as { bold: (text: string) => string; (text: string): string };
+  const colorFn = (text: string) => baseColor(text);
+  const boldColorFn = (text: string) => baseColor.bold(text);
 
   let output = colorFn(`  ═${leftLine}`);
   if (label) {
@@ -240,7 +241,7 @@ export function printFancyProgress(
     case 'bar':
       progress = chalk[color]('█'.repeat(completed)) + chalk.gray('░'.repeat(remaining));
       break;
-    case 'blocks':
+    case 'blocks': {
       const blockChars = ['▏', '▎', '▍', '▌', '▋', '▊', '▉', '█'];
       let blocks = '';
       for (let i = 0; i < completed; i++) {
@@ -248,7 +249,8 @@ export function printFancyProgress(
       }
       progress = chalk[color](blocks) + chalk.gray('░'.repeat(remaining));
       break;
-    case 'wave':
+    }
+    case 'wave': {
       const waveChars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
       let wave = '';
       for (let i = 0; i < width; i++) {
@@ -260,10 +262,12 @@ export function printFancyProgress(
       }
       progress = chalk[color](wave);
       break;
-    case 'dots':
+    }
+    case 'dots': {
       const dots = '●'.repeat(completed) + '○'.repeat(remaining);
       progress = chalk[color](dots);
       break;
+    }
   }
 
   let output = `  `;
@@ -330,7 +334,7 @@ export function printFancyList(items: FancyListItem[]): void {
   items.forEach((item, index) => {
     let icon = item.icon || '•';
     let titleColor = 'white';
-    let descColor = 'gray';
+    const descColor = 'gray';
 
     switch (item.status) {
       case 'done':
@@ -356,8 +360,8 @@ export function printFancyList(items: FancyListItem[]): void {
     }
 
     // 安全地访问 chalk 颜色
-    const boldTitleFn = (chalk as any).bold[titleColor] as (text: string) => string;
-    const descFn = (chalk as any)[descColor] as (text: string) => string;
+    const boldTitleFn = chalk.bold[titleColor as keyof typeof chalk] as (text: string) => string;
+    const descFn = chalk[descColor as keyof typeof chalk] as (text: string) => string;
 
     console.log(`  ${icon} ${boldTitleFn(item.title)}`);
 

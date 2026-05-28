@@ -32,7 +32,7 @@ export type { BackupEntry } from './backup.js';
 // Convenience Functions
 // ============================================================
 
-import type { SyncConfig, SyncResult, SyncData } from './types.js';
+import type { SyncConfig, SyncResult } from './types.js';
 import { DEFAULT_SYNC_CONFIG } from './types.js';
 import { syncManager } from './sync-manager.js';
 import { backupManager } from './backup.js';

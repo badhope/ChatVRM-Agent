@@ -1,17 +1,15 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import inquirer from 'inquirer';
 import { configManager } from '../config/manager.js';
 import { PROVIDER_INFO, PROVIDER_TYPE_LIST, type ProviderType } from '../types.js';
 import {
   printHeader,
   printSection,
   printSuccess,
-  printError,
   printInfo,
   printWarning,
 } from '../ui/logo.js';
-import { printTable, printKeyValue } from '../ui/display.js';
+import { printTable } from '../ui/display.js';
 import { showMainMenu } from '../ui/menu.js';
 import { aiSuggestCommand } from './ai/ai-suggest.js';
 import { aiModelsCommand } from './ai/ai-models.js';

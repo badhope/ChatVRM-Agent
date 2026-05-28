@@ -60,7 +60,6 @@ export class CompressionService extends BaseService {
     }
 
     const toCompress = messages.slice(0, -keepRecent);
-    const toKeep = messages.slice(-keepRecent);
 
     // 构建压缩提示词
     const compressionPrompt = `请简洁地总结以下对话历史的关键信息，保留：

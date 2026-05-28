@@ -54,23 +54,12 @@ export function printTable(options: TableOptions): void {
     console.log(chalk.gray(`  ${'\u2500'.repeat(title.length * 2)}\n`));
   }
 
-  // 自动计算列宽：取每列中最大宽度
-  const colWidths = head.map((_, colIndex) => {
-    let maxLen = stripAnsi(head[colIndex]).length;
-    for (const row of rows) {
-      const cellLen = stripAnsi(row[colIndex] || '').length;
-      if (cellLen > maxLen) maxLen = cellLen;
-    }
-    return maxLen + 4; // 额外留 4 字符内边距
-  });
-
   // 构建 cli-table3 配置
   const tableStyle: Record<string, unknown> = {
     head: style?.head || ['cyan'],
     border: style?.border || ['gray'],
   };
 
-  // @ts-ignore - cli-table3 类型定义不完整
   const table = new Table({
     head,
     style: tableStyle,

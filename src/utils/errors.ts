@@ -3,7 +3,7 @@ export class PersonalAssistantError extends Error {
     message: string,
     public readonly code: string,
     public readonly statusCode: number = 500,
-    public readonly details?: Record<string, any>
+    public readonly details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'PersonalAssistantError';
@@ -11,7 +11,7 @@ export class PersonalAssistantError extends Error {
 }
 
 export class ValidationError extends PersonalAssistantError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'VALIDATION_ERROR', 400, details);
   }
 }
@@ -29,7 +29,7 @@ export class AuthenticationError extends PersonalAssistantError {
 }
 
 export class NetworkError extends PersonalAssistantError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'NETWORK_ERROR', 0, details);
   }
 }

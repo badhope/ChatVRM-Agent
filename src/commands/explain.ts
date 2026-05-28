@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import fs from 'fs/promises';
-import path from 'path';
 import { configManager } from '../config/manager.js';
-import { printSuccess, printError, printInfo } from '../ui/logo.js';
+import { printError, printInfo } from '../ui/logo.js';
 import { callLLM } from '../agent/llm-caller.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 

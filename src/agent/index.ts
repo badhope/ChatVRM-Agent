@@ -206,5 +206,32 @@ export { JsonDecisionRepository } from './infrastructure/repositories/decision.r
 export { JsonExperienceRepository } from './infrastructure/repositories/experience.repository.js';
 export { emotionalMachine } from './infrastructure/state-machines/emotional.machine.js';
 
+// ==================== 双 Agent 协作系统 ====================
+export { PlanningAgent } from './infrastructure/common/planning-agent.js';
+export { ExecutionAgent } from './infrastructure/common/execution-agent.js';
+export { CollaborationManager, type CollaborationResult } from './infrastructure/common/collaboration-manager.js';
+export type {
+  AgentMessage,
+  AgentMessageEnvelope,
+  SubTask,
+  TaskDecompositionRequest,
+  TaskDecompositionResponse,
+  ExecuteTaskRequest,
+  ExecuteTaskResponse,
+  TaskStatusUpdate,
+  TaskCompleted,
+  TaskFailed,
+  AgentState as CollaborationAgentState,
+  CollaborationContext,
+} from './infrastructure/common/agent-protocol.js';
+
+// ==================== 任务复杂度评估 ====================
+export {
+  assessTaskComplexity,
+  shouldUseDualAgent,
+  type ComplexityLevel,
+  type ComplexityAssessment,
+} from './infrastructure/common/task-complexity.js';
+
 // ==================== Version ====================
 export const AGENT_MODULE_VERSION = '3.0.0';

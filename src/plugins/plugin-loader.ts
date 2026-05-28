@@ -10,7 +10,6 @@ import * as path from 'path';
 import * as os from 'os';
 import type { PluginManifest, Plugin, PluginContext, PluginState } from './types.js';
 import { eventBus } from './event-bus.js';
-import { pluginRegistry } from './registry.js';
 import { createLogger } from '../services/logger.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 

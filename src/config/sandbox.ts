@@ -35,7 +35,7 @@ export async function checkAndRequestPermission(
   await configManager.init();
 
   const sandbox = configManager.getSandboxConfig();
-  const perms = configManager.getSandboxPermissions();
+  configManager.getSandboxPermissions();
 
   const actionMap: Record<string, 'delete' | 'modify' | 'network' | 'exec'> = {
     delete: 'delete',

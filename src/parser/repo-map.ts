@@ -1,31 +1,19 @@
 /**
- * Repo Map Generator
+ * Repo Map Generator (简化版)
  *
- * Implements Aider's repo map algorithm: generates a compact representation
- * of a codebase's structure by ranking symbols by importance and fitting
- * them within a token budget.
- *
- * Algorithm:
- * 1. Collect all source files (recursively, respecting include/exclude patterns)
- * 2. Parse all files using parseFiles()
- * 3. Build dependency graph
- * 4. Extract all symbols
- * 5. Rank symbols by importance
- * 6. Generate map within token budget (most important symbols first)
- * 7. Return formatted repo map
+ * 简化版：移除对 tree-sitter 的依赖，使用简单的文件索引
  */
 
 import * as path from 'path';
-import { parseFiles } from './engine.js';
+import * as fs from 'fs';
+import { parseFile } from './engine.js';
 import { extractSymbols } from './symbols.js';
 import { buildDependencyGraph } from './dependency-graph.js';
 import { rankSymbols } from './importance-ranker.js';
 import { createTokenBudget, estimateTokens, formatFileMap } from './token-budget.js';
-import { globMatch, matchesAnyGlob } from '../utils/glob.js';
 import {
   collectSourceFiles,
   DEFAULT_EXCLUDE_PATTERNS,
-  DEFAULT_SOURCE_EXTENSIONS,
 } from '../utils/file-system.js';
 
 /** Options for repo map generation */
@@ -85,7 +73,7 @@ function detectEntryPoints(filePaths: string[]): string[] {
 }
 
 /**
- * Generate a repo map for the given project directory.
+ * Generate a repo map for the given project directory (简化版).
  *
  * @param rootDir - Absolute path to the project root
  * @param options - Generation options
@@ -112,13 +100,7 @@ export async function generateRepoMap(
     };
   }
 
-  // Step 2: Parse all files
-  const parseResults = await parseFiles(filePaths);
-
-  // Step 3: Build dependency graph
-  const graph = buildDependencyGraph(filePaths);
-
-  // Step 4: Extract all symbols (only top-level meaningful ones for repo map)
+  // Step 2: Parse all files (简化版)
   const allSymbols = new Map<string, import('./symbols.js').CodeSymbol[]>();
   const allSources = new Map<string, string>();
 
@@ -134,24 +116,34 @@ export async function generateRepoMap(
     'namespace',
   ]);
 
-  for (const [filePath, result] of parseResults) {
-    const raw = extractSymbols(result);
-    // 过滤：只保留有意义的符号类型，排除局部变量、import、export 声明
-    const filtered = raw.filter((s: import('./symbols.js').CodeSymbol) => {
-      if (!REPO_MAP_KINDS.has(s.kind)) return false;
-      // 排除匿名函数（箭头函数没有名称时 name 为空）
-      if (!s.name || s.name.startsWith('(')) return false;
-      return true;
-    });
-    allSymbols.set(filePath, filtered);
-    allSources.set(filePath, result.source);
+  for (const filePath of filePaths) {
+    try {
+      const source = fs.readFileSync(filePath, 'utf-8');
+      const result = await parseFile(filePath, source);
+      const raw = extractSymbols(result, filePath);
+      // 过滤：只保留有意义的符号类型，排除局部变量、import、export 声明
+      const filtered = raw.filter((s: import('./symbols.js').CodeSymbol) => {
+        if (!REPO_MAP_KINDS.has(s.kind)) return false;
+        // 排除匿名函数（箭头函数没有名称时 name 为空）
+        if (!s.name || s.name.startsWith('(')) return false;
+        return true;
+      });
+      allSymbols.set(filePath, filtered);
+      allSources.set(filePath, source);
+    } catch {
+      allSymbols.set(filePath, []);
+      allSources.set(filePath, '');
+    }
   }
 
-  // Step 5: Detect entry points and rank symbols
+  // Step 3: Build dependency graph
+  const graph = buildDependencyGraph(filePaths);
+
+  // Step 4: Detect entry points and rank symbols
   const entryPoints = options?.entryPoints ?? detectEntryPoints(filePaths);
   const ranked = rankSymbols(undefined, graph, entryPoints, undefined, {});
 
-  // Step 6: Generate map within token budget
+  // Step 5: Generate map within token budget
   const budget = createTokenBudget(maxTokens);
   const mapParts: string[] = [];
   const includedFiles = new Set<string>();

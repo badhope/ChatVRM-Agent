@@ -3,9 +3,9 @@
  * 协调领域服务和仓储
  */
 
-import { ExperienceService } from '../../domain/services/experience.service';
-import type { ExperienceRepository } from '../../domain/repositories/experience.repository';
-import type { Experience, EmotionalTone } from '../../domain/models/experience.model';
+import { ExperienceService } from '../../domain/services/experience.service.js';
+import type { ExperienceRepository } from '../../domain/repositories/experience.repository.js';
+import type { Experience, EmotionalTone } from '../../domain/models/experience.model.js';
 
 export class ExperienceApplicationService {
   constructor(

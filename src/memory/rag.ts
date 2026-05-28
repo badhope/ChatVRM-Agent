@@ -363,7 +363,7 @@ export class RAGModule {
    * @param limit - 最大返回数
    * @returns 搜索结果列表
    */
-  private searchWithMiniSearch(query: string, limit: number): SearchResult[] {
+  protected searchWithMiniSearch(query: string, limit: number): SearchResult[] {
     try {
       const results = this.miniSearch.search(query, { prefix: true, fuzzy: 0.2 });
       return results.slice(0, limit).map((result) => {
@@ -388,7 +388,7 @@ export class RAGModule {
    * @param limit - 最大返回数
    * @returns 搜索结果列表
    */
-  private async searchWithEmbedding(query: string, limit: number): Promise<SearchResult[]> {
+  protected async searchWithEmbedding(query: string, limit: number): Promise<SearchResult[]> {
     const queryEmbedding = await this.embed(query);
     if (!queryEmbedding) return [];
 
@@ -625,3 +625,419 @@ export class RAGModule {
 
 /** RAG 模块全局单例 */
 export const ragModule = new RAGModule();
+
+// ============================================================================
+// RAG增强功能
+// ============================================================================
+
+/**
+ * 检索质量评估结果
+ */
+export interface QualityAssessment {
+  relevance: number;
+  coverage: number;
+  diversity: number;
+  overall: number;
+  issues: string[];
+  suggestions: string[];
+}
+
+/**
+ * 检索策略
+ */
+export type RetrievalStrategy = 'keyword' | 'semantic' | 'hybrid' | 'adaptive';
+
+/**
+ * RAG检索配置
+ */
+export interface RAGRetrievalConfig {
+  strategy: RetrievalStrategy;
+  topK: number;
+  minScore: number;
+  enableReranking: boolean;
+  enableQualityAssessment: boolean;
+}
+
+/**
+ * RAG增强模块
+ */
+export class RAGModuleEnhanced extends RAGModule {
+  private retrievalHistory: Array<{
+    query: string;
+    results: SearchResult[];
+    timestamp: number;
+    quality?: QualityAssessment;
+  }> = [];
+  private readonly MAX_HISTORY = 100;
+  private config: RAGRetrievalConfig = {
+    strategy: 'hybrid',
+    topK: 5,
+    minScore: 0.3,
+    enableReranking: true,
+    enableQualityAssessment: true,
+  };
+
+  /**
+   * 设置检索配置
+   */
+  setConfig(config: Partial<RAGRetrievalConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * 获取当前配置
+   */
+  getConfig(): RAGRetrievalConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * 增强检索：支持多种策略和质量评估
+   */
+  async enhancedSearch(
+    query: string,
+    topK?: number,
+    strategy?: RetrievalStrategy
+  ): Promise<{
+    results: SearchResult[];
+    quality: QualityAssessment;
+    usedStrategy: RetrievalStrategy;
+  }> {
+    const k = topK || this.config.topK;
+    const strat = strategy || this.config.strategy;
+
+    let results: SearchResult[];
+
+    // 根据策略选择检索方法
+    switch (strat) {
+      case 'keyword':
+        results = await this.keywordSearch(query, k * 3);
+        break;
+      case 'semantic':
+        results = await this.semanticSearch(query, k * 3);
+        break;
+      case 'adaptive':
+        results = await this.adaptiveSearch(query, k * 3);
+        break;
+      case 'hybrid':
+      default:
+        results = await this.search(query, k * 3);
+        break;
+    }
+
+    // 过滤低分结果
+    results = results.filter(r => r.score >= this.config.minScore);
+
+    // 重排序
+    if (this.config.enableReranking) {
+      results = this.rerank(query, results);
+    }
+
+    // 截取topK
+    results = results.slice(0, k);
+
+    // 质量评估
+    let quality: QualityAssessment;
+    if (this.config.enableQualityAssessment) {
+      quality = this.assessQuality(query, results);
+    } else {
+      quality = {
+        relevance: 0,
+        coverage: 0,
+        diversity: 0,
+        overall: 0,
+        issues: [],
+        suggestions: [],
+      };
+    }
+
+    // 记录历史
+    this.recordHistory(query, results, quality);
+
+    return { results, quality, usedStrategy: strat };
+  }
+
+  /**
+   * 关键词检索
+   */
+  private async keywordSearch(query: string, limit: number): Promise<SearchResult[]> {
+    return this.searchWithMiniSearch(query, limit);
+  }
+
+  /**
+   * 语义检索
+   */
+  private async semanticSearch(query: string, limit: number): Promise<SearchResult[]> {
+    return this.searchWithEmbedding(query, limit);
+  }
+
+  /**
+   * 自适应检索：根据查询特征自动选择策略
+   */
+  private async adaptiveSearch(query: string, limit: number): Promise<SearchResult[]> {
+    const queryLower = query.toLowerCase();
+
+    // 代码标识符特征：驼峰、下划线、路径
+    const hasCodePatterns = /[A-Z]|[_/\\]|\\.(ts|js|py|go|rs)$/.test(query);
+    if (hasCodePatterns) {
+      // 代码查询优先关键词
+      return this.keywordSearch(query, limit);
+    }
+
+    // 技术术语特征
+    const techTerms = ['react', 'vue', 'angular', 'node', 'python', 'java', 'api', 'http'];
+    const hasTechTerms = techTerms.some(term => queryLower.includes(term));
+    if (hasTechTerms) {
+      // 技术查询使用混合策略
+      return this.search(query, limit);
+    }
+
+    // 自然语言查询优先语义
+    const hasNaturalLanguage = /^[a-z]+(\\s[a-z]+)+$/i.test(query);
+    if (hasNaturalLanguage) {
+      return this.semanticSearch(query, limit);
+    }
+
+    // 默认使用混合策略
+    return this.search(query, limit);
+  }
+
+  /**
+   * 结果重排序
+   */
+  private rerank(query: string, results: SearchResult[]): SearchResult[] {
+    const queryTokens = query.toLowerCase().split(/\\s+/);
+    const reranked = results.map(result => {
+      let positionScore = 1 - results.indexOf(result) / results.length;
+      let termMatchScore = 0;
+
+      for (const token of queryTokens) {
+        if (result.text.toLowerCase().includes(token)) {
+          termMatchScore += 1;
+        }
+      }
+      termMatchScore = termMatchScore / Math.max(queryTokens.length, 1);
+
+      // 综合分数：原始分数 + 位置分数 + 词匹配分数
+      const combinedScore = result.score * 0.6 + positionScore * 0.2 + termMatchScore * 0.2;
+
+      return { ...result, score: combinedScore };
+    });
+
+    return reranked.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * 检索质量评估
+   */
+  private assessQuality(query: string, results: SearchResult[]): QualityAssessment {
+    const issues: string[] = [];
+    const suggestions: string[] = [];
+
+    // 相关性评估
+    const queryTokens = new Set(query.toLowerCase().split(/\\s+/));
+    let relevanceSum = 0;
+    for (const result of results) {
+      const textTokens = new Set(result.text.toLowerCase().split(/\\s+/));
+      const intersection = [...queryTokens].filter(t => textTokens.has(t));
+      const relevance = intersection.length / Math.max(queryTokens.size, 1);
+      relevanceSum += relevance;
+    }
+    const relevance = results.length > 0 ? relevanceSum / results.length : 0;
+
+    // 覆盖率评估
+    const coveredTokens = new Set<string>();
+    for (const result of results) {
+      const textTokens = result.text.toLowerCase().split(/\\s+/);
+      for (const token of textTokens) {
+        if (token.length > 3) {
+          coveredTokens.add(token);
+        }
+      }
+    }
+    const coverage = Math.min(1, coveredTokens.size / 50);
+
+    // 多样性评估
+    const uniqueTerms = new Set<string>();
+    for (const result of results) {
+      const terms = result.text.toLowerCase().split(/[\\s,.!?;:'"()]+/);
+      for (const term of terms) {
+        if (term.length > 5) {
+          uniqueTerms.add(term);
+        }
+      }
+    }
+    const avgTermsPerResult = uniqueTerms.size / Math.max(results.length, 1);
+    const diversity = Math.min(1, avgTermsPerResult / 20);
+
+    // 综合评分
+    const overall = relevance * 0.4 + coverage * 0.3 + diversity * 0.3;
+
+    // 问题识别
+    if (relevance < 0.3) {
+      issues.push('检索结果与查询相关性较低');
+      suggestions.push('考虑使用更精确的查询词或调整检索策略');
+    }
+
+    if (results.length < 3) {
+      issues.push('检索结果数量不足');
+      suggestions.push('扩展查询范围或降低最小分数阈值');
+    }
+
+    if (diversity < 0.3) {
+      issues.push('检索结果多样性不足');
+      suggestions.push('尝试不同的检索策略或使用混合检索');
+    }
+
+    if (overall < 0.5) {
+      issues.push('整体检索质量偏低');
+      suggestions.push('建议优化查询词或调整RAG配置');
+    }
+
+    return {
+      relevance: Math.round(relevance * 100) / 100,
+      coverage: Math.round(coverage * 100) / 100,
+      diversity: Math.round(diversity * 100) / 100,
+      overall: Math.round(overall * 100) / 100,
+      issues,
+      suggestions,
+    };
+  }
+
+  /**
+   * 记录检索历史
+   */
+  private recordHistory(query: string, results: SearchResult[], quality?: QualityAssessment): void {
+    this.retrievalHistory.push({
+      query,
+      results,
+      timestamp: Date.now(),
+      quality,
+    });
+
+    if (this.retrievalHistory.length > this.MAX_HISTORY) {
+      this.retrievalHistory.shift();
+    }
+  }
+
+  /**
+   * 获取检索历史
+   */
+  getRetrievalHistory(limit = 10): typeof this.retrievalHistory {
+    return this.retrievalHistory.slice(-limit);
+  }
+
+  /**
+   * 获取检索统计
+   */
+  getRetrievalStats(): {
+    totalQueries: number;
+    averageQuality: number;
+    strategyUsage: Record<string, number>;
+  } {
+    const totalQueries = this.retrievalHistory.length;
+    const avgQuality = totalQueries > 0
+      ? this.retrievalHistory.reduce((sum, h) => sum + (h.quality?.overall || 0), 0) / totalQueries
+      : 0;
+
+    const strategyUsage: Record<string, number> = {};
+    for (const h of this.retrievalHistory) {
+      // 简化统计
+    }
+
+    return {
+      totalQueries,
+      averageQuality: Math.round(avgQuality * 100) / 100,
+      strategyUsage,
+    };
+  }
+
+  /**
+   * 优化检索参数
+   * 基于历史检索结果自动调整参数
+   */
+  optimizeParameters(): void {
+    if (this.retrievalHistory.length < 10) {
+      return;
+    }
+
+    const recentHistory = this.retrievalHistory.slice(-20);
+    const avgQuality = recentHistory.reduce((sum, h) => sum + (h.quality?.overall || 0), 0) / recentHistory.length;
+
+    // 如果平均质量较低，尝试调整参数
+    if (avgQuality < 0.5) {
+      // 降低最小分数阈值
+      this.config.minScore = Math.max(0.1, this.config.minScore - 0.05);
+      // 增加topK
+      this.config.topK = Math.min(20, this.config.topK + 2);
+    } else if (avgQuality > 0.8) {
+      // 如果质量较高，可以适当提高阈值以减少无关结果
+      this.config.minScore = Math.min(0.5, this.config.minScore + 0.02);
+    }
+  }
+
+  /**
+   * 多源信息融合
+   * 从多个来源检索并融合结果
+   */
+  async multiSourceSearch(
+    query: string,
+    sources: Array<{
+      search: (q: string) => Promise<SearchResult[]>;
+      weight: number;
+    }>,
+    topK = 5
+  ): Promise<SearchResult[]> {
+    const allResults: Array<{ result: SearchResult; sourceWeight: number }> = [];
+
+    for (const source of sources) {
+      try {
+        const results = await source.search(query);
+        for (const result of results) {
+          allResults.push({
+            result,
+            sourceWeight: source.weight,
+          });
+        }
+      } catch (error) {
+        console.error('Multi-source search error:', error);
+      }
+    }
+
+    // 综合评分：原始分数 * 来源权重
+    const scored = allResults.map(item => ({
+      ...item.result,
+      score: item.result.score * item.sourceWeight,
+    }));
+
+    // 去重并合并
+    const merged = this.mergeResults(scored);
+
+    // 排序并返回
+    return merged.sort((a, b) => b.score - a.score).slice(0, topK);
+  }
+
+  /**
+   * 合并重复结果
+   */
+  private mergeResults(results: SearchResult[]): SearchResult[] {
+    const merged = new Map<string, SearchResult>();
+
+    for (const result of results) {
+      const existing = merged.get(result.id);
+      if (existing) {
+        // 保留最高分
+        if (result.score > existing.score) {
+          merged.set(result.id, result);
+        }
+      } else {
+        merged.set(result.id, result);
+      }
+    }
+
+    return Array.from(merged.values());
+  }
+}
+
+/** 增强版RAG模块全局单例 */
+export const ragModuleEnhanced = new RAGModuleEnhanced();

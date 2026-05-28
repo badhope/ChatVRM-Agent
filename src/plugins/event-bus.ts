@@ -2,7 +2,7 @@
 // Plugin System - Event Bus (backed by eventemitter3)
 // ============================================================
 
-import EventEmitter3 from 'eventemitter3';
+import { EventEmitter as EventEmitter3 } from 'eventemitter3';
 import { createLogger } from '../services/logger.js';
 import type { PluginHook, HookHandler } from './types.js';
 import { getErrorMessage } from '../utils/error-handling.js';

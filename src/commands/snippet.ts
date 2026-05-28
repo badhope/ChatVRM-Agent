@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import inquirer from 'inquirer';
-import { printSuccess, printError, printInfo, printWarning } from '../ui/logo.js';
+import { printSuccess, printError, printInfo } from '../ui/logo.js';
 import { getErrorMessage } from '../utils/error-handling.js';
 
 const SNIPPETS_DIR = path.join(os.homedir(), '.personal-assistant', 'snippets');

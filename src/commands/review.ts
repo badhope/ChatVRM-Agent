@@ -6,8 +6,6 @@ import {
   printSection,
   printSuccess,
   printError,
-  printInfo,
-  printWarning,
   createSpinner,
 } from '../ui/logo.js';
 

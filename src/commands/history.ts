@@ -87,7 +87,7 @@ historyCommand
 
     console.log(chalk.bold('  对话内容:\n'));
 
-    session.messages.forEach((msg, index) => {
+    session.messages.forEach((msg, _index) => {
       const roleColor =
         msg.role === 'user' ? chalk.cyan : msg.role === 'assistant' ? chalk.green : chalk.gray;
       const roleName = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? 'AI' : '系统';

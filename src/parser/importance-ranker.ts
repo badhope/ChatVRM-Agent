@@ -8,7 +8,6 @@
 import * as path from 'path';
 import type {
   SourceFile,
-  Symbol,
   FunctionDeclaration,
   ClassDeclaration,
   InterfaceDeclaration,

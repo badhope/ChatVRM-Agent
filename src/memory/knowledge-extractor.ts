@@ -50,16 +50,45 @@ const IDENTITY_PATTERNS = [
   /我是\s*([^\s,，。.!！?？]+)/g,
   /我叫\s*([^\s,，。.!！?？]+)/g,
   /名字是\s*([^\s,，。.!！?？]+)/g,
+  /(?:My name|I am|I'm)\s*([A-Za-z][a-zA-Z\s]+)/gi,
 ];
 
 /** 基本使用关系模式 */
-const USAGE_PATTERNS = [/(?:使用|用了|在用|正在用|采用)\s*([^\s,，。.!！?？]+)/g];
+const USAGE_PATTERNS = [
+  /(?:使用|用了|在用|正在用|采用)\s*([^\s,，。.!！?？]+)/g,
+  /(?:use|using|used)\s*([A-Za-z][a-zA-Z0-9]+)/gi,
+];
 
 /** 基本偏好关系模式 */
-const PREFERENCE_PATTERNS = [/(?:喜欢|偏好|常用|最爱)\s*([^\s,，。.!！?？]+)/g];
+const PREFERENCE_PATTERNS = [
+  /(?:喜欢|偏好|常用|最爱)\s*([^\s,，。.!！?？]+)/g,
+  /(?:like|prefer|favorite)\s*([A-Za-z][a-zA-Z0-9]+)/gi,
+];
 
 /** 基本项目提及模式 */
-const PROJECT_PATTERNS = [/(?:项目叫|项目名为|项目名是)\s*([^\s,，。.!！?？]+)/g];
+const PROJECT_PATTERNS = [
+  /(?:项目叫|项目名为|项目名是)\s*([^\s,，。.!！?？]+)/g,
+  /(?:project|project name)\s*(?:is|called|:)\s*([A-Za-z][a-zA-Z0-9_-]+)/gi,
+];
+
+/** 技能相关模式 */
+const SKILL_PATTERNS = [
+  /(?:擅长|精通|熟悉|了解)\s*([^\s,，。.!！?]+)/g,
+  /(?:skilled|expert|proficient|familiar)\s*(?:in|with)\s*([A-Za-z][a-zA-Z0-9\s]+)/gi,
+  /(?:years?|yrs?)\s*(?:of\s*)?(?:experience|exp)\s*(?:in|with)\s*([A-Za-z][a-zA-Z0-9\s]+)/gi,
+];
+
+/** 知识相关模式 */
+const KNOWLEDGE_PATTERNS = [
+  /(?:知道|了解|认识)\s*([^\s,，。.!！?？]+)/g,
+  /(?:know|understand|know about)\s*([A-Za-z][a-zA-Z0-9\s]+)/gi,
+];
+
+/** 技术栈模式 */
+const TECH_STACK_PATTERNS = [
+  /(?:技术栈|tech stack)\s*(?:是|:)\s*([^\s,，。.!！?]+)/g,
+  /(?:技术栈|tech stack)\s*(?:包括|包含)\s*([^\s,，。.!！?]+)/g,
+];
 
 /**
  * 根据名称推断实体类型（轻量版）
@@ -214,6 +243,124 @@ export class KnowledgeExtractor {
       }
     }
 
+    // 提取技能信息
+    for (const pattern of SKILL_PATTERNS) {
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) {
+        const skill = match[1].trim();
+        if (skill && currentUserLabel) {
+          addEntity('skill', skill);
+          addRelation(currentUserLabel, 'knows', skill, 0.7);
+        }
+      }
+    }
+
+    // 提取知识信息
+    for (const pattern of KNOWLEDGE_PATTERNS) {
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) {
+        const knowledge = match[1].trim();
+        if (knowledge && currentUserLabel) {
+          const type = inferEntityType(knowledge);
+          addEntity(type, knowledge);
+          addRelation(currentUserLabel, 'knows', knowledge, 0.5);
+        }
+      }
+    }
+
+    // 提取技术栈信息
+    for (const pattern of TECH_STACK_PATTERNS) {
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) {
+        const techStack = match[1].trim();
+        if (techStack && currentUserLabel) {
+          // 技术栈通常是多个技术的组合，用逗号或"和"分隔
+          const techs = techStack.split(/[,，、和and]+/).map(t => t.trim()).filter(Boolean);
+          for (const tech of techs) {
+            addEntity('tech', tech);
+            addRelation(currentUserLabel, 'uses', tech, 0.8);
+          }
+        }
+      }
+    }
+
+    // 提取代码中的技术术语
+    const codeBlocks = text.match(/```[\s\S]*?```/g) || [];
+    for (const block of codeBlocks) {
+      // 提取import语句中的模块名
+      const importMatches = block.match(/import\s+.*?from\s+['"]([^'"]+)['"]/g) || [];
+      for (const match of importMatches) {
+        const moduleMatch = match.match(/['"]([^'"]+)['"]/);
+        if (moduleMatch && currentUserLabel) {
+          const module = moduleMatch[1];
+          if (!module.startsWith('.') && !module.startsWith('@')) {
+            addEntity('tech', module);
+            addRelation(currentUserLabel, 'uses', module, 0.6);
+          }
+        }
+      }
+
+      // 提取函数调用中的技术关键词
+      const techKeywords = ['React', 'Vue', 'Angular', 'Node', 'Express', 'Django', 'Flask', 'Spring', 'Laravel', 'Rails'];
+      for (const keyword of techKeywords) {
+        if (block.includes(keyword) && currentUserLabel) {
+          addEntity('tech', keyword);
+          addRelation(currentUserLabel, 'uses', keyword, 0.5);
+        }
+      }
+    }
+
+    // 智能推断：根据上下文推断实体关系
+    this.inferRelationships(entities, relationships, currentUserLabel);
+
     return { entities, relationships };
+  }
+
+  /**
+   * 智能推断关系
+   * 根据已有实体和上下文自动推断额外的隐含关系
+   */
+  private inferRelationships(
+    entities: ExtractedEntity[],
+    relationships: ExtractedRelation[],
+    userLabel?: string
+  ): void {
+    const techEntities = entities.filter(e => e.type === 'tech');
+    const projectEntities = entities.filter(e => e.type === 'project');
+    const skillEntities = entities.filter(e => e.type === 'skill');
+
+    // 如果有项目且有技术，推断项目使用技术
+    for (const project of projectEntities) {
+      for (const tech of techEntities) {
+        const exists = relationships.some(
+          r => r.fromLabel === project.label && r.toLabel === tech.label && r.type === 'uses'
+        );
+        if (!exists) {
+          relationships.push({
+            fromLabel: project.label,
+            toLabel: tech.label,
+            type: 'uses',
+            weight: 0.6,
+          });
+        }
+      }
+    }
+
+    // 如果有技能，推断用户掌握技能
+    if (userLabel) {
+      for (const skill of skillEntities) {
+        const exists = relationships.some(
+          r => r.fromLabel === userLabel && r.toLabel === skill.label && r.type === 'knows'
+        );
+        if (!exists) {
+          relationships.push({
+            fromLabel: userLabel,
+            toLabel: skill.label,
+            type: 'knows',
+            weight: 0.5,
+          });
+        }
+      }
+    }
   }
 }

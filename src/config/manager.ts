@@ -211,7 +211,7 @@ export class ConfigManager {
 
   checkSandboxPermission(
     action: 'delete' | 'modify' | 'network' | 'exec',
-    path?: string
+    _path?: string
   ): {
     allowed: boolean;
     requiresConfirmation: boolean;

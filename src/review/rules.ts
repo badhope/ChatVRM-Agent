@@ -204,7 +204,7 @@ export class ReviewRulesEngine {
       line?: number;
       column?: number;
     },
-    filePath: string
+    _filePath: string
   ): ReviewIssue {
     const ruleId = message.ruleId || 'unknown';
     const severity = SEVERITY_MAP[message.severity] || 'info';
@@ -224,7 +224,7 @@ export class ReviewRulesEngine {
   /**
    * 获取规则建议
    */
-  private getSuggestion(ruleId: string, message: string): string | undefined {
+  private getSuggestion(ruleId: string, _message: string): string | undefined {
     const suggestions: Record<string, string> = {
       'no-eval': '避免使用 eval()，考虑使用 JSON.parse 或其他安全替代方案',
       'no-implied-eval': '避免使用隐式 eval，如 setTimeout 传入字符串',

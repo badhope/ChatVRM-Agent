@@ -78,7 +78,7 @@ export class ToolLibrary {
         const toolDefPath = path.join(MCP_DIR, entry.name, 'tool.json');
 
         try {
-          const stats = await fs.stat(toolPath);
+          await fs.stat(toolPath);
           let toolDef: ToolDefinition | null = null;
 
           if (await this.fileExists(toolDefPath)) {

@@ -3,6 +3,7 @@
 // ============================================================
 
 import pino from 'pino';
+const pinoFactory = pino as unknown as (opts?: pino.LoggerOptions, stream?: pino.DestinationStream) => pino.Logger;
 
 // ============================================================
 // Public types (backward-compatible)
@@ -55,7 +56,7 @@ const REDACT_PATHS = [
 function createPinoInstance(bindings: LogContext = {}): pino.Logger {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  return pino(
+  return pinoFactory(
     {
       level: process.env.DEBUG ? 'debug' : 'info',
       redact: {

@@ -3,9 +3,9 @@
  * 协调领域服务和仓储
  */
 
-import type { AgentIdentity, PersonalityTraits } from '../../domain/models/personality.model';
-import { PersonalityService } from '../../domain/services/personality.service';
-import type { PersonalityRepository } from '../../domain/repositories/personality.repository';
+import type { AgentIdentity, PersonalityTraits } from '../../domain/models/personality.model.js';
+import { PersonalityService } from '../../domain/services/personality.service.js';
+import type { PersonalityRepository } from '../../domain/repositories/personality.repository.js';
 
 export class PersonalityApplicationService {
   constructor(
