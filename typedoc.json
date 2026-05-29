@@ -1,0 +1,33 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/monitoring/index.ts",
+    "src/browser/agent.ts",
+    "src/channels/index.ts",
+    "src/skills/index.ts",
+    "src/multi-agent/scheduler.ts",
+    "src/scheduler/index.ts",
+    "src/webhook/handler.ts",
+    "src/collaboration/manager.ts",
+    "src/vision/processor.ts",
+    "src/ide/index.ts"
+  ],
+  "out": "docs/api",
+  "theme": "default",
+  "name": "Personal-Assistant API Documentation",
+  "description": "API documentation for Personal-Assistant - Your personal AI assistant",
+  "version": true,
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "hideGenerator": true,
+  "readme": "none",
+  "navigationLinks": {
+    "GitHub": "https://github.com/badhope/Personal-Assistant",
+    "Documentation": "https://badhope.github.io/Personal-Assistant"
+  },
+  "categorizeByGroup": true,
+  "sort": [
+    "source-order"
+  ]
+}

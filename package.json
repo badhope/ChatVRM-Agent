@@ -21,6 +21,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
     "prepare": "husky install"
   },
   "lint-staged": {
@@ -66,17 +68,22 @@
     "js-tiktoken": "^1.0.21",
     "lowdb": "^7.0.1",
     "minisearch": "^7.2.0",
+    "node-cron": "^4.2.1",
     "opossum": "^9.0.0",
     "ora": "^8.2.0",
     "p-retry": "^8.0.0",
     "picocolors": "^1.0.0",
     "pino": "^8.17.0",
     "pino-pretty": "^10.3.0",
+    "playwright": "^1.60.0",
     "reflect-metadata": "^0.2.2",
     "simple-git": "^3.36.0",
     "ts-morph": "^28.0.0",
     "tsyringe": "^4.8.0",
     "uuid": "^14.0.0",
+    "vscode-languageserver": "^8.1.0",
+    "vscode-languageserver-protocol": "^3.17.5",
+    "vscode-languageserver-textdocument": "^1.0.12",
     "wrap-ansi": "^10.0.0",
     "xstate": "^5.31.1",
     "zod": "^3.25.76"
@@ -87,7 +94,7 @@
     "@types/glob": "^8.1.0",
     "@types/graphlib": "^2.1.12",
     "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.19.41",
     "@types/opossum": "^8.1.9",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
@@ -98,6 +105,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
+    "typedoc": "^0.28.19",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   }
