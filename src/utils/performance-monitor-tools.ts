@@ -1,5 +1,6 @@
 import type { ToolDefinition, ToolResult } from '../tools/registry.js';
 import { createLogger } from '../services/logger.js';
+import * as os from 'os';
 
 const logger = createLogger('PerformanceTools');
 
@@ -81,7 +82,7 @@ class PerformanceMonitor {
       },
       cpu: {
         usage: Math.round(process.cpuUsage().user / 1000000),
-        cores: require('os').cpus().length,
+        cores: os.cpus().length,
       },
       uptime: process.uptime(),
       timestamp: Date.now(),
@@ -129,7 +130,6 @@ export const systemMetricsTool: ToolDefinition = {
   execute: async (): Promise<ToolResult> => {
     try {
       const metrics = performanceMonitor.getMetrics();
-      const os = require('os');
 
       return {
         success: true,

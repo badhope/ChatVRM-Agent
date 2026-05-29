@@ -808,7 +808,7 @@ export class RAGModuleEnhanced extends RAGModule {
   private rerank(query: string, results: SearchResult[]): SearchResult[] {
     const queryTokens = query.toLowerCase().split(/\\s+/);
     const reranked = results.map(result => {
-      let positionScore = 1 - results.indexOf(result) / results.length;
+      const positionScore = 1 - results.indexOf(result) / results.length;
       let termMatchScore = 0;
 
       for (const token of queryTokens) {

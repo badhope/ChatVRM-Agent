@@ -1,5 +1,7 @@
 import { createLogger, Logger } from '../services/logger.js';
 import { EventEmitter } from 'eventemitter3';
+import * as os from 'os';
+import * as fs from 'fs';
 
 export interface MetricData {
   name: string;
@@ -189,7 +191,7 @@ export class PerformanceMonitor extends EventEmitter {
         usage: this.calculateCPUUsage(cpuUsage),
         userTime: cpuUsage.user,
         systemTime: cpuUsage.system,
-        cores: require('os').cpus().length
+        cores: os.cpus().length
       },
       memory: {
         heapUsed: memoryUsage.heapUsed,
@@ -542,7 +544,6 @@ export class PerformanceMonitor extends EventEmitter {
       exportedAt: new Date().toISOString()
     };
 
-    const fs = require('fs');
     fs.writeFileSync(filename, JSON.stringify(data, null, 2));
     this.logger.info({ filename, size: data.snapshots.length }, 'Metrics exported');
   }

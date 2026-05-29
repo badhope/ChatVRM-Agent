@@ -208,7 +208,8 @@ export class AgentServiceFactory implements IAgentServiceFactory {
    */
   createStateManager(taskId: string): IStateManager {
     logger.debug({ taskId }, 'Creating StateManager');
-    const { createStateMachine } = require('../state-machine.js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { createStateMachine } = require('../core/state-machine.js');
     return createStateMachine(taskId);
   }
 

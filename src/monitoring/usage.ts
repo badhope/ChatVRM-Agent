@@ -1,5 +1,6 @@
 import { createLogger, Logger } from '../services/logger.js';
 import { EventEmitter } from 'eventemitter3';
+import * as fs from 'fs';
 
 export interface UsageEvent {
   id: string;
@@ -464,7 +465,6 @@ export class UsageTracker extends EventEmitter {
     const json = JSON.stringify(data, null, 2);
 
     if (filename) {
-      const fs = require('fs');
       fs.writeFileSync(filename, json);
       this.logger.info({ filename, eventCount: this.events.length }, 'Usage data exported');
     }
