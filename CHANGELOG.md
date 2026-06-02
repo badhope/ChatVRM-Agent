@@ -5,6 +5,31 @@ All notable changes to **Personal-Assistant** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **GitHub project completeness** — full open-source hygiene
+  - 4 issue templates (bug / feature / docs / new_provider)
+  - Pull Request template
+  - `.github/CODEOWNERS` (per-area reviewers)
+  - `.github/dependabot.yml` (weekly npm + GitHub Actions updates)
+  - `.github/FUNDING.yml` (sponsorship links)
+  - `SECURITY.md` (private vulnerability disclosure, supported versions, security best practices)
+  - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1)
+  - `.editorconfig` (cross-editor formatting)
+- **8 runnable TypeScript examples** — `examples/01-basic-chat.ts` through `examples/08-server-api.ts`
+  - Plus `examples/README.md` documenting all 9 examples
+- **`docs/DEPLOYMENT.md`** — production deployment guide (nginx, Caddy, Docker, systemd, security checklist, backup/restore)
+- **`docs/API.md`** — full API reference (adapters, ports, pipeline, REST + SSE)
+- **README improvements**
+  - Top-of-file badge bar (license, Node, TS, React, Vite, Tailwind, CI)
+  - Table of contents
+  - New sections: i18n, Examples, Deployment, Contributing, Community, Acknowledgements
+  - Expanded project structure (sdk/, vscode/, examples/, docs/DEPLOYMENT.md, etc.)
+
+### Changed
+- `README_zh.md` — added "Acknowledgement" footer and updated project structure mirror
+
 ## [2.0.0] - 2026-06-02
 
 ### Added

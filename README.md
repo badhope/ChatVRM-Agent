@@ -4,7 +4,43 @@
 > 10 LLM providers, 7 real tools, 6-stage pipeline, full SSE streaming.
 > **Zero mocks, zero fallbacks, zero fake data** — every API call hits the real vendor endpoint.
 
-[🌐 Live Demo](http://localhost:3000) · [📖 中文文档](README_zh.md) · [📋 Changelog](CHANGELOG.md) · [🤝 Contributing](CONTRIBUTING.md) · [📄 License](LICENSE)
+<p align="left">
+  <a href="https://github.com/badhope/Personal-Assistant/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"></a>
+  <a href="https://nodejs.org"><img alt="Node ≥ 20" src="https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white"></a>
+  <a href="https://www.typescriptlang.org"><img alt="TypeScript 5.8" src="https://img.shields.io/badge/typescript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white"></a>
+  <a href="https://react.dev"><img alt="React 18" src="https://img.shields.io/badge/react-18-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
+  <a href="https://vitejs.dev"><img alt="Vite 5" src="https://img.shields.io/badge/vite-5-646CFF?style=flat-square&logo=vite&logoColor=white"></a>
+  <a href="https://tailwindcss.com"><img alt="Tailwind 3" src="https://img.shields.io/badge/tailwind-3-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white"></a>
+  <a href="https://expressjs.com"><img alt="Express 4" src="https://img.shields.io/badge/express-4-000000?style=flat-square&logo=express&logoColor=white"></a>
+  <a href="https://vitest.dev"><img alt="Vitest" src="https://img.shields.io/badge/vitest-tested-6E9F18?style=flat-square&logo=vitest&logoColor=white"></a>
+  <a href="https://github.com/badhope/Personal-Assistant/actions"><img alt="CI" src="https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square&logo=github-actions&logoColor=white"></a>
+  <a href="https://github.com/badhope/Personal-Assistant/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/badhope/Personal-Assistant?style=flat-square"></a>
+  <a href="https://github.com/badhope/Personal-assistant/issues"><img alt="Issues" src="https://img.shields.io/github/issues/badhope/Personal-Assistant?style=flat-square"></a>
+  <a href="https://github.com/badhope/Personal-Assistant/blob/main/SECURITY.md"><img alt="Security" src="https://img.shields.io/badge/security-policy-blueviolet?style=flat-square"></a>
+</p>
+
+[🌐 Live Demo](http://localhost:3000) · [📖 中文文档](README_zh.md) · [📋 Changelog](CHANGELOG.md) · [🤝 Contributing](CONTRIBUTING.md) · [🔒 Security](SECURITY.md) · [📄 License](LICENSE)
+
+---
+
+## 📑 Table of contents
+
+- [✨ Features](#-features)
+- [🚀 Quick Start](#-quick-start)
+- [🖥 Web UI — 9 pages](#-web-ui--9-pages)
+- [🔌 10 LLM providers](#-10-llm-providers)
+- [⌨️ CLI commands](#-cli-commands)
+- [🏗 Architecture](#-architecture)
+- [🛠 7 tools](#-7-tools)
+- [📂 Project structure](#-project-structure)
+- [🌍 i18n — EN / 中文](#-i18n--en--中文)
+- [💡 Examples](#-examples)
+- [🚀 Deployment](#-deployment)
+- [📦 API protocol](#-api-protocol)
+- [🛠 Development](#-development)
+- [🤝 Contributing](#-contributing)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [📜 License](#-license)
 
 ---
 
@@ -277,16 +313,88 @@ Personal-Assistant/
 │   │   └── styles/               # Tailwind + CSS variables
 │   └── dist/                     # Build output (served by /server)
 ├── .github/
-│   ├── workflows/ci-cd.yml       # CI/CD
-│   └── ISSUE_TEMPLATE/           # Issue templates
-├── docs/                         # Additional documentation
+│   ├── workflows/ci-cd.yml       # CI/CD (Node 20/22, frontend build)
+│   ├── ISSUE_TEMPLATE/           # bug / feature / docs / new_provider
+│   ├── PULL_REQUEST_TEMPLATE.md  # PR template
+│   ├── CODEOWNERS                # Code review owners
+│   ├── dependabot.yml            # Weekly dependency PRs
+│   └── FUNDING.yml               # Sponsorship links
+├── sdk/                          # Standalone npm SDK (@personal-assistant/sdk)
+├── vscode/                       # VS Code extension
+├── examples/                     # 9 runnable examples + README
+├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API
 ├── README.md                     # This file (English)
 ├── README_zh.md                  # Chinese version
-├── CHANGELOG.md                  # Changelog
-├── CONTRIBUTING.md               # Contributing guide
+├── CHANGELOG.md                  # Keep-a-Changelog format
+├── CONTRIBUTING.md               # How to contribute
+├── SECURITY.md                   # Security policy
+├── CODE_OF_CONDUCT.md            # Contributor Covenant 2.1
 ├── LICENSE                       # MIT License
+├── .editorconfig                 # Cross-editor config
+├── .prettierrc                   # Prettier config
+├── .npmignore                    # npm publish filter
+├── codecov.yml                   # Codecov config
+├── typedoc.json                  # API doc generation
 └── package.json                  # Root package
 ```
+
+---
+
+## 🌍 i18n — EN / 中文
+
+The Web UI ships with first-class internationalization. Click the
+globe icon in the header to switch between:
+
+- 🇺🇸 **English** (default, fallback)
+- 🇨🇳 **中文** (Simplified Chinese)
+
+The language preference is persisted to `localStorage` and survives page
+refreshes. Both languages cover ~190 keys across all 9 pages
+(navigation, dashboard, chat, agent, tools, memory, config, graph, settings).
+
+Translation files live in [`frontend/src/i18n/`](frontend/src/i18n/) and
+follow the standard i18next JSON format. Adding a new language is a
+3-step process:
+
+1. Create `frontend/src/i18n/<code>.json` (copy `en.json` as a starting point)
+2. Register it in [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) `SUPPORTED_LANGUAGES` + `resources`
+3. Add a tab to the language switcher dropdown in [`Layout.tsx`](frontend/src/components/Layout.tsx)
+
+---
+
+## 💡 Examples
+
+The [`examples/`](examples/) folder contains 9 self-contained, runnable
+TypeScript examples. Each is annotated with prerequisites and the exact
+`npx tsx` command to run it.
+
+| #   | File                            | What it shows                                                |
+| --- | ------------------------------- | ------------------------------------------------------------ |
+| 01  | `examples/01-basic-chat.ts`     | One-shot streaming chat with the default provider            |
+| 02  | `examples/02-multi-turn.ts`     | Interactive REPL using readline + growing `Message[]` array   |
+| 03  | `examples/03-pipeline-run.ts`   | Full 6-stage pipeline with real-time event streaming          |
+| 04  | `examples/04-tool-execution.ts` | Invoke all 7 tools directly                                   |
+| 05  | `examples/05-memory.ts`         | Add memories, full-text search, tag filter, stats            |
+| 06  | `examples/06-custom-provider.ts`| Wire a custom OpenAI-compatible endpoint                     |
+| 07  | `examples/07-sdk-quickstart.ts` | Plan-then-execute via the standalone SDK                     |
+| 08  | `examples/08-server-api.ts`     | Talk to the running server over REST + SSE                   |
+| —   | `examples/language-demo.ts`     | Multi-language UI demo                                       |
+
+See [`examples/README.md`](examples/README.md) for details.
+
+---
+
+## 🚀 Deployment
+
+Ready to ship to a real server? See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+for:
+
+- Recommended architecture (nginx / Caddy reverse proxy + TLS)
+- nginx + Caddy configuration snippets
+- Dockerfile + `docker-compose.yml`
+- systemd unit file with security hardening
+- Production security checklist
+- Backup & restore procedures
 
 ---
 
@@ -331,6 +439,44 @@ All calls go directly to vendors via `fetch` — no proxy, no mocks, no fake dat
 
 ---
 
+## 🤝 Contributing
+
+We welcome bug reports, feature requests, documentation fixes, and
+new LLM provider / tool adapters. See [`CONTRIBUTING.md`](CONTRIBUTING.md)
+for the development workflow, coding style, and PR process. Issues and
+PRs should follow the templates in
+[`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/) and
+[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+
+By participating, you agree to abide by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## 👥 Community
+
+- 💬 [GitHub Discussions](https://github.com/badhope/Personal-Assistant/discussions) — questions, ideas, show & tell
+- 🐛 [Issue tracker](https://github.com/badhope/Personal-Assistant/issues) — bug reports & feature requests
+- 🔒 [Security advisories](https://github.com/badhope/Personal-Assistant/security/advisories/new) — private vulnerability reports
+- 📖 [docs/](docs/) — ARCHITECTURE, SETUP, TROUBLESHOOTING, DEPLOYMENT, API
+- 🇨🇳 [README_zh.md](README_zh.md) — Chinese documentation
+
+## ⭐ Show your support
+
+If Personal-Assistant saved you time, **give it a star** ⭐ on GitHub.
+It helps others discover the project and motivates continued work.
+
+## 🙏 Acknowledgements
+
+- [Vitest](https://vitest.dev) — blazing-fast test runner
+- [MiniSearch](https://lucaong.github.io/minisearch/) — full-text search
+- [xstate](https://xstate.js.org) — state machines for the agent
+- [opossum](https://nodeshift.dev/opossum/) — circuit breaker
+- [i18next](https://www.i18next.com) — internationalization
+- [Tailwind CSS](https://tailwindcss.com) — styling
+- [shadcn](https://ui.shadcn.com) — UI inspiration
+- Every open-source contributor who filed an issue, fixed a typo, or shared feedback
+
+---
+
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). © 2026 Personal-Assistant Contributors.
