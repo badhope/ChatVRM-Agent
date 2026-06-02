@@ -74,7 +74,7 @@
     "eventemitter3": "^5.0.4",
     "express": "^4.21.1",
     "glob": "^11.0.0",
-    "graphology": "^0.25.4",
+    "graphology": "^0.26.0",
     "graphology-layout": "^0.6.1",
     "graphology-traversal": "^0.3.1",
     "graphology-utils": "^2.5.2",
