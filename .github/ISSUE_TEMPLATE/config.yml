@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📚 Documentation
-    url: https://github.com/badhope/skill#readme
-    about: Check the README for usage guides and examples
+    url: https://github.com/badhope/Personal-Assistant#readme
+    about: Read the README for setup, configuration, and usage guides
   - name: 💬 Discussions
-    url: https://github.com/badhope/skill/discussions
+    url: https://github.com/badhope/Personal-Assistant/discussions
     about: Ask questions and discuss ideas with the community
+  - name: 📋 Changelog
+    url: https://github.com/badhope/Personal-Assistant/blob/main/CHANGELOG.md
+    about: See the latest changes and release notes

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Brain, Loader2, Move, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Brain, Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { api } from '@/api/client';
@@ -20,6 +21,7 @@ const CENTER_X = W / 2;
 const CENTER_Y = H / 2;
 
 export function Graph() {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [nodes, setNodes] = useState<ViewNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
@@ -55,7 +57,7 @@ export function Graph() {
     if (nodes.length === 0) return;
     const id = setInterval(() => {
       setNodes((prev) => simulate(prev, edges));
-      setTick((t) => t + 1);
+      setTick((tk) => tk + 1);
     }, 50);
     return () => clearInterval(id);
   }, [edges, nodes.length === 0]);
@@ -96,8 +98,8 @@ export function Graph() {
 
   function handleMouseMoveDrag(e: React.MouseEvent) {
     if (!dragRef.current) return;
-    setTransform((t) => ({
-      ...t,
+    setTransform((tr) => ({
+      ...tr,
       x: dragRef.current!.tx + (e.clientX - dragRef.current!.startX),
       y: dragRef.current!.ty + (e.clientY - dragRef.current!.startY),
     }));
@@ -105,9 +107,9 @@ export function Graph() {
 
   function handleWheel(e: React.WheelEvent) {
     e.preventDefault();
-    setTransform((t) => ({
-      ...t,
-      scale: Math.max(0.3, Math.min(3, t.scale * (e.deltaY > 0 ? 0.9 : 1.1))),
+    setTransform((tr) => ({
+      ...tr,
+      scale: Math.max(0.3, Math.min(3, tr.scale * (e.deltaY > 0 ? 0.9 : 1.1))),
     }));
   }
 
@@ -118,7 +120,7 @@ export function Graph() {
   if (loading) {
     return (
       <div className="p-6 flex items-center gap-2 text-fg-mute">
-        <Loader2 size={16} className="animate-spin" /> 加载图谱...
+        <Loader2 size={16} className="animate-spin" /> {t('graph.loading')}
       </div>
     );
   }
@@ -129,8 +131,8 @@ export function Graph() {
         <Card>
           <CardBody className="text-center py-12">
             <Brain size={32} className="mx-auto text-fg-mute mb-3" />
-            <h2 className="text-lg font-semibold">还没有任何记忆节点</h2>
-            <p className="text-sm text-fg-soft mt-1">开始对话或跑 Agent 任务后会自动构建图谱</p>
+            <h2 className="text-lg font-semibold">{t('graph.empty')}</h2>
+            <p className="text-sm text-fg-soft mt-1">{t('graph.emptyHint')}</p>
           </CardBody>
         </Card>
       </div>
@@ -142,14 +144,14 @@ export function Graph() {
       <div className="flex items-end justify-between flex-wrap gap-2 mb-3">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Brain size={18} /> 知识图谱
+            <Brain size={18} /> {t('graph.title')}
           </h1>
-          <p className="text-sm text-fg-mute mt-1">记忆节点 + 标签节点 · 拖动 / 滚轮缩放</p>
+          <p className="text-sm text-fg-mute mt-1">{t('graph.draggable')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="info">记忆: {stats.mem}</Badge>
-          <Badge variant="brand">标签: {stats.tags}</Badge>
-          <Badge>边: {stats.edges}</Badge>
+          <Badge variant="info">{t('graph.memory')}: {stats.mem}</Badge>
+          <Badge variant="brand">{t('graph.tag')}: {stats.tags}</Badge>
+          <Badge>{t('graph.edges')}: {stats.edges}</Badge>
         </div>
       </div>
 
@@ -171,10 +173,10 @@ export function Graph() {
             onWheel={handleWheel}
           />
           <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 bg-bg-elev/85 backdrop-blur border border-border rounded-md p-1">
-            <button onClick={() => setTransform((t) => ({ ...t, scale: Math.min(3, t.scale * 1.15) }))} className="p-1.5 hover:bg-bg-soft rounded">
+            <button onClick={() => setTransform((tr) => ({ ...tr, scale: Math.min(3, tr.scale * 1.15) }))} className="p-1.5 hover:bg-bg-soft rounded">
               <ZoomIn size={14} />
             </button>
-            <button onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.3, t.scale * 0.87) }))} className="p-1.5 hover:bg-bg-soft rounded">
+            <button onClick={() => setTransform((tr) => ({ ...tr, scale: Math.max(0.3, tr.scale * 0.87) }))} className="p-1.5 hover:bg-bg-soft rounded">
               <ZoomOut size={14} />
             </button>
             <button onClick={reset} className="p-1.5 hover:bg-bg-soft rounded">
@@ -188,7 +190,7 @@ export function Graph() {
               </Badge>
               <div className="text-sm mt-1.5 break-words">{hovered.data.label}</div>
               <div className="text-[10.5px] text-fg-mute mt-1 font-mono">{hovered.data.id.slice(0, 24)}...</div>
-              <div className="text-[10.5px] text-fg-mute mt-0.5">权重: {hovered.data.weight}</div>
+              <div className="text-[10.5px] text-fg-mute mt-0.5">{t('graph.weight')}: {hovered.data.weight}</div>
             </div>
           )}
         </div>

@@ -1,75 +1,75 @@
 import { useEffect, useState } from 'react';
-import { Sun, Moon, User, Database, Download, Trash2, Heart, Smile, RefreshCw, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Sun, Moon, Smile, Trash2, Download, RefreshCw, AlertCircle, Info, Heart } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { Badge, Dot } from '@/components/Badge';
+import { Badge } from '@/components/Badge';
 import { api } from '@/api/client';
 import { useThemeStore } from '@/stores/theme';
+import { cn, formatTime } from '@/utils';
 import { toast } from '@/components/Toast';
-import type { EmotionState, EmotionName, PersonalityMeta } from '@/types';
-import { formatDateTime } from '@/utils';
+import type { EmotionState } from '@/types';
 
-const EMOTION_LABEL: Record<EmotionName, { label: string; color: string; emoji: string }> = {
-  neutral: { label: '平静', color: 'text-fg-soft', emoji: '😐' },
-  excited: { label: '兴奋', color: 'text-warning', emoji: '🤩' },
-  confident: { label: '自信', color: 'text-success', emoji: '😊' },
-  cautious: { label: '谨慎', color: 'text-info', emoji: '🤔' },
-  frustrated: { label: '受挫', color: 'text-danger', emoji: '😤' },
-  tired: { label: '疲惫', color: 'text-fg-mute', emoji: '😴' },
-};
+const PERSONALITIES = [
+  { id: 'default', name: 'default', emoji: '🧑‍💻', desc: 'Balanced, professional, efficient' },
+  { id: 'mentor', name: 'mentor', emoji: '👨‍🏫', desc: 'Patient, didactic, encouraging' },
+  { id: 'pirate', name: 'pirate', emoji: '🏴‍☠️', desc: 'Adventurous, colourful, witty' },
+  { id: 'conservative', name: 'conservative', emoji: '🤵', desc: 'Cautious, formal, low-risk' },
+  { id: 'creative', name: 'creative', emoji: '🎨', desc: 'Imaginative, bold, divergent' },
+] as const;
 
 export function Settings() {
+  const { t } = useTranslation();
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const [personality, setPersonality] = useState<{ current: string; list: PersonalityMeta[] } | null>(null);
   const [emotion, setEmotion] = useState<EmotionState | null>(null);
-  const [stats, setStats] = useState<{
-    totalRecords: number;
-    totalTokens: number;
-    averageImportance: number;
-  } | null>(null);
+  const [loadingEmotion, setLoadingEmotion] = useState(false);
+  const [currentPersonality, setCurrentPersonality] = useState('default');
+  const [stats, setStats] = useState<{ count: number; totalTokens: number; avgImportance: number } | null>(null);
 
   useEffect(() => {
-    api.get<{ current: string; list: PersonalityMeta[] }>('/personality').then(setPersonality);
-    api.get<{ totalRecords: number; totalTokens: number; averageImportance: number }>(
-      '/memory/stats',
-    ).then(setStats);
-    api.get<EmotionState>('/emotion').then(setEmotion).catch(() => {});
+    loadEmotion();
+    loadStats();
   }, []);
 
-  async function refreshEmotion() {
+  async function loadEmotion() {
+    setLoadingEmotion(true);
     try {
-      const e = await api.get<EmotionState>('/emotion');
-      setEmotion(e);
+      const res = await api.get<EmotionState>('/emotion');
+      setEmotion(res);
     } catch (err) {
-      toast({ type: 'error', title: '刷新情绪失败', message: String(err) });
+      toast({ type: 'error', title: t('settings.refreshFailed'), message: String(err) });
+    } finally {
+      setLoadingEmotion(false);
     }
   }
 
-  async function setPersonality_(id: string) {
+  async function loadStats() {
     try {
-      await api.post('/personality/set', { id });
-      setPersonality((prev) => (prev ? { ...prev, current: id } : prev));
-      toast({ type: 'success', title: `已切换到 ${id}` });
-    } catch (err) {
-      toast({ type: 'error', title: '切换失败', message: String(err) });
+      const res = await api.get<{ items: unknown[]; count: number; total: number; totalTokens?: number; avgImportance?: number }>(
+        '/memory?limit=1',
+      );
+      setStats({ count: res.count, totalTokens: res.totalTokens ?? 0, avgImportance: res.avgImportance ?? 0 });
+    } catch {
+      setStats({ count: 0, totalTokens: 0, avgImportance: 0 });
     }
   }
 
-  async function exportData() {
+  async function switchPersonality(id: string) {
+    setCurrentPersonality(id);
     try {
-      const [memory, sessions, dashboard] = await Promise.all([
-        api.get<any>('/memory'),
-        api.get<any>('/chat/sessions'),
-        api.get<any>('/dashboard'),
-      ]);
-      const data = {
-        exportedAt: new Date().toISOString(),
-        dashboard,
-        memory,
-        sessions,
-        config: await api.get<any>('/config/snapshot'),
-      };
+      await api.post('/personality', { id });
+      const p = PERSONALITIES.find((x) => x.id === id);
+      toast({ type: 'success', title: t('settings.switchedTo', { name: p?.name ?? id }) });
+    } catch (err) {
+      toast({ type: 'error', title: t('settings.switchFailed'), message: String(err) });
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const res = await api.get<{ items: unknown[]; total: number }>('/memory?limit=100000');
+      const data = { exportedAt: new Date().toISOString(), memory: res.items, total: res.total };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -77,52 +77,63 @@ export function Settings() {
       a.download = `personal-assistant-export-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ type: 'success', title: '导出完成' });
+      toast({ type: 'success', title: t('settings.exportDone') });
     } catch (err) {
-      toast({ type: 'error', title: '导出失败', message: String(err) });
+      toast({ type: 'error', title: t('settings.exportFailed'), message: String(err) });
+    }
+  }
+
+  async function handleClearMemory() {
+    if (!confirm(t('settings.clearConfirm'))) return;
+    try {
+      await api.post('/memory/clear');
+      toast({ type: 'success', title: t('settings.cleared') });
+      loadStats();
+    } catch (err) {
+      toast({ type: 'error', title: t('settings.clearConfirm'), message: String(err) });
     }
   }
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">设置</h1>
-        <p className="text-sm text-fg-mute mt-1">主题 / 人格 / 数据管理</p>
+        <h1 className="text-xl font-semibold">{t('settings.title')}</h1>
+        <p className="text-sm text-fg-mute mt-1">{t('settings.subtitle')}</p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold flex items-center gap-2">
-            {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />} 主题
+            {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />} {t('settings.theme')}
           </div>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setTheme('light')}
-              className={`p-3 rounded-md border text-left transition-colors ${
-                theme === 'light' ? 'border-brand bg-brand/8' : 'border-border hover:border-border-strong'
-              }`}
+              className={cn(
+                'p-3 rounded-md border text-left transition-all',
+                theme === 'light' ? 'border-brand/60 bg-brand/8' : 'border-border hover:bg-bg-soft',
+              )}
             >
               <div className="flex items-center gap-2">
-                <Sun size={16} className="text-warning" />
-                <span className="text-sm font-medium">浅色</span>
-                {theme === 'light' && <Dot variant="success" />}
+                <Sun size={14} className="text-warning" />
+                <span className="text-sm font-medium">{t('settings.light')}</span>
               </div>
-              <div className="text-[10.5px] text-fg-mute mt-1">明亮 · 适合白天</div>
+              <p className="text-[10.5px] text-fg-mute mt-1">{t('settings.lightHint')}</p>
             </button>
             <button
               onClick={() => setTheme('dark')}
-              className={`p-3 rounded-md border text-left transition-colors ${
-                theme === 'dark' ? 'border-brand bg-brand/8' : 'border-border hover:border-border-strong'
-              }`}
+              className={cn(
+                'p-3 rounded-md border text-left transition-all',
+                theme === 'dark' ? 'border-brand/60 bg-brand/8' : 'border-border hover:bg-bg-soft',
+              )}
             >
               <div className="flex items-center gap-2">
-                <Moon size={16} className="text-indigo-400" />
-                <span className="text-sm font-medium">深色</span>
-                {theme === 'dark' && <Dot variant="success" />}
+                <Moon size={14} className="text-info" />
+                <span className="text-sm font-medium">{t('settings.dark')}</span>
               </div>
-              <div className="text-[10.5px] text-fg-mute mt-1">深邃 · 适合夜间</div>
+              <p className="text-[10.5px] text-fg-mute mt-1">{t('settings.darkHint')}</p>
             </button>
           </div>
         </CardBody>
@@ -131,170 +142,153 @@ export function Settings() {
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold flex items-center gap-2">
-            <User size={14} /> 人格 (Personality)
+            <Smile size={14} /> {t('settings.personalityTitle')}
           </div>
-          {personality && <Badge variant="brand">当前: {personality.current}</Badge>}
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {personality?.list.map((p) => (
+            {PERSONALITIES.map((p) => (
               <button
                 key={p.id}
-                onClick={() => setPersonality_(p.id)}
-                className={`p-3 rounded-md border text-left transition-colors ${
-                  personality.current === p.id
-                    ? 'border-brand bg-brand/8'
-                    : 'border-border hover:border-border-strong'
-                }`}
+                onClick={() => switchPersonality(p.id)}
+                className={cn(
+                  'p-3 rounded-md border text-left transition-all',
+                  currentPersonality === p.id ? 'border-brand/60 bg-brand/8' : 'border-border hover:bg-bg-soft',
+                )}
               >
                 <div className="flex items-center gap-2">
+                  <span className="text-lg">{p.emoji}</span>
                   <span className="text-sm font-medium">{p.name}</span>
-                  {personality.current === p.id && <Dot variant="success" />}
+                  {currentPersonality === p.id && <Badge variant="brand" size="sm">{t('settings.currentPersonality')}</Badge>}
                 </div>
-                <div className="text-[10.5px] text-fg-mute mt-1 leading-relaxed">{p.description}</div>
+                <p className="text-[10.5px] text-fg-mute mt-1">{p.desc}</p>
               </button>
             ))}
           </div>
         </CardBody>
       </Card>
 
-      {emotion && (
-        <Card>
-          <CardHeader>
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <Smile size={14} /> 情绪状态（来自 EmotionService）
-            </div>
-            <button
-              onClick={refreshEmotion}
-              className="text-[10.5px] text-fg-soft hover:text-fg inline-flex items-center gap-1"
-            >
-              <RefreshCw size={11} /> 刷新
-            </button>
-          </CardHeader>
-          <CardBody className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl leading-none">
-                {EMOTION_LABEL[emotion.name]?.emoji ?? '😐'}
-              </span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-semibold ${EMOTION_LABEL[emotion.name]?.color ?? 'text-fg'}`}
-                  >
-                    {EMOTION_LABEL[emotion.name]?.label ?? emotion.name}
-                  </span>
-                  <Dot
-                    variant={
-                      emotion.intensity >= 70
-                        ? 'success'
-                        : emotion.intensity >= 35
-                          ? 'warning'
-                          : 'info'
-                    }
-                    pulse={emotion.intensity >= 35}
-                  />
-                  <span className="text-[10.5px] text-fg-mute font-mono">
-                    intensity {emotion.intensity}/100
-                  </span>
+      <Card>
+        <CardHeader>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <Heart size={14} /> {t('settings.emotionTitle')}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadEmotion}
+            leftIcon={<RefreshCw size={12} className={loadingEmotion ? 'animate-spin' : ''} />}
+            disabled={loadingEmotion}
+          >
+            {t('settings.refresh')}
+          </Button>
+        </CardHeader>
+        <CardBody>
+          {emotion ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-md bg-bg-soft flex items-center justify-center text-2xl">
+                  {emotionEmoji(emotion.name)}
                 </div>
-                <div className="mt-2 h-1.5 bg-bg-soft rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-violet-500"
-                    style={{ width: `${emotion.intensity}%` }}
-                  />
-                </div>
-                <div className="text-[10.5px] text-fg-mute mt-1.5">
-                  最后更新: {formatDateTime(emotion.lastUpdated)} · triggers: {emotion.triggers.length}
+                <div>
+                  <div className="text-base font-medium">{t(`settings.emotionNames.${emotion.name}`, emotion.name)}</div>
+                  <div className="text-xs text-fg-mute">
+                    {t('settings.intensityFormat', { n: Math.round(emotion.intensity) })}
+                  </div>
                 </div>
               </div>
-            </div>
-            {emotion.triggers.length > 0 && (
-              <details className="text-xs">
-                <summary className="cursor-pointer text-fg-mute hover:text-fg-soft">
-                  最近触发 ({emotion.triggers.length})
-                </summary>
-                <ul className="mt-2 space-y-0.5 font-mono text-fg-mute">
-                  {emotion.triggers
-                    .slice(-10)
-                    .reverse()
-                    .map((t, i) => (
-                      <li key={i} className="truncate">
-                        · {t}
-                      </li>
+              <div className="h-1.5 w-full rounded-full bg-bg-soft overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-info to-brand transition-all"
+                  style={{ width: `${emotion.intensity}%` }}
+                />
+              </div>
+              <div className="text-[10.5px] text-fg-mute font-mono">
+                {t('settings.lastUpdated')}: {formatTime(emotion.lastUpdated)}
+              </div>
+              {emotion.triggers && emotion.triggers.length > 0 && (
+                <div>
+                  <div className="text-xs text-fg-soft mb-1.5">
+                    {t('settings.triggersCount', { n: emotion.triggers.length })}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {emotion.triggers.slice(0, 5).map((tr, i) => (
+                      <Badge key={i} variant="info" size="sm">
+                        {tr}
+                      </Badge>
                     ))}
-                </ul>
-              </details>
-            )}
-          </CardBody>
-        </Card>
-      )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-fg-mute flex items-center gap-2">
+              <AlertCircle size={14} /> —
+            </div>
+          )}
+        </CardBody>
+      </Card>
 
-      {stats && (
-        <Card>
-          <CardHeader>
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <Database size={14} /> 数据
+      <Card>
+        <CardHeader>
+          <div className="text-sm font-semibold">{t('settings.dataTitle')}</div>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          {stats && (
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-bg-soft rounded-md p-2.5">
+                <div className="text-base font-semibold">{stats.count}</div>
+                <div className="text-[10.5px] text-fg-mute">{t('settings.totalRecords')}</div>
+              </div>
+              <div className="bg-bg-soft rounded-md p-2.5">
+                <div className="text-base font-semibold">{stats.totalTokens.toLocaleString()}</div>
+                <div className="text-[10.5px] text-fg-mute">{t('settings.totalTokens')}</div>
+              </div>
+              <div className="bg-bg-soft rounded-md p-2.5">
+                <div className="text-base font-semibold">{stats.avgImportance.toFixed(1)}</div>
+                <div className="text-[10.5px] text-fg-mute">{t('settings.averageImportance')}</div>
+              </div>
             </div>
-          </CardHeader>
-          <CardBody className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-              <DataStat label="记忆总数" value={stats.totalRecords} />
-              <DataStat label="总 Token" value={stats.totalTokens} />
-              <DataStat label="平均重要度" value={(stats.averageImportance ?? 0).toFixed(2)} />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" leftIcon={<Download size={13} />} onClick={exportData}>
-                导出全部数据 (JSON)
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                leftIcon={<Trash2 size={13} />}
-                onClick={async () => {
-                  if (confirm('确认清空所有记忆？此操作不可恢复。')) {
-                    await api.post('/memory/clear');
-                    toast({ type: 'success', title: '已清空' });
-                  }
-                }}
-              >
-                清空记忆
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
-      )}
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" leftIcon={<Download size={13} />} onClick={handleExport} className="flex-1">
+              {t('settings.exportAll')}
+            </Button>
+            <Button variant="danger" leftIcon={<Trash2 size={13} />} onClick={handleClearMemory}>
+              {t('settings.clearMemory')}
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold flex items-center gap-2">
-            <Heart size={14} /> 关于
+            <Info size={14} /> {t('settings.about')}
           </div>
         </CardHeader>
-        <CardBody>
-          <div className="text-sm text-fg-soft space-y-2">
-            <p>
-              <span className="font-semibold text-fg">Personal-Assistant Web</span> · v2.0
-            </p>
-            <p>Pipeline 驱动的 AI 智能体 · 真实 LLM / 真实工具 / 真实记忆</p>
-            <ul className="text-xs text-fg-mute list-disc ml-4 space-y-0.5">
-              <li>React 18 + TypeScript + Vite</li>
-              <li>Express 后端 · 复用 src/ 中的真实 Adapter</li>
-              <li>10 个 LLM Provider · 0 mock</li>
-              <li>7 个真实工具：writeFile / readFile / shell / search / remember / analyze / respond</li>
-              <li>6 阶段 Pipeline：Initialize → Understand → Plan → Execute → Validate → Reflect</li>
-            </ul>
-          </div>
+        <CardBody className="text-xs text-fg-soft space-y-1.5">
+          <div>· {t('settings.aboutLine1')}</div>
+          <div>· {t('settings.aboutLine2')}</div>
+          <div>· {t('settings.aboutStack')}</div>
+          <div>· {t('settings.aboutBackend')}</div>
+          <div>· {t('settings.aboutProviders')}</div>
+          <div>· {t('settings.aboutTools')}</div>
+          <div>· {t('settings.aboutPipeline')}</div>
         </CardBody>
       </Card>
     </div>
   );
 }
 
-function DataStat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div>
-      <div className="text-[10.5px] text-fg-mute">{label}</div>
-      <div className="text-lg font-semibold font-mono">{value}</div>
-    </div>
-  );
+function emotionEmoji(name: string): string {
+  const map: Record<string, string> = {
+    neutral: '😐',
+    excited: '🤩',
+    confident: '😎',
+    cautious: '🤔',
+    frustrated: '😤',
+    tired: '😴',
+  };
+  return map[name] ?? '🙂';
 }

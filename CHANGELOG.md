@@ -1,69 +1,77 @@
 # Changelog
 
-All notable changes to the Personal Assistant project will be documented in this file.
+All notable changes to **Personal-Assistant** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-06-02
+
+### Added
+- **Full Web UI** — React 18 + TypeScript + Vite + Tailwind, 9 working pages with real SSE streaming
+- **Express backend** (`server/`) — 8 API routes (REST + SSE) + static hosting of `frontend/dist`
+- **Clean Architecture** — `src/adapters`, `src/core`, `src/stages`, `src/ports`, `src/domain`, `src/infrastructure`
+- **10 LLM providers** — OpenAI / Anthropic / Google / DeepSeek / SiliconFlow / Aliyun / Zhipu / Baidu / Ollama / LMStudio
+- **7 real tools** — `writeFile` / `readFile` / `shell` / `search` / `remember` / `analyze` / `respond`
+- **6-stage Pipeline** — `initialize` → `understand` → `plan` → `execute` → `validate` → `reflect`
+- **Long-term memory** — MiniSearch full-text retrieval + graphology knowledge graph
+- **4 personalities** + dynamic emotion state
+- **Server-Sent Events** for real-time chat and pipeline progress
+- **Circuit Breaker** (opossum) for resilience
+- **i18n** — English / 中文 switcher in the UI
+- **Multi-language documentation** — `README.md` (English) + `README_zh.md` (中文)
+- **707 unit tests** (40 files) all passing
+
+### Fixed
+- MemoryAdapter `forget()` method — real single-record deletion
+- ConfigStore — pulls from `/api/config/snapshot` instead of hardcoded `siliconflow`
+- Dashboard StatCard — uses real backend `agentRunCount` field
+- Agent.tsx / Chat.tsx — use `useConfigStore` hook subscription (no more one-time `getState()`)
+- Settings.tsx — real emotion state display
+- emotion.routes.ts — fields aligned with real `EmotionService` shape
+
 ## [1.0.0] - 2024-05-28
 
 ### Added
-- **完整的双Agent协作系统**：规划Agent + 执行Agent的高级协作
-- **知识图谱系统**：自动知识提取、推理引擎、版本管理、冲突检测
-- **长期记忆系统**：重要性评分、遗忘机制、关联网络、RAG检索优化
-- **人格和情绪系统**：4种预设人格、8种情绪状态、用户偏好学习
-- **安全与信任系统**：风险评估、审计日志、信任度动态调整
-- **高级工具生态**：20+专业工具，包括安全审计、文档生成、测试生成
-- **性能监控系统**：完整的性能指标和分析
-- **TypeScript/JavaScript深度解析**：完善的代码分析引擎
-- **完整的测试体系**：348+测试，100%通过率
-- **丰富的文档**：架构文档、ADR、用户手册、故障排查指南
+- Dual-Agent collaboration system (Planner + Executor)
+- Knowledge graph system with auto-extraction, reasoning, version control, conflict detection
+- Long-term memory with importance scoring, forgetting mechanism, association network, RAG
+- Personality & emotion system (4 preset personalities, 8 emotion states, user preference learning)
+- Security & trust system (risk assessment, audit log, dynamic trust adjustment)
+- Advanced tool ecosystem (20+ specialized tools)
+- Performance monitoring system
+- TypeScript/JavaScript deep analysis engine
+- 348+ tests, 100% pass rate
 
 ### Enhanced
-- MCP工具生态扩展
-- Git智能工具（冲突解决、历史分析）
-- 代码质量分析工具
-- 智能缓存和性能优化
-- LLM调用优化（批处理、成本控制）
-
-### Fixed
-- 100+ Lint警告修复
-- 所有TypeScript类型问题
-- ESM模块兼容性
-- 构建错误
-
----
+- MCP tool ecosystem expansion
+- Git smart tools (conflict resolution, history analysis)
+- Code quality analysis tools
+- Smart caching and performance optimization
+- LLM call optimization (batching, cost control)
 
 ## [0.9.0] - 2024-05-20
 
 ### Added
-- LLM集成和驱动
-- 批量操作工具
-- 性能监控面板
-- 基础的人格系统
-
-### Fixed
-- 各种类型安全问题
-- 测试框架优化
-
----
+- LLM integration and driver
+- Batch operation tools
+- Performance monitoring panel
+- Basic personality system
 
 ## [0.8.0] - 2024-05-15
 
 ### Added
-- 代码解析系统
-- 基础MCP工具
-- 单Agent执行系统
-- CLI命令框架
-
----
+- Code parsing system
+- Basic MCP tools
+- Single-Agent execution system
+- CLI command framework
 
 ## [0.1.0] - 2024-05-01
 
 ### Added
-- 项目初始化
-- 基础架构设计
-- 模块系统框架
+- Project initialization
+- Basic architecture design
+- Module system framework
 
-[1.0.0]: https://github.com/badhope/personal-assistant/releases/tag/v1.0.0
-
+[2.0.0]: https://github.com/badhope/Personal-Assistant/releases/tag/v2.0.0
+[1.0.0]: https://github.com/badhope/Personal-Assistant/releases/tag/v1.0.0

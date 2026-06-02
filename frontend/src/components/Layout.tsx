@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -13,31 +14,28 @@ import {
   Menu,
   X,
   Activity,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/utils';
 import { ToastContainer } from './Toast';
 import { useConfigStore } from '@/stores/config';
 import { useThemeStore } from '@/stores/theme';
+import { useLocaleStore } from '@/stores/locale';
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
 import { Dot } from './Badge';
-
-const nav = [
-  { to: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
-  { to: '/chat', label: '对话', icon: MessageSquare },
-  { to: '/agent', label: 'Agent', icon: Wand2 },
-  { to: '/tools', label: '工具', icon: Wrench },
-  { to: '/memory', label: '记忆', icon: Brain },
-  { to: '/graph', label: '图谱', icon: Share2 },
-  { to: '/config', label: '配置', icon: SettingsIcon },
-];
 
 export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const location = useLocation();
+  const { t } = useTranslation();
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
   const defaultProvider = useConfigStore((s) => s.defaultProvider);
   const configuredKeys = useConfigStore((s) => s.configuredKeys);
   const refresh = useConfigStore((s) => s.refresh);
+  const language = useLocaleStore((s) => s.language);
+  const setLanguage = useLocaleStore((s) => s.setLanguage);
 
   useEffect(() => {
     refresh();
@@ -45,6 +43,7 @@ export function Layout() {
 
   useEffect(() => {
     setDrawerOpen(false);
+    setLangMenuOpen(false);
   }, [location.pathname]);
 
   const ready = configuredKeys.size > 0;
@@ -92,15 +91,50 @@ export function Layout() {
             <div className="hidden sm:flex items-center gap-2 text-xs text-fg-mute">
               <Dot variant={ready ? 'success' : 'warning'} pulse={ready} />
               <span className="truncate">
-                {ready ? `${defaultProvider} · 就绪` : '未配置 API key'}
+                {ready
+                  ? `${defaultProvider ?? ''} · ${t('status.ready')}`
+                  : t('status.noKey')}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <div className="relative">
+              <button
+                onClick={() => setLangMenuOpen((v) => !v)}
+                className="p-1.5 rounded-md text-fg-soft hover:text-fg hover:bg-bg-soft inline-flex items-center gap-1 text-xs"
+                aria-label="switch language"
+                title={t('common.language')}
+              >
+                <Globe size={14} />
+                <span className="font-mono">
+                  {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.short ?? 'EN'}
+                </span>
+              </button>
+              {langMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 min-w-[120px] rounded-md border border-border bg-bg-elev shadow-elev py-1 z-50">
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code as LanguageCode)}
+                      className={cn(
+                        'w-full text-left px-3 py-1.5 text-xs hover:bg-bg-soft transition-colors',
+                        language === lang.code && 'text-brand font-medium',
+                      )}
+                    >
+                      <span className="inline-block w-6 font-mono text-fg-mute">
+                        {lang.short}
+                      </span>
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={toggle}
               className="p-1.5 rounded-md text-fg-soft hover:text-fg hover:bg-bg-soft"
               aria-label="toggle theme"
+              title={t('common.theme')}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
@@ -127,6 +161,16 @@ export function Layout() {
 }
 
 function SidebarContent() {
+  const { t } = useTranslation();
+  const items = [
+    { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { to: '/chat', label: t('nav.chat'), icon: MessageSquare },
+    { to: '/agent', label: t('nav.agent'), icon: Wand2 },
+    { to: '/tools', label: t('nav.tools'), icon: Wrench },
+    { to: '/memory', label: t('nav.memory'), icon: Brain },
+    { to: '/graph', label: t('nav.graph'), icon: Share2 },
+    { to: '/config', label: t('nav.config'), icon: SettingsIcon },
+  ];
   return (
     <>
       <div className="h-14 px-4 flex items-center gap-2 border-b border-border">
@@ -134,12 +178,14 @@ function SidebarContent() {
           P
         </div>
         <div className="flex flex-col leading-none">
-          <span className="font-semibold text-sm tracking-tight">Personal-Assistant</span>
+          <span className="font-semibold text-sm tracking-tight">
+            {t('app.name')}
+          </span>
           <span className="text-[10px] text-fg-mute mt-0.5 font-mono">v2.0 / web</span>
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        {nav.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -173,10 +219,10 @@ function SidebarContent() {
           }
         >
           <SettingsIcon size={16} strokeWidth={1.75} />
-          <span>设置</span>
+          <span>{t('nav.settings')}</span>
         </NavLink>
         <p className="mt-3 px-3 text-[10.5px] text-fg-mute leading-relaxed">
-          真实 LLM / 真实工具 / 真实记忆 · 0 mock
+          {t('app.tagline')}
         </p>
       </div>
     </>

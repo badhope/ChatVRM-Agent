@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Send,
   Plus,
@@ -26,6 +27,7 @@ import { toast } from '@/components/Toast';
 import type { ChatMessage, ChatSession, ProviderType } from '@/types';
 
 export function Chat() {
+  const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const navigate = useNavigate();
   const defaultProvider = useConfigStore((s) => s.defaultProvider);
@@ -89,7 +91,7 @@ export function Chat() {
     if (!input.trim() || streaming) return;
     const sendProvider = (provider || defaultProvider) as ProviderType | undefined;
     if (!sendProvider) {
-      toast({ type: 'warning', title: '请先在配置页设置默认 provider / API key' });
+      toast({ type: 'warning', title: t('chat.configureFirst') });
       return;
     }
     const userContent = input.trim();
@@ -159,7 +161,7 @@ export function Chat() {
               m.id === assistantId ? { ...m, content: accumulated, error: d.message, streaming: false } : m,
             ),
           );
-          toast({ type: 'error', title: 'LLM 调用失败', message: d.message });
+          toast({ type: 'error', title: t('chat.llmFailed'), message: d.message });
         } else if (ev.event === 'assistant-end') {
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
@@ -168,7 +170,7 @@ export function Chat() {
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        toast({ type: 'error', title: '请求异常', message: String(err) });
+        toast({ type: 'error', title: t('chat.requestError'), message: String(err) });
       }
     } finally {
       setStreaming(false);
@@ -206,7 +208,7 @@ export function Chat() {
       if (activeSession?.id === id) setActiveSession({ ...activeSession, title: editTitle });
       setEditingId(null);
     } catch (err) {
-      toast({ type: 'error', title: '重命名失败', message: String(err) });
+      toast({ type: 'error', title: t('chat.renameFailed'), message: String(err) });
     }
   }
 
@@ -215,12 +217,12 @@ export function Chat() {
       <aside className="hidden md:flex w-64 shrink-0 border-r border-border bg-bg-soft/30 flex-col">
         <div className="p-3 border-b border-border">
           <Button variant="primary" className="w-full" onClick={handleNewSession} leftIcon={<Plus size={14} />}>
-            新建对话
+            {t('chat.newSession')}
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {sessions.length === 0 && (
-            <div className="text-xs text-fg-mute text-center py-8 px-2">还没有会话 · 发送消息开始</div>
+            <div className="text-xs text-fg-mute text-center py-8 px-2">{t('chat.noSessions')}</div>
           )}
           {sessions.map((s) => {
             const isActive = activeSession?.id === s.id;
@@ -287,7 +289,7 @@ export function Chat() {
                 )}
               </>
             ) : (
-              <span className="text-sm text-fg-mute">新对话</span>
+              <span className="text-sm text-fg-mute">{t('chat.newChat')}</span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
@@ -297,10 +299,10 @@ export function Chat() {
               leftIcon={<Settings2 size={13} />}
               onClick={() => setShowSettings(!showSettings)}
             >
-              <span className="hidden sm:inline">模型</span>
+              <span className="hidden sm:inline">{t('chat.model')}</span>
             </Button>
             <Button variant="ghost" size="sm" leftIcon={<Plus size={13} />} onClick={handleNewSession}>
-              <span className="hidden sm:inline">新建</span>
+              <span className="hidden sm:inline">{t('chat.newChat')}</span>
             </Button>
           </div>
         </div>
@@ -308,14 +310,14 @@ export function Chat() {
         {showSettings && (
           <div className="px-5 py-3 border-b border-border bg-bg-soft/40 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
             <div>
-              <label className="block text-xs font-medium text-fg-soft mb-1.5">Provider</label>
+              <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('chat.selectProvider')}</label>
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value as ProviderType | '')}
                 className="w-full h-9 px-2 rounded-md text-sm bg-bg border border-border focus:outline-none focus:border-brand/60"
               >
                 <option value="" disabled>
-                  {defaultProvider ? `默认 ${defaultProvider}` : '请选择 provider'}
+                  {defaultProvider ? t('chat.default', { provider: defaultProvider }) : t('chat.selectProvider')}
                 </option>
                 {(['openai', 'anthropic', 'google', 'deepseek', 'siliconflow', 'aliyun', 'zhipu', 'baidu', 'ollama', 'lmstudio'] as ProviderType[]).map((p) => (
                   <option key={p} value={p}>
@@ -325,7 +327,7 @@ export function Chat() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-fg-soft mb-1.5">Model</label>
+              <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('chat.model')}</label>
               <Input
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
@@ -371,7 +373,7 @@ export function Chat() {
                     handleSend();
                   }
                 }}
-                placeholder={provider ? `与 ${provider} 对话...` : '请先选择 provider'}
+                placeholder={provider ? t('chat.sendTo', { provider }) : t('chat.selectProviderFirst')}
                 rows={2}
                 className="pr-12"
                 disabled={streaming}
@@ -398,7 +400,7 @@ export function Chat() {
               )}
             </div>
             <div className="flex items-center justify-between text-[10.5px] text-fg-mute mt-1.5 px-1">
-              <span>Enter 发送 · Shift+Enter 换行 · 真实 LLM 流式响应</span>
+              <span>{t('chat.enterToSend')}</span>
               <span className="font-mono">
                 {provider || defaultProvider || '—'} · {truncate(model, 30)}
               </span>
@@ -411,6 +413,7 @@ export function Chat() {
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+  const { t } = useTranslation();
   const isUser = message.role === 'user';
   return (
     <div className={cn('flex gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
@@ -420,12 +423,12 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           isUser ? 'bg-zinc-700' : 'bg-gradient-to-br from-indigo-500 to-violet-600',
         )}
       >
-        {isUser ? 'You' : 'AI'}
+        {isUser ? t('chat.you').charAt(0).toUpperCase() + t('chat.you').slice(1) : 'AI'}
       </div>
       <div className={cn('flex-1 min-w-0 max-w-[85%]', isUser && 'flex flex-col items-end')}>
         <div className="flex items-center gap-1.5 mb-1">
           <span className="text-xs font-medium text-fg-soft">
-            {isUser ? '你' : 'Assistant'}
+            {isUser ? t('chat.you') : t('chat.assistant')}
           </span>
           {message.provider && (
             <span
@@ -440,7 +443,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <div className="bg-danger/10 border border-danger/20 text-danger rounded-lg px-3 py-2 text-sm flex items-start gap-2">
             <AlertCircle size={14} className="mt-0.5 shrink-0" />
             <div>
-              <div className="font-medium">调用失败</div>
+              <div className="font-medium">{t('chat.callFailed')}</div>
               <div className="text-xs mt-0.5">{message.error}</div>
             </div>
           </div>
@@ -462,31 +465,33 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-function EmptyChat({ onPrompt, provider }: { onPrompt: (p: string) => void; provider: ProviderType | null | '' }) {
-  const presets = [
-    '用一句话介绍你自己',
-    '用 Python 写一个快排',
-    '解释 Transformer 的 self-attention 机制',
-    '帮我写一个正则：匹配邮箱地址',
-  ];
+function EmptyChat({
+  onPrompt,
+  provider,
+}: {
+  onPrompt: (p: string) => void;
+  provider: ProviderType | null | '';
+}) {
+  const { t } = useTranslation();
+  const presetKeys = ['intro', 'quicksort', 'transformer', 'regex'] as const;
   return (
     <div className="h-full flex items-center justify-center px-4 py-12">
       <div className="text-center max-w-md">
         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-elev">
           <Sparkles size={20} className="text-white" />
         </div>
-        <h2 className="text-lg font-semibold">开始一次对话</h2>
+        <h2 className="text-lg font-semibold">{t('chat.emptyTitle')}</h2>
         <p className="text-sm text-fg-soft mt-1.5">
-          真实流式调用 <span className="font-mono text-fg">{provider || '配置中的默认 provider'}</span> · 无 mock
+          {t('chat.emptySub', { provider: provider || t('chat.defaultProvider') })}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-6 text-left">
-          {presets.map((p) => (
+          {presetKeys.map((k) => (
             <button
-              key={p}
-              onClick={() => onPrompt(p)}
+              key={k}
+              onClick={() => onPrompt(t(`chat.presets.${k}`))}
               className="text-xs px-3 py-2.5 rounded-md border border-border hover:border-border-strong hover:bg-bg-soft transition-colors text-left"
             >
-              {p}
+              {t(`chat.presets.${k}`)}
             </button>
           ))}
         </div>

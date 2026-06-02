@@ -39,7 +39,7 @@ yarn-error.log*
 tmp/
 temp/
 
-# Source
+# Source (build artifact only)
 src/
 tsconfig.json
 .eslintrc.cjs
@@ -63,6 +63,26 @@ config_backup*.json
 *.spec.ts
 __tests__/
 
+# Server source
+server/
+
+# Frontend
+frontend/
+
 # Docs
 CONTRIBUTING.md
 README_zh.md
+PHASE_*.md
+PROJECT_*.md
+README_DEVELOPMENT.md
+verify-config.sh
+test-dual-agent.js
+
+# CI / planning
+.github/
+.trae/
+
+# Git
+.git/
+.gitignore
+.gitattributes

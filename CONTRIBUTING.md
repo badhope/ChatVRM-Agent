@@ -1,41 +1,37 @@
 # Contributing to Personal-Assistant
 
-We welcome contributions to Personal-Assistant! This document outlines the guidelines for contributing to this project.
+Thanks for your interest in contributing! 🎉
+This document outlines the guidelines for contributing to **Personal-Assistant**.
 
 ## 📋 Prerequisites
 
-Before contributing, please ensure you have:
-- Node.js (v20 or later)
-- npm or yarn
-- TypeScript knowledge
-- Git knowledge
+- Node.js **>= 20.0.0 < 25.0.0** (22 LTS recommended)
+- npm
+- TypeScript 5.8 knowledge
+- Git
 
-## 🔧 Setup Development Environment
+## 🔧 Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/badhope/Personal-Assistant.git
-
-# Install dependencies
+# 1. Fork and clone
+git clone https://github.com/<your-username>/Personal-Assistant.git
 cd Personal-Assistant
+
+# 2. Install dependencies (backend + frontend)
 npm install
+cd frontend && npm install && cd ..
 
-# Build the project
+# 3. Build
 npm run build
+npm run web:build
 
-# Run tests
+# 4. Run tests
 npm test
 ```
 
 ## 🤝 How to Contribute
 
-### 1. Fork the Repository
-
-Fork the repository to your own GitHub account.
-
-### 2. Create a Branch
-
-Create a new branch for your feature or bug fix:
+### 1. Create a Branch
 
 ```bash
 git checkout -b feature/your-feature-name
@@ -43,64 +39,88 @@ git checkout -b feature/your-feature-name
 git checkout -b bugfix/issue-number
 ```
 
-### 3. Make Changes
+### 2. Make Changes
 
-- Follow the existing code style
-- Write clean, maintainable code
-- Add comments where necessary
-- Include tests for new functionality
+- Follow the existing code style (`npm run lint` and `npm run format`)
+- Write clean, maintainable, well-typed code
+- Add comments only where logic is non-obvious
+- **Include tests** for new functionality (`src/__tests__/`)
 
-### 4. Run Tests
-
-Ensure all tests pass before submitting:
+### 3. Run Tests and Lint
 
 ```bash
-npm test
+npm test           # all 707 tests must pass
+npm run lint       # 0 ESLint errors
+npm run build      # tsc 0 errors
 ```
 
-### 5. Commit Changes
+### 4. Commit Changes
 
-Use meaningful commit messages:
+Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```bash
 git commit -m "feat: add new feature X"
-# or
 git commit -m "fix: resolve issue with Y"
+git commit -m "docs: update README"
+git commit -m "i18n: add Chinese translation"
 ```
 
-### 6. Push and Create Pull Request
+### 5. Push and Open a Pull Request
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-Then create a pull request from your branch to the main branch.
+Then open a PR from your branch to `main` on GitHub.
 
-## 📝 Code Style Guidelines
+## 📝 Code Style
 
-- Use TypeScript for all code
-- Follow the existing code patterns and conventions
-- Use 2-space indentation
-- Use single quotes for strings
-- Include type annotations
-- Write JSDoc comments for public APIs
+- TypeScript everywhere (no plain JS)
+- 2-space indentation
+- Single quotes for strings
+- Trailing commas
+- LF line endings (`.prettierrc`)
+- Type annotations required
+- Public APIs should have JSDoc
+
+## 🌐 Internationalization (i18n)
+
+The project supports multiple languages. When adding new UI strings:
+
+1. Add the English string to `frontend/src/i18n/en.json`
+2. Add the Chinese translation to `frontend/src/i18n/zh.json`
+3. Use `t('key')` from `useTranslation()` in components
+
+Documentation:
+
+- `README.md` — primary English docs
+- `README_zh.md` — Chinese mirror
 
 ## 🐛 Reporting Issues
 
-If you find a bug or have a feature request, please:
-1. Check the existing issues to avoid duplicates
-2. Create a new issue with a clear description
-3. Include steps to reproduce (for bugs)
-4. Add relevant labels
+1. Search [existing issues](https://github.com/badhope/Personal-Assistant/issues) first
+2. Open a new issue with a clear title and description
+3. For bugs, include:
+   - Reproduction steps
+   - Expected vs actual behavior
+   - Environment (OS, Node version)
+   - Relevant logs
+
+## 💡 Feature Requests
+
+Open an issue with the `enhancement` label and describe:
+- The problem you're trying to solve
+- Your proposed solution
+- Any alternatives you've considered
 
 ## 📄 License
 
-By contributing to this project, you agree that your contributions will be licensed under the same license as the project (personal use only, commercial use requires authorization).
+By contributing, you agree your contributions will be licensed under the [MIT License](LICENSE).
 
 ## 📞 Contact
 
-For questions or discussions, please contact through GitHub Issues.
+For questions, open a [GitHub Discussion](https://github.com/badhope/Personal-Assistant/discussions).
 
 ---
 
-Thank you for contributing to Personal-Assistant! 🚀
+Thank you for contributing to **Personal-Assistant**! 🚀

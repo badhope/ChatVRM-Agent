@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
   Brain,
@@ -21,6 +22,7 @@ import { formatTime, providerColor, providerInitial, cn } from '@/utils';
 import type { DashboardStats } from '@/types';
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const refresh = useConfigStore((s) => s.refresh);
@@ -45,7 +47,7 @@ export function Dashboard() {
             <div className="flex items-start gap-3 text-danger">
               <AlertCircle size={18} />
               <div>
-                <div className="font-medium">无法加载仪表盘</div>
+                <div className="font-medium">{t('dashboard.loadError')}</div>
                 <div className="text-xs text-fg-mute mt-1">{error}</div>
               </div>
             </div>
@@ -62,18 +64,18 @@ export function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           icon={MessageSquare}
-          label="对话会话"
+          label={t('dashboard.chatSessions')}
           value={stats?.chatSessions}
-          hint="共 {n} 条消息"
+          hint={t('dashboard.messagesHint', { n: stats?.totalMessages ?? 0 })}
           to="/chat"
           loading={!stats}
           hue="indigo"
         />
         <StatCard
           icon={Brain}
-          label="长期记忆"
+          label={t('dashboard.memory')}
           value={stats?.memoryCount}
-          hint="token: {n}"
+          hint={t('dashboard.tokensHint', { n: stats?.memoryTokens ?? 0 })}
           to="/memory"
           loading={!stats}
           hue="violet"
@@ -81,18 +83,18 @@ export function Dashboard() {
         />
         <StatCard
           icon={Wand2}
-          label="Agent 任务"
+          label={t('dashboard.agentRuns')}
           value={stats?.agentRunCount ?? 0}
-          hint={`${stats?.agentMemoryCount ?? 0} 条 agent 记忆`}
+          hint={t('dashboard.agentMemoryHint', { n: stats?.agentMemoryCount ?? 0 })}
           to="/agent"
           loading={!stats}
           hue="emerald"
         />
         <StatCard
           icon={Activity}
-          label="Provider 就绪"
+          label={t('dashboard.providers')}
           value={stats ? `${stats.providersConfigured}/${stats.providersTotal}` : undefined}
-          hint="10 个厂商"
+          hint={t('dashboard.tenProviders')}
           to="/config"
           loading={!stats}
           hue="amber"
@@ -103,14 +105,14 @@ export function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div>
-              <div className="text-sm font-semibold">LLM Provider 状态</div>
-              <div className="text-xs text-fg-mute mt-0.5">10 个厂商 · 实时连通性</div>
+              <div className="text-sm font-semibold">{t('dashboard.providerStatus')}</div>
+              <div className="text-xs text-fg-mute mt-0.5">{t('dashboard.realTimeConnectivity')}</div>
             </div>
             <Link
               to="/config"
               className="text-xs text-fg-soft hover:text-fg inline-flex items-center gap-1"
             >
-              管理 <ArrowUpRight size={12} />
+              {t('dashboard.manage')} <ArrowUpRight size={12} />
             </Link>
           </CardHeader>
           <CardBody className="p-0">
@@ -132,16 +134,20 @@ export function Dashboard() {
                       <span className="text-[10.5px] text-fg-mute font-mono">{p.id}</span>
                     </div>
                     <div className="text-xs text-fg-mute">
-                      {p.requiresKey ? (p.hasKey ? '已配置 API key' : '未配置 key') : '本地服务无需 key'}
+                      {p.requiresKey
+                        ? p.hasKey
+                          ? t('dashboard.keyConfigured')
+                          : t('dashboard.keyMissing')
+                        : t('dashboard.localNoKey')}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {p.available ? (
                       <Badge variant="success">
-                        <Check size={10} /> 就绪
+                        <Check size={10} /> {t('dashboard.ready')}
                       </Badge>
                     ) : (
-                      <Badge variant="warning">未就绪</Badge>
+                      <Badge variant="warning">{t('dashboard.notReady')}</Badge>
                     )}
                   </div>
                 </div>
@@ -154,17 +160,17 @@ export function Dashboard() {
           <Card>
             <CardHeader>
               <div className="text-sm font-semibold flex items-center gap-2">
-                <Tag size={14} /> 热门标签
+                <Tag size={14} /> {t('dashboard.hotTags')}
               </div>
             </CardHeader>
             <CardBody className="space-y-2">
               {stats?.memoryByTag.length === 0 && (
-                <div className="text-xs text-fg-mute">暂无标签</div>
+                <div className="text-xs text-fg-mute">{t('dashboard.noTags')}</div>
               )}
-              {stats?.memoryByTag.map((t) => (
-                <div key={t.tag} className="flex items-center justify-between text-xs">
-                  <span className="text-fg-soft">#{t.tag}</span>
-                  <span className="font-mono text-fg-mute">{t.count}</span>
+              {stats?.memoryByTag.map((tag) => (
+                <div key={tag.tag} className="flex items-center justify-between text-xs">
+                  <span className="text-fg-soft">#{tag.tag}</span>
+                  <span className="font-mono text-fg-mute">{tag.count}</span>
                 </div>
               ))}
             </CardBody>
@@ -172,11 +178,11 @@ export function Dashboard() {
 
           <Card>
             <CardHeader>
-              <div className="text-sm font-semibold">最近记忆</div>
+              <div className="text-sm font-semibold">{t('dashboard.recentMemories')}</div>
             </CardHeader>
             <CardBody className="space-y-2">
               {stats?.recentActivity.length === 0 && (
-                <div className="text-xs text-fg-mute">还没有任何记录</div>
+                <div className="text-xs text-fg-mute">{t('dashboard.noMemories')}</div>
               )}
               {stats?.recentActivity.map((a) => (
                 <Link
@@ -195,14 +201,34 @@ export function Dashboard() {
 
       <Card>
         <CardHeader>
-          <div className="text-sm font-semibold">快速入口</div>
+          <div className="text-sm font-semibold">{t('dashboard.quickActions')}</div>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <QuickAction to="/chat" icon={MessageSquare} title="开始对话" subtitle="与 LLM 多轮聊天" />
-            <QuickAction to="/agent" icon={Wand2} title="跑 Agent" subtitle="6 阶段 Pipeline" />
-            <QuickAction to="/tools" icon={Wrench} title="工具浏览器" subtitle="7 个真实工具" />
-            <QuickAction to="/graph" icon={Brain} title="知识图谱" subtitle="记忆关联可视化" />
+            <QuickAction
+              to="/chat"
+              icon={MessageSquare}
+              title={t('dashboard.startChat')}
+              subtitle={t('dashboard.startChatSub')}
+            />
+            <QuickAction
+              to="/agent"
+              icon={Wand2}
+              title={t('dashboard.runAgent')}
+              subtitle={t('dashboard.runAgentSub')}
+            />
+            <QuickAction
+              to="/tools"
+              icon={Wrench}
+              title={t('dashboard.toolsBrowser')}
+              subtitle={t('dashboard.toolsBrowserSub')}
+            />
+            <QuickAction
+              to="/graph"
+              icon={Brain}
+              title={t('dashboard.knowledgeGraph')}
+              subtitle={t('dashboard.knowledgeGraphSub')}
+            />
           </div>
         </CardBody>
       </Card>
@@ -211,6 +237,7 @@ export function Dashboard() {
 }
 
 function Hero() {
+  const { t } = useTranslation();
   const defaultProvider = useConfigStore((s) => s.defaultProvider);
   const configuredKeys = useConfigStore((s) => s.configuredKeys);
   const ready = configuredKeys.size > 0;
@@ -222,29 +249,27 @@ function Hero() {
           <div className="flex items-center gap-2">
             <Dot variant={ready ? 'success' : 'warning'} pulse={ready} />
             <span className="text-xs font-mono text-fg-soft">
-              {ready ? `${defaultProvider} · ready` : 'no API key configured'}
+              {ready ? t('dashboard.readyStatus', { provider: defaultProvider }) : t('dashboard.noKeyStatus')}
             </span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-semibold tracking-tight text-balance">
             <span className="text-gradient">Personal-Assistant</span>
           </h1>
-          <p className="text-sm text-fg-soft max-w-2xl">
-            Pipeline 驱动的 AI 智能体 · 真实 LLM / 真实工具 / 真实记忆 · 0 mock
-          </p>
+          <p className="text-sm text-fg-soft max-w-2xl">{t('dashboard.heroTagline')}</p>
         </div>
         <div className="flex gap-2">
           <Link
             to="/chat"
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand text-brand-fg text-sm font-medium hover:brightness-110 transition shadow-soft"
           >
-            开始对话 <ChevronRight size={14} />
+            {t('dashboard.startChat')} <ChevronRight size={14} />
           </Link>
           {!ready && (
             <Link
               to="/config"
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md border border-border bg-bg-elev text-sm hover:bg-bg-soft"
             >
-              配置 API key
+              {t('dashboard.configureKey')}
             </Link>
           )}
         </div>

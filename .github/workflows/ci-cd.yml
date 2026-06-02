@@ -25,10 +25,18 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Build frontend
+        working-directory: frontend
         run: npm run build
 
       - name: Run lint
@@ -60,10 +68,10 @@ jobs:
           node-version: 22.x
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build backend
         run: npm run build
 
       - name: Publish to npm

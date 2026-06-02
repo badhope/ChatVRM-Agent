@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Wrench,
   FileText,
@@ -37,6 +38,7 @@ interface FieldState {
 }
 
 export function Tools() {
+  const { t } = useTranslation();
   const [tools, setTools] = useState<ToolMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function Tools() {
     for (const f of tool.schema) {
       const v = args[f.name];
       if (f.required && (!v || v.length === 0)) {
-        toast({ type: 'warning', title: '缺少必填字段', message: `${f.name} 是必填的` });
+        toast({ type: 'warning', title: t('tools.missingRequired'), message: t('tools.requiredField', { name: f.name }) });
         return;
       }
       if (v && v.length > 0) {
@@ -86,7 +88,7 @@ export function Tools() {
       setHistory((prev) => [{ tool: selected, args: payload, result: res, ts: new Date().toISOString() }, ...prev].slice(0, 20));
     } catch (err) {
       setResult({ success: false, error: String(err) });
-      toast({ type: 'error', title: '工具执行失败', message: String(err) });
+      toast({ type: 'error', title: t('tools.executeFailed'), message: String(err) });
     } finally {
       setExecuting(false);
     }
@@ -95,7 +97,7 @@ export function Tools() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="text-fg-mute">加载工具列表...</div>
+        <div className="text-fg-mute">{t('tools.loadingList')}</div>
       </div>
     );
   }
@@ -103,18 +105,18 @@ export function Tools() {
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       <div className="mb-4">
-        <h1 className="text-xl font-semibold">工具浏览器</h1>
-        <p className="text-sm text-fg-mute mt-1">7 个真实工具 · 直连 Personal-Assistant ToolsRegistry</p>
+        <h1 className="text-xl font-semibold">{t('tools.browserTitle')}</h1>
+        <p className="text-sm text-fg-mute mt-1">{t('tools.browserSub')}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">
-        {tools.map((t) => {
-          const Icon = ICON_MAP[t.name] ?? Wrench;
-          const isActive = selected === t.name;
+        {tools.map((tool) => {
+          const Icon = ICON_MAP[tool.name] ?? Wrench;
+          const isActive = selected === tool.name;
           return (
             <button
-              key={t.name}
-              onClick={() => setSelected(t.name)}
+              key={tool.name}
+              onClick={() => setSelected(tool.name)}
               className={cn(
                 'p-3 rounded-lg border text-left transition-all',
                 isActive
@@ -132,8 +134,8 @@ export function Tools() {
                   <Icon size={15} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-mono font-medium truncate">{t.name}</div>
-                  <div className="text-[10.5px] text-fg-mute">{t.schema.length} 参数</div>
+                  <div className="text-sm font-mono font-medium truncate">{tool.name}</div>
+                  <div className="text-[10.5px] text-fg-mute">{t('tools.argsCount', { n: tool.schema.length })}</div>
                 </div>
               </div>
             </button>
@@ -146,30 +148,30 @@ export function Tools() {
           <CardHeader>
             <div className="text-sm font-semibold flex items-center gap-2">
               {(() => {
-                const t = tools.find((x) => x.name === selected);
-                if (!t) return null;
-                const Icon = ICON_MAP[t.name] ?? Wrench;
+                const tool = tools.find((x) => x.name === selected);
+                if (!tool) return null;
+                const Icon = ICON_MAP[tool.name] ?? Wrench;
                 return <Icon size={14} />;
               })()}
               {selected ?? '—'}
             </div>
             <span className="text-[10.5px] text-fg-mute font-mono">
-              {tools.find((t) => t.name === selected)?.schema.length ?? 0} 参数
+              {t('tools.argsCount', { n: tools.find((tool) => tool.name === selected)?.schema.length ?? 0 })}
             </span>
           </CardHeader>
           <CardBody className="space-y-3">
-            {tools.find((t) => t.name === selected)?.description && (
+            {tools.find((tool) => tool.name === selected)?.description && (
               <p className="text-xs text-fg-soft">
-                {tools.find((t) => t.name === selected)?.description}
+                {tools.find((tool) => tool.name === selected)?.description}
               </p>
             )}
             {tools
-              .find((t) => t.name === selected)
+              .find((tool) => tool.name === selected)
               ?.schema.map((f) => (
                 <div key={f.name}>
                   <label className="block text-xs font-medium text-fg-soft mb-1.5 flex items-center gap-1.5">
                     {f.name}
-                    {f.required && <Badge variant="danger" size="sm">必填</Badge>}
+                    {f.required && <Badge variant="danger" size="sm">{t('tools.required')}</Badge>}
                     <span className="text-fg-mute text-[10.5px]">· {f.type}</span>
                   </label>
                   {f.type === 'string[]' ? (
@@ -203,37 +205,37 @@ export function Tools() {
               className="w-full"
               leftIcon={executing ? <Loader2 size={14} /> : <Send size={14} />}
             >
-              {executing ? '执行中...' : '执行工具'}
+              {executing ? t('tools.executing') : t('tools.executeTool')}
             </Button>
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader>
-            <div className="text-sm font-semibold">执行结果</div>
+            <div className="text-sm font-semibold">{t('tools.resultTitle')}</div>
             {result && (
               <Badge variant={result.success ? 'success' : 'danger'}>
                 {result.success ? <Check size={10} /> : <AlertCircle size={10} />}
-                {result.success ? '成功' : '失败'}
+                {result.success ? t('common.success') : t('common.failed')}
               </Badge>
             )}
           </CardHeader>
           <CardBody>
             {executing && (
               <div className="flex items-center gap-2 text-sm text-fg-soft">
-                <Loader2 size={14} className="animate-spin" /> 正在执行...
+                <Loader2 size={14} className="animate-spin" /> {t('tools.executingHint')}
               </div>
             )}
             {!executing && !result && (
               <div className="text-sm text-fg-mute text-center py-12">
-                填写参数后点击执行
+                {t('tools.fillArgsHint')}
               </div>
             )}
             {result && (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-xs text-fg-soft">
-                  <span>耗时: <span className="font-mono">{result.durationMs}ms</span></span>
-                  {result.tool && <span>· 工具: <span className="font-mono">{result.tool}</span></span>}
+                  <span>{t('tools.duration')}: <span className="font-mono">{result.durationMs}ms</span></span>
+                  {result.tool && <span>· {t('tools.toolLabel')}: <span className="font-mono">{result.tool}</span></span>}
                 </div>
                 {result.error && (
                   <div className="bg-danger/10 border border-danger/20 text-danger rounded-md p-3 text-xs">
@@ -243,15 +245,15 @@ export function Tools() {
                 {result.output !== undefined && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10.5px] text-fg-mute">输出</span>
+                      <span className="text-[10.5px] text-fg-mute">{t('tools.outputLabel')}</span>
                       <button
                         onClick={async () => {
                           await copyToClipboard(String(result.output));
-                          toast({ type: 'success', title: '已复制' });
+                          toast({ type: 'success', title: t('common.copied') });
                         }}
                         className="text-[10.5px] text-fg-soft hover:text-fg"
                       >
-                        复制
+                        {t('tools.copyHint')}
                       </button>
                     </div>
                     <pre className="bg-bg-soft border border-border rounded-md p-3 text-xs font-mono overflow-auto max-h-96 whitespace-pre-wrap break-all">
@@ -262,7 +264,7 @@ export function Tools() {
                   </div>
                 )}
                 <details className="text-xs">
-                  <summary className="cursor-pointer text-fg-mute hover:text-fg-soft">完整 JSON</summary>
+                  <summary className="cursor-pointer text-fg-mute hover:text-fg-soft">{t('tools.fullJson')}</summary>
                   <pre className="mt-2 bg-bg-soft rounded-md p-3 text-[11px] font-mono overflow-auto max-h-48">
                     {JSON.stringify(result, null, 2)}
                   </pre>
@@ -276,8 +278,8 @@ export function Tools() {
       {history.length > 0 && (
         <Card className="mt-4">
           <CardHeader>
-            <div className="text-sm font-semibold">历史执行</div>
-            <span className="text-xs text-fg-mute">{history.length} 条</span>
+            <div className="text-sm font-semibold">{t('tools.historyTitle')}</div>
+            <span className="text-xs text-fg-mute">{t('tools.historyCount', { n: history.length })}</span>
           </CardHeader>
           <CardBody className="p-0">
             <div className="divide-y divide-border">

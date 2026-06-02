@@ -1,39 +1,21 @@
-# DevFlow Agent License
+MIT License
 
-Copyright (c) 2026 DevFlow Agent. All rights reserved.
+Copyright (c) 2026 Personal-Assistant Contributors
 
-## Permissions
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-### Personal Use (Allowed)
-- Non-commercial use for personal development purposes
-- Educational use
-- Research use
-- Testing and evaluation
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-### Commercial Use (Prohibited Without Authorization)
-- Using this software in a commercial product or service
-- Selling or distributing this software for profit
-- Using this software to provide paid services
-- Incorporating this software into commercial applications
-
-## Restrictions
-
-1. **Commercial Prohibition**: This software may not be used for commercial purposes without explicit written permission from the copyright holder.
-
-2. **Modification**: You may modify the software for personal use only. Modified versions may not be distributed or used commercially.
-
-3. **Distribution**: Redistribution is not permitted without prior authorization.
-
-4. **Sublicensing**: You may not sublicense, rent, lease, or lend the software.
-
-## Commercial License
-
-For commercial use, please contact: contact@devflow.ai
-
-## Disclaimer
-
-THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-## Contact
-
-For licensing inquiries: contact@devflow.ai
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

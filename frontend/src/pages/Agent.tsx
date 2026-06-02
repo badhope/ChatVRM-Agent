@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Play,
   Square,
@@ -7,13 +8,11 @@ import {
   Wrench,
   Lightbulb,
   ListChecks,
-  RefreshCcw,
   FileText,
   Folder,
   Clock,
   ChevronDown,
   ChevronRight,
-  Terminal,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -26,27 +25,10 @@ import { cn, formatTime, truncate, providerColor } from '@/utils';
 import { toast } from '@/components/Toast';
 import type { AgentStage, AgentStep, PlanStep, ProviderType, StageStatus, ToolCallRecord } from '@/types';
 
-const STAGE_LABELS: Record<AgentStage, string> = {
-  initialize: '初始化',
-  understand: '理解',
-  plan: '规划',
-  execute: '执行',
-  validate: '校验',
-  reflect: '反思',
-};
-
-const STAGE_DESCRIPTIONS: Record<AgentStage, string> = {
-  initialize: '构建任务上下文与初始元数据',
-  understand: 'LLM 识别任务意图 + 扫描 workspace',
-  plan: 'LLM 生成执行计划（步骤 + 工具）',
-  execute: '按计划逐步调用工具，落地结果',
-  validate: '校验执行产物（语法 / 退出码 / 文件）',
-  reflect: '写入长期记忆 + 更新情绪状态',
-};
-
 const ALL_STAGES: AgentStage[] = ['initialize', 'understand', 'plan', 'execute', 'validate', 'reflect'];
 
 export function Agent() {
+  const { t } = useTranslation();
   const defaultProvider = useConfigStore((s) => s.defaultProvider);
   const defaultModel = useConfigStore((s) => s.defaultModel);
   const refreshConfig = useConfigStore((s) => s.refresh);
@@ -103,7 +85,7 @@ export function Agent() {
     if (!task.trim() || running) return;
     const runProvider = (provider ?? defaultProvider) as ProviderType | undefined;
     if (!runProvider) {
-      toast({ type: 'warning', title: '请先在配置页设置默认 provider / API key' });
+      toast({ type: 'warning', title: t('agent.configureFirst') });
       return;
     }
     reset();
@@ -150,12 +132,12 @@ export function Agent() {
             modifiedFiles: data.modifiedFiles ?? [],
           });
         } else if (ev.event === 'error') {
-          toast({ type: 'error', title: '任务失败', message: data.message });
+          toast({ type: 'error', title: t('agent.taskFailed'), message: data.message });
         }
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        toast({ type: 'error', title: '请求异常', message: String(err) });
+        toast({ type: 'error', title: t('agent.requestError'), message: String(err) });
       }
     } finally {
       setRunning(false);
@@ -176,18 +158,18 @@ export function Agent() {
         <CardBody>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-fg-soft mb-1.5">任务描述</label>
+              <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('agent.title')}</label>
               <Textarea
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
-                placeholder="例如：写一个 Python 函数，输入文件路径，统计行数"
+                placeholder={t('agent.taskPlaceholderExample')}
                 rows={3}
                 disabled={running}
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-medium text-fg-soft mb-1.5">Provider</label>
+                <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('agent.provider')}</label>
                 <select
                   value={provider ?? ''}
                   onChange={(e) => setProvider((e.target.value || undefined) as ProviderType | undefined)}
@@ -202,7 +184,7 @@ export function Agent() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-fg-soft mb-1.5">Model</label>
+                <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('agent.model')}</label>
                 <input
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
@@ -211,23 +193,21 @@ export function Agent() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-fg-soft mb-1.5">工作目录（可选）</label>
+                <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('agent.cwd')}</label>
                 <input
                   value={cwd}
                   onChange={(e) => setCwd(e.target.value)}
-                  placeholder={typeof window !== 'undefined' ? '/当前路径' : ''}
+                  placeholder={typeof window !== 'undefined' ? '/current/path' : ''}
                   className="w-full h-9 px-3 rounded-md text-xs font-mono bg-bg border border-border"
                   disabled={running}
                 />
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <div className="text-xs text-fg-mute">
-                真实 LLM 推理 + 真实工具调用 · 6 阶段 Pipeline · 0 mock
-              </div>
+              <div className="text-xs text-fg-mute">{t('agent.realLlm')}</div>
               {running ? (
                 <Button variant="danger" onClick={handleStop} leftIcon={<Square size={14} />}>
-                  停止
+                  {t('agent.stop')}
                 </Button>
               ) : (
                 <Button
@@ -236,7 +216,7 @@ export function Agent() {
                   disabled={!task.trim()}
                   leftIcon={<Play size={14} />}
                 >
-                  运行任务
+                  {t('agent.run')}
                 </Button>
               )}
             </div>
@@ -253,11 +233,11 @@ export function Agent() {
                   <Check size={16} />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold">任务完成</div>
+                  <div className="text-sm font-semibold">{t('agent.taskComplete')}</div>
                   <div className="text-xs text-fg-mute mt-0.5">
-                    全部 6 个阶段通过
-                    {result.createdFiles.length > 0 && ` · 创建 ${result.createdFiles.length} 个文件`}
-                    {result.modifiedFiles.length > 0 && ` · 修改 ${result.modifiedFiles.length} 个文件`}
+                    {t('agent.completedAll')}
+                    {result.createdFiles.length > 0 && t('agent.createdFiles', { n: result.createdFiles.length })}
+                    {result.modifiedFiles.length > 0 && t('agent.modifiedFiles', { n: result.modifiedFiles.length })}
                   </div>
                 </div>
               </>
@@ -267,7 +247,9 @@ export function Agent() {
                   <AlertCircle size={16} />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold">任务失败 · 阶段: {result?.failed}</div>
+                  <div className="text-sm font-semibold">
+                    {t('agent.taskFailedStage', { stage: result?.failed ?? '' })}
+                  </div>
                   <div className="text-xs text-fg-mute mt-0.5 font-mono">{result?.error}</div>
                 </div>
               </>
@@ -281,10 +263,10 @@ export function Agent() {
           <Card>
             <CardHeader>
               <div className="text-sm font-semibold flex items-center gap-2">
-                <ListChecks size={14} /> 6 阶段 Pipeline
+                <ListChecks size={14} /> 6-stage Pipeline
                 {running && <Spinner size="sm" />}
                 {!running && completedStages > 0 && (
-                  <Badge variant="success">{completedStages}/6 完成</Badge>
+                  <Badge variant="success">{t('agent.stagesComplete', { n: completedStages })}</Badge>
                 )}
               </div>
             </CardHeader>
@@ -309,16 +291,16 @@ export function Agent() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{STAGE_LABELS[stage]}</span>
+                            <span className="text-sm font-medium">{t(`agent.stages.${stage}`)}</span>
                             <span className="text-[10.5px] text-fg-mute font-mono">{stage}</span>
                             <StageBadge status={s.status} />
                           </div>
                           <div className="text-xs text-fg-soft mt-0.5">
-                            {STAGE_DESCRIPTIONS[stage]}
+                            {t(`agent.stageDescriptions.${stage}`)}
                           </div>
                           {stage === 'understand' && intent && (
                             <div className="mt-2 text-xs">
-                              <Badge variant="info">识别意图: {intent}</Badge>
+                              <Badge variant="info">{t('agent.intentBadge', { intent })}</Badge>
                             </div>
                           )}
                           {stage === 'plan' && recentPlan.length > 0 && (
@@ -357,7 +339,7 @@ export function Agent() {
             <Card>
               <CardHeader>
                 <div className="text-sm font-semibold flex items-center gap-2">
-                  <Wrench size={14} /> 工具调用记录 ({recentToolCalls.length})
+                  <Wrench size={14} /> {t('agent.toolCallsCount', { n: recentToolCalls.length })}
                 </div>
               </CardHeader>
               <CardBody className="p-0">
@@ -380,15 +362,15 @@ export function Agent() {
                       {expandedStep[`tool-${i}`] && (
                         <div className="mt-2 space-y-2 text-xs">
                           <div>
-                            <div className="text-[10.5px] text-fg-mute mb-1">参数</div>
+                            <div className="text-[10.5px] text-fg-mute mb-1">{t('agent.args')}</div>
                             <pre className="bg-bg-soft rounded-md p-2 font-mono overflow-x-auto">
                               {JSON.stringify(c.args, null, 2)}
                             </pre>
                           </div>
                           <div>
-                            <div className="text-[10.5px] text-fg-mute mb-1">输出</div>
+                            <div className="text-[10.5px] text-fg-mute mb-1">{t('agent.output')}</div>
                             <pre className="bg-bg-soft rounded-md p-2 font-mono overflow-x-auto max-h-48 overflow-y-auto">
-                              {c.output || c.error || '(empty)'}
+                              {c.output || c.error || t('agent.empty')}
                             </pre>
                           </div>
                         </div>
@@ -405,7 +387,7 @@ export function Agent() {
           <Card>
             <CardHeader>
               <div className="text-sm font-semibold flex items-center gap-2">
-                <Lightbulb size={14} /> 实时事件流
+                <Lightbulb size={14} /> {t('agent.realtimeStream')}
                 {running && <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />}
               </div>
             </CardHeader>
@@ -415,7 +397,7 @@ export function Agent() {
                 className="font-mono text-[11px] text-fg-soft max-h-96 overflow-y-auto px-3 py-2 space-y-0.5"
               >
                 {logs.length === 0 && (
-                  <div className="text-fg-mute">等待任务开始...</div>
+                  <div className="text-fg-mute">{t('agent.waitStart')}</div>
                 )}
                 {logs.map((l, i) => (
                   <div key={i} className="flex gap-2 hover:bg-bg-soft -mx-1 px-1 rounded">
@@ -437,7 +419,7 @@ export function Agent() {
                       {l.type === 'chunk' && `${truncate(l.data.content ?? '', 50)}`}
                       {l.type === 'plan' && `${l.data.steps?.length} steps`}
                       {l.type === 'step' && `${l.data.step?.description} → ${l.data.status}`}
-                      {l.type === 'pipeline-end' && (l.data.success ? '完成' : `失败 @${l.data.failed}`)}
+                      {l.type === 'pipeline-end' && (l.data.success ? 'ok' : `failed @${l.data.failed}`)}
                     </span>
                   </div>
                 ))}
@@ -449,13 +431,13 @@ export function Agent() {
             <Card>
               <CardHeader>
                 <div className="text-sm font-semibold flex items-center gap-2">
-                  <Folder size={14} /> 文件变更
+                  <Folder size={14} /> {t('agent.fileChanges')}
                 </div>
               </CardHeader>
               <CardBody className="space-y-2 text-xs">
                 {result && result.createdFiles.length > 0 && (
                   <div>
-                    <div className="text-[10.5px] text-fg-mute mb-1">创建</div>
+                    <div className="text-[10.5px] text-fg-mute mb-1">{t('agent.created')}</div>
                     {result.createdFiles.map((f) => (
                       <div key={f} className="flex items-center gap-1.5 text-fg-soft font-mono truncate">
                         <FileText size={11} className="text-success" /> {f}
@@ -465,7 +447,7 @@ export function Agent() {
                 )}
                 {result && result.modifiedFiles.length > 0 && (
                   <div>
-                    <div className="text-[10.5px] text-fg-mute mb-1">修改</div>
+                    <div className="text-[10.5px] text-fg-mute mb-1">{t('agent.modified')}</div>
                     {result.modifiedFiles.map((f) => (
                       <div key={f} className="flex items-center gap-1.5 text-fg-soft font-mono truncate">
                         <FileText size={11} className="text-warning" /> {f}
@@ -476,7 +458,7 @@ export function Agent() {
                 {files.length > 0 && (
                   <details className="text-[11px]">
                     <summary className="cursor-pointer text-fg-mute hover:text-fg-soft">
-                      工作目录扫描 ({files.length} 个文件)
+                      {t('agent.workspaceScan', { n: files.length })}
                     </summary>
                     <div className="mt-1.5 max-h-32 overflow-y-auto font-mono text-fg-mute space-y-0.5">
                       {files.map((f) => (
@@ -527,8 +509,9 @@ function StageIcon({ status }: { status: StageStatus }) {
 }
 
 function StageBadge({ status }: { status: StageStatus }) {
-  if (status === 'running') return <Badge variant="warning">运行中</Badge>;
-  if (status === 'done') return <Badge variant="success">完成</Badge>;
-  if (status === 'failed') return <Badge variant="danger">失败</Badge>;
-  return <Badge>等待</Badge>;
+  const { t } = useTranslation();
+  if (status === 'running') return <Badge variant="warning">{t('common.running')}</Badge>;
+  if (status === 'done') return <Badge variant="success">{t('common.completed')}</Badge>;
+  if (status === 'failed') return <Badge variant="danger">{t('common.failed')}</Badge>;
+  return <Badge>{t('common.pending')}</Badge>;
 }

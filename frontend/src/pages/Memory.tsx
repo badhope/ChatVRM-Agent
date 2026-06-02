@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Trash2, Brain, Tag, X, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -11,6 +12,7 @@ import { toast } from '@/components/Toast';
 import type { MemoryEntry } from '@/types';
 
 export function Memory() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<MemoryEntry[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export function Memory() {
       setItems(res.items);
       setTotal(res.total);
     } catch (err) {
-      toast({ type: 'error', title: '加载失败', message: String(err) });
+      toast({ type: 'error', title: t('memory.loadFailed'), message: String(err) });
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export function Memory() {
 
   const tagCounts = useMemo(() => {
     const map = new Map<string, number>();
-    for (const m of items) for (const t of m.tags) map.set(t, (map.get(t) ?? 0) + 1);
+    for (const m of items) for (const tag of m.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
   }, [items]);
 
@@ -54,9 +56,9 @@ export function Memory() {
       await api.delete(`/memory/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
       if (selected?.id === id) setSelected(null);
-      toast({ type: 'success', title: '已删除' });
+      toast({ type: 'success', title: t('memory.deleted') });
     } catch (err) {
-      toast({ type: 'error', title: '删除失败', message: String(err) });
+      toast({ type: 'error', title: t('memory.deleteFailed'), message: String(err) });
     }
   }
 
@@ -66,9 +68,9 @@ export function Memory() {
       setItems([]);
       setTotal(0);
       setShowClearConfirm(false);
-      toast({ type: 'success', title: '已清空全部记忆' });
+      toast({ type: 'success', title: t('memory.clearedAll') });
     } catch (err) {
-      toast({ type: 'error', title: '清空失败', message: String(err) });
+      toast({ type: 'error', title: t('memory.clearFailed'), message: String(err) });
     }
   }
 
@@ -77,12 +79,12 @@ export function Memory() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Brain size={18} /> 长期记忆
+            <Brain size={18} /> {t('memory.title')}
           </h1>
-          <p className="text-sm text-fg-mute mt-1">基于 MiniSearch 全文检索 · 真实持久化</p>
+          <p className="text-sm text-fg-mute mt-1">{t('memory.realPersist')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="brand">{total} 条</Badge>
+          <Badge variant="brand">{t('memory.total', { n: total })}</Badge>
           <Button
             variant="outline"
             size="sm"
@@ -90,7 +92,7 @@ export function Memory() {
             onClick={() => setShowClearConfirm(true)}
             disabled={items.length === 0}
           >
-            清空
+            {t('memory.clearAll')}
           </Button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export function Memory() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索内容 / 标签..."
+              placeholder={t('memory.searchPlaceholder')}
               className="pl-8"
             />
             {query && (
@@ -116,10 +118,10 @@ export function Memory() {
           </div>
           <Card>
             <CardHeader>
-              <div className="text-xs font-medium text-fg-soft">热门标签</div>
+              <div className="text-xs font-medium text-fg-soft">{t('memory.hotTags')}</div>
             </CardHeader>
             <CardBody className="space-y-1">
-              {tagCounts.length === 0 && <div className="text-xs text-fg-mute">暂无标签</div>}
+              {tagCounts.length === 0 && <div className="text-xs text-fg-mute">{t('memory.noTags')}</div>}
               {tagCounts.map(([tag, count]) => (
                 <button
                   key={tag}
@@ -143,17 +145,18 @@ export function Memory() {
           <Card>
             <CardHeader>
               <div className="text-sm font-semibold">
-                列表 {query && <span className="text-fg-mute">· "{query}"</span>}
+                {t('memory.list')}
+                {query && <span className="text-fg-mute">· "{query}"</span>}
                 {activeTag && <span className="text-fg-mute"> · #{activeTag}</span>}
               </div>
-              <span className="text-xs text-fg-mute">{items.length} 条</span>
+              <span className="text-xs text-fg-mute">{t('memory.total', { n: items.length })}</span>
             </CardHeader>
             <CardBody className="p-0">
               {loading ? (
-                <div className="p-8 text-center text-fg-mute text-sm">加载中...</div>
+                <div className="p-8 text-center text-fg-mute text-sm">{t('common.loading')}</div>
               ) : items.length === 0 ? (
                 <div className="p-8 text-center text-fg-mute text-sm">
-                  {query || activeTag ? '没有匹配的记录' : '还没有任何记忆'}
+                  {query || activeTag ? t('memory.noMatch') : t('memory.noMemories')}
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -170,22 +173,22 @@ export function Memory() {
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
-        title="记忆详情"
+        title={t('memory.details')}
         size="lg"
       >
         {selected && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <div className="text-fg-mute text-[10.5px] mb-0.5">ID</div>
+                <div className="text-fg-mute text-[10.5px] mb-0.5">{t('memory.id')}</div>
                 <div className="font-mono">{selected.id}</div>
               </div>
               <div>
-                <div className="text-fg-mute text-[10.5px] mb-0.5">时间</div>
+                <div className="text-fg-mute text-[10.5px] mb-0.5">{t('memory.time')}</div>
                 <div>{formatDateTime(selected.createdAt)}</div>
               </div>
               <div>
-                <div className="text-fg-mute text-[10.5px] mb-0.5">Provider</div>
+                <div className="text-fg-mute text-[10.5px] mb-0.5">{t('chat.selectProvider')}</div>
                 <div className="flex items-center gap-1.5">
                   <span
                     className="h-1.5 w-1.5 rounded-full"
@@ -195,26 +198,26 @@ export function Memory() {
                 </div>
               </div>
               <div>
-                <div className="text-fg-mute text-[10.5px] mb-0.5">Model</div>
+                <div className="text-fg-mute text-[10.5px] mb-0.5">{t('chat.model')}</div>
                 <div className="font-mono">{selected.model}</div>
               </div>
             </div>
             <div>
-              <div className="text-fg-mute text-[10.5px] mb-1.5">标签</div>
+              <div className="text-fg-mute text-[10.5px] mb-1.5">{t('common.tags')}</div>
               <div className="flex flex-wrap gap-1">
-                {selected.tags.map((t) => (
-                  <Badge key={t} size="sm">#{t}</Badge>
+                {selected.tags.map((tag) => (
+                  <Badge key={tag} size="sm">#{tag}</Badge>
                 ))}
               </div>
             </div>
             <div>
-              <div className="text-fg-mute text-[10.5px] mb-1.5">输入</div>
+              <div className="text-fg-mute text-[10.5px] mb-1.5">{t('memory.input')}</div>
               <pre className="bg-bg-soft border border-border rounded-md p-3 text-xs whitespace-pre-wrap break-words">
                 {selected.input}
               </pre>
             </div>
             <div>
-              <div className="text-fg-mute text-[10.5px] mb-1.5">输出</div>
+              <div className="text-fg-mute text-[10.5px] mb-1.5">{t('memory.output')}</div>
               <pre className="bg-bg-soft border border-border rounded-md p-3 text-xs whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
                 {selected.output}
               </pre>
@@ -229,7 +232,7 @@ export function Memory() {
                   setSelected(null);
                 }}
               >
-                删除
+                {t('memory.deleteBtn')}
               </Button>
             </div>
           </div>
@@ -239,17 +242,17 @@ export function Memory() {
       <Modal
         open={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
-        title="清空所有记忆"
+        title={t('memory.clearAllTitle')}
         size="sm"
       >
         <div className="space-y-3">
           <div className="flex items-start gap-2 text-sm text-danger">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            <div>此操作将永久删除全部 {total} 条记忆，无法恢复。</div>
+            <div>{t('memory.clearAllHint', { n: total })}</div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowClearConfirm(false)}>取消</Button>
-            <Button variant="danger" onClick={handleClear}>确认清空</Button>
+            <Button variant="ghost" onClick={() => setShowClearConfirm(false)}>{t('common.cancel')}</Button>
+            <Button variant="danger" onClick={handleClear}>{t('memory.clearAll')}</Button>
           </div>
         </div>
       </Modal>
@@ -268,6 +271,7 @@ function MemoryItem({
   onSelect: (m: MemoryEntry) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="px-5 py-3 hover:bg-bg-soft/40 group transition-colors">
@@ -281,8 +285,8 @@ function MemoryItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-mono">{item.provider}</span>
-            {item.tags.slice(0, 3).map((t) => (
-              <Badge key={t} size="sm">#{t}</Badge>
+            {item.tags.slice(0, 3).map((tag) => (
+              <Badge key={tag} size="sm">#{tag}</Badge>
             ))}
             <span className="text-[10.5px] text-fg-mute ml-auto shrink-0">{formatTime(item.createdAt)}</span>
           </div>
@@ -300,18 +304,18 @@ function MemoryItem({
               className="hover:text-fg-soft flex items-center gap-0.5"
             >
               {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-              {expanded ? '收起' : '展开输出'}
+              {expanded ? t('common.collapse') : t('memory.expand')}
             </button>
             <span>·</span>
-            <button onClick={() => onSelect(item)} className="hover:text-fg-soft">查看详情</button>
+            <button onClick={() => onSelect(item)} className="hover:text-fg-soft">{t('memory.detailsBtn')}</button>
             <span>·</span>
             <button
               onClick={() => {
-                if (confirm('确认删除这条记忆？')) onDelete(item.id);
+                if (confirm(t('memory.deleteOneConfirm'))) onDelete(item.id);
               }}
               className="hover:text-danger"
             >
-              删除
+              {t('memory.deleteBtn')}
             </button>
           </div>
         </div>
