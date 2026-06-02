@@ -1,1 +1,0 @@
-export * from './infrastructure/common/architect.js';

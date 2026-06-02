@@ -1,0 +1,231 @@
+import { createMachine, assign } from 'xstate';
+import type { TaskStep, StepResult } from '../core/types.js';
+
+const MAX_RETRIES = 3;
+
+export interface AgentMachineContext {
+  taskId: string;
+  input: string;
+  intent: string | null;
+  plan: TaskStep[];
+  currentStepIndex: number;
+  results: StepResult[];
+  errors: Array<{ phase: string; message: string; timestamp: number }>;
+  retryCount: number;
+  startTime: number;
+  modifiedFiles: string[];
+}
+
+export type AgentMachineEvent =
+  | { type: 'INIT_COMPLETE' }
+  | { type: 'UNDERSTAND_OK' }
+  | { type: 'PLAN_OK' }
+  | { type: 'PLAN_FAILED' }
+  | { type: 'STEP_OK' }
+  | { type: 'STEP_FAILED' }
+  | { type: 'ALL_STEPS_OK' }
+  | { type: 'VALIDATE_OK' }
+  | { type: 'VALIDATE_FAILED' }
+  | { type: 'REFLECT_OK' }
+  | { type: 'RETRY' }
+  | { type: 'ABORT' }
+  | { type: 'TIMEOUT' };
+
+const moreSteps = ({ context }: { context: AgentMachineContext }) =>
+  context.currentStepIndex < context.plan.length - 1;
+
+export const agentMachine = createMachine(
+  {
+    types: {} as { context: AgentMachineContext; events: AgentMachineEvent },
+    id: 'agent',
+    initial: 'initializing',
+    context: {
+      taskId: '',
+      input: '',
+      intent: null,
+      plan: [],
+      currentStepIndex: 0,
+      results: [],
+      errors: [],
+      retryCount: 0,
+      startTime: Date.now(),
+      modifiedFiles: [],
+    },
+    states: {
+      initializing: {
+        on: {
+          INIT_COMPLETE: 'understanding',
+          TIMEOUT: 'failed',
+        },
+      },
+      understanding: {
+        on: {
+          UNDERSTAND_OK: 'planning',
+          '*': 'error_recovery',
+        },
+      },
+      planning: {
+        on: {
+          PLAN_OK: 'executing',
+          PLAN_FAILED: 'failed',
+          '*': 'error_recovery',
+        },
+      },
+      executing: {
+        on: {
+          STEP_OK: [
+            {
+              target: 'executing',
+              guard: 'moreSteps',
+              actions: assign({
+                currentStepIndex: ({ context }) => context.currentStepIndex + 1,
+              }),
+            },
+          ],
+          ALL_STEPS_OK: 'validating',
+          STEP_FAILED: 'error_recovery',
+        },
+      },
+      error_recovery: {
+        always: [
+          {
+            target: 'failed',
+            guard: ({ context }: { context: AgentMachineContext }) =>
+              context.retryCount >= MAX_RETRIES,
+          },
+        ],
+        on: {
+          RETRY: {
+            target: 'executing',
+            actions: assign({
+              retryCount: ({ context }) => context.retryCount + 1,
+            }),
+          },
+          ABORT: 'failed',
+        },
+      },
+      validating: {
+        on: {
+          VALIDATE_OK: 'reflecting',
+          VALIDATE_FAILED: 'error_recovery',
+        },
+      },
+      reflecting: {
+        on: {
+          REFLECT_OK: 'completed',
+        },
+      },
+      completed: {
+        type: 'final',
+      },
+      failed: {
+        type: 'final',
+      },
+      timeout: {
+        type: 'final',
+      },
+    },
+  },
+  {
+    guards: { moreSteps },
+  },
+);
+
+export function createAgentMachine(taskId: string, input: string) {
+  return createMachine(
+    {
+      types: {} as { context: AgentMachineContext; events: AgentMachineEvent },
+      id: 'agent',
+      initial: 'initializing',
+      context: {
+        taskId,
+        input,
+        intent: null,
+        plan: [],
+        currentStepIndex: 0,
+        results: [],
+        errors: [],
+        retryCount: 0,
+        startTime: Date.now(),
+        modifiedFiles: [],
+      },
+      states: {
+        initializing: {
+          on: {
+            INIT_COMPLETE: 'understanding',
+            TIMEOUT: 'failed',
+          },
+        },
+        understanding: {
+          on: {
+            UNDERSTAND_OK: 'planning',
+            '*': 'error_recovery',
+          },
+        },
+        planning: {
+          on: {
+            PLAN_OK: 'executing',
+            PLAN_FAILED: 'failed',
+            '*': 'error_recovery',
+          },
+        },
+        executing: {
+          on: {
+            STEP_OK: [
+              {
+                target: 'executing',
+                guard: 'moreSteps',
+                actions: assign({
+                  currentStepIndex: ({ context }) => context.currentStepIndex + 1,
+                }),
+              },
+            ],
+            ALL_STEPS_OK: 'validating',
+            STEP_FAILED: 'error_recovery',
+          },
+        },
+        error_recovery: {
+          always: [
+            {
+              target: 'failed',
+              guard: ({ context }: { context: AgentMachineContext }) =>
+                context.retryCount >= MAX_RETRIES,
+            },
+          ],
+          on: {
+            RETRY: {
+              target: 'executing',
+              actions: assign({
+                retryCount: ({ context }) => context.retryCount + 1,
+              }),
+            },
+            ABORT: 'failed',
+          },
+        },
+        validating: {
+          on: {
+            VALIDATE_OK: 'reflecting',
+            VALIDATE_FAILED: 'error_recovery',
+          },
+        },
+        reflecting: {
+          on: {
+            REFLECT_OK: 'completed',
+          },
+        },
+        completed: {
+          type: 'final',
+        },
+        failed: {
+          type: 'final',
+        },
+        timeout: {
+          type: 'final',
+        },
+      },
+    },
+    {
+      guards: { moreSteps },
+    },
+  );
+}

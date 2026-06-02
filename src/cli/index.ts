@@ -1,0 +1,504 @@
+#!/usr/bin/env node
+import { Command } from 'commander';
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout, exit } from 'node:process';
+import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'eventemitter3';
+import chalk from 'chalk';
+import {
+  ConfigAdapter,
+  LLMAdapter,
+  StorageAdapter,
+  MemoryAdapter,
+  ShellExecutor,
+  ToolsRegistry,
+} from '../adapters/index.js';
+import { createDefaultStages } from '../stages/index.js';
+import { EmotionService } from '../domain/personality/emotion.service.js';
+import { PersonalityService } from '../domain/personality/personality.service.js';
+import type { ProviderType } from '../ports/config.port.js';
+import type { ChatResponse } from '../ports/llm.port.js';
+import type { PipelineContext, PipelineEvents } from '../core/types.js';
+
+interface RegisterToolsOptions {
+  llm: LLMAdapter;
+  storage: StorageAdapter;
+  memory: MemoryAdapter;
+  shell: ShellExecutor;
+  config: ConfigAdapter;
+}
+
+export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry {
+  const tools = new ToolsRegistry();
+  const { llm, storage, memory, shell, config } = opts;
+
+  tools.register({
+    name: 'writeFile',
+    description: 'Write content to a file',
+    handler: async (args) => {
+      const filePath = (args.filePath as string) ?? (args.path as string);
+      const explicitContent = (args.content as string) ?? '';
+      const previousOutput = (args.previousOutput as string) ?? '';
+      const content = explicitContent && explicitContent.length > 0 ? explicitContent : previousOutput;
+      if (!filePath) return { success: false, error: 'filePath is required' };
+      if (!content) return { success: false, error: 'No content provided (neither args.content nor previous step output)' };
+      await storage.write(filePath, content);
+      return { success: true, output: `Written ${content.length} bytes to ${filePath}` };
+    },
+  });
+
+  tools.register({
+    name: 'readFile',
+    description: 'Read the contents of a file',
+    handler: async (args) => {
+      const filePath = (args.filePath as string) ?? (args.path as string);
+      if (!filePath) return { success: false, error: 'filePath is required' };
+      if (!(await storage.exists(filePath))) {
+        return { success: false, error: `File not found: ${filePath}` };
+      }
+      const content = await storage.read(filePath);
+      return { success: true, output: content };
+    },
+  });
+
+  tools.register({
+    name: 'shell',
+    description: 'Execute a shell command',
+    handler: async (args) => {
+      const command = args.command as string;
+      const timeoutMs = (args.timeout as number) ?? 60_000;
+      if (!command) return { success: false, error: 'command is required' };
+      const result = await shell.execute(command, { timeout: timeoutMs });
+      return {
+        success: result.exitCode === 0,
+        output: result.stdout,
+        error: result.exitCode !== 0 ? result.stderr : undefined,
+      };
+    },
+  });
+
+  tools.register({
+    name: 'search',
+    description: 'Search memory for a query',
+    handler: async (args) => {
+      const pattern = (args.pattern as string) ?? (args.query as string) ?? '';
+      const memoryResults = await memory.recall(pattern, 5);
+      const lines = memoryResults.map((r) => `[${r.id.slice(0, 8)}] ${r.input} → ${r.output.slice(0, 80)}`);
+      return { success: true, output: lines.length > 0 ? lines.join('\n') : 'No matches' };
+    },
+  });
+
+  tools.register({
+    name: 'remember',
+    description: 'Store an entry in long-term memory',
+    handler: async (args) => {
+      const input = (args.input as string) ?? '';
+      const output = (args.output as string) ?? (args.content as string) ?? '';
+      const provider = (args.provider as ProviderType) ?? (await config.getDefaultProvider());
+      await memory.remember({
+        input,
+        output,
+        provider,
+        model: 'manual',
+        tags: Array.isArray(args.tags) ? (args.tags as string[]) : ['manual'],
+      });
+      return { success: true, output: 'Stored in memory' };
+    },
+  });
+
+  tools.register({
+    name: 'analyze',
+    description: 'Use the LLM to analyze a target',
+    handler: async (args) => {
+      const target = (args.target as string) ?? '';
+      const detail = (args.detail as string) ?? 'standard';
+      const prompt = `Analyze the following target. Detail level: ${detail}\n\nTarget: ${target}\n\nProduce a structured report.`;
+      const response = await llm.chat({ messages: [{ role: 'user', content: prompt }] });
+      return { success: true, output: response.content };
+    },
+  });
+
+  tools.register({
+    name: 'respond',
+    description: 'Generate a response using the LLM',
+    handler: async (args) => {
+      const input = (args.input as string) ?? (args.message as string) ?? '';
+      const style = (args.style as string) ?? 'conversational';
+      const maxLength = (args.maxLength as number) ?? 4000;
+      const styleHint =
+        style === 'code' ? 'Return code only, in a single fenced block.' :
+        style === 'text' ? 'Return plain text content.' :
+        style === 'conversational' ? 'Be conversational and concise.' :
+        '';
+      const prompt = `${styleHint}\nKeep response under ${maxLength} characters.\n\nUser: ${input}`;
+      const response = await llm.chat({ messages: [{ role: 'user', content: prompt }] });
+      return { success: true, output: response.content };
+    },
+  });
+
+  return tools;
+}
+
+async function bootstrap(): Promise<{
+  config: ConfigAdapter;
+  llm: LLMAdapter;
+  storage: StorageAdapter;
+  memory: MemoryAdapter;
+  shell: ShellExecutor;
+  tools: ToolsRegistry;
+  emitter: EventEmitter<PipelineEvents>;
+}> {
+  const config = new ConfigAdapter();
+  await config.init();
+  const llm = new LLMAdapter(config);
+  const storage = new StorageAdapter();
+  const memory = new MemoryAdapter();
+  const shell = new ShellExecutor();
+  const tools = registerDefaultTools({ llm, storage, memory, shell, config });
+  const emitter = new EventEmitter<PipelineEvents>();
+  return { config, llm, storage, memory, shell, tools, emitter };
+}
+
+function setupEventForwarding(emitter: EventEmitter<PipelineEvents>): void {
+  emitter.on('output', ({ text }) => {
+    process.stdout.write(`  ${text}\n`);
+  });
+  emitter.on('llm:call', ({ provider, model, tokens }) => {
+    process.stdout.write(`  ${chalk.cyan('🤖')} ${chalk.dim(`${provider}/${model} (${tokens ?? 0} tokens)`)}\n`);
+  });
+  emitter.on('stage:error', ({ stage, error }) => {
+    process.stdout.write(`  ${chalk.red(`✗ error in ${stage}:`)} ${error.message}\n`);
+  });
+}
+
+function getProviderHelp(): string {
+  return [
+    '  openai        OpenAI (api.openai.com)',
+    '  anthropic     Anthropic Claude (api.anthropic.com)',
+    '  google        Google Gemini (generativelanguage.googleapis.com)',
+    '  deepseek      DeepSeek (api.deepseek.com)',
+    '  siliconflow   SiliconFlow (api.siliconflow.cn) — default',
+    '  aliyun        Alibaba Qwen (dashscope.aliyuncs.com)',
+    '  zhipu         Zhipu GLM (open.bigmodel.cn)',
+    '  baidu         Baidu Ernie (aip.baidubce.com)',
+    '  ollama        Ollama local (localhost:11434)',
+    '  lmstudio      LM Studio local (localhost:1234)',
+  ].join('\n');
+}
+
+async function resolveApiKeyFromEnv(provider: ProviderType): Promise<string | undefined> {
+  const envCandidates = [
+    `PERSONAL_ASSISTANT_${provider.toUpperCase()}`,
+    `${provider.toUpperCase()}_API_KEY`,
+  ];
+  for (const key of envCandidates) {
+    const val = process.env[key];
+    if (val && val.length > 0) return val;
+  }
+  return undefined;
+}
+
+async function main(): Promise<void> {
+  const program = new Command();
+  program
+    .name('personal-assistant')
+    .description('AI-powered personal assistant with pipeline architecture')
+    .version('2.0.0');
+
+  program
+    .command('chat')
+    .description('Start an interactive chat session')
+    .option('-p, --provider <provider>', 'LLM provider (overrides config default)')
+    .option('-m, --model <model>', 'Model identifier')
+    .action(async (options) => {
+      const { config, llm, memory, tools, emitter } = await bootstrap();
+      const provider = (options.provider as ProviderType) ?? (await config.getDefaultProvider());
+      let apiKey = await config.getApiKey(provider);
+      if (!apiKey) apiKey = await resolveApiKeyFromEnv(provider);
+      if (!apiKey && provider !== 'ollama' && provider !== 'lmstudio') {
+        process.stdout.write(`${chalk.red('✗')} No API key configured for provider "${provider}".\n`);
+        process.stdout.write(`Run: ${chalk.cyan('personal-assistant config set-key ' + provider + ' <YOUR_KEY>')}\n`);
+        process.stdout.write(`Or set the env var: ${chalk.cyan(`PERSONAL_ASSISTANT_${provider.toUpperCase()}`)} / ${chalk.cyan(provider.toUpperCase() + '_API_KEY')}\n\n`);
+        process.stdout.write(getProviderHelp() + '\n');
+        exit(1);
+      }
+      await runChat({ provider, model: options.model, llm, config, memory, tools, emitter });
+    });
+
+  program
+    .command('agent <task>')
+    .description('Run a single task through the full pipeline')
+    .option('-p, --provider <provider>', 'LLM provider (overrides config default)')
+    .option('-m, --model <model>', 'Model identifier')
+    .action(async (task, options) => {
+      const { config, llm, storage, memory, shell, tools, emitter } = await bootstrap();
+      const provider = (options.provider as ProviderType) ?? (await config.getDefaultProvider());
+      let apiKey = await config.getApiKey(provider);
+      if (!apiKey) apiKey = await resolveApiKeyFromEnv(provider);
+      if (!apiKey && provider !== 'ollama' && provider !== 'lmstudio') {
+        process.stdout.write(`${chalk.red('✗')} No API key configured for provider "${provider}".\n`);
+        process.stdout.write(`Run: ${chalk.cyan('personal-assistant config set-key ' + provider + ' <YOUR_KEY>')}\n\n`);
+        process.stdout.write(getProviderHelp() + '\n');
+        exit(1);
+      }
+      await runAgent({ task, provider, model: options.model, llm, config, storage, memory, shell, tools, emitter });
+    });
+
+  const configCmd = program.command('config').description('Manage configuration');
+  configCmd
+    .command('show')
+    .description('Show current configuration')
+    .action(async () => {
+      const { config } = await bootstrap();
+      const all = await config.getAllConfig();
+      const defaultProvider = await config.getDefaultProvider();
+      process.stdout.write(`${chalk.bold('Configuration:')}\n`);
+      process.stdout.write(`  Default provider: ${chalk.cyan(defaultProvider)}\n`);
+      const keys = (all.apiKeys as Record<string, unknown>) ?? {};
+      const configuredProviders = Object.keys(keys);
+      process.stdout.write(`  Configured providers: ${configuredProviders.length > 0 ? configuredProviders.join(', ') : chalk.dim('(none)')}\n`);
+    });
+
+  configCmd
+    .command('set-key <provider> [key]')
+    .description('Set API key for a provider (pass key as 2nd arg or via stdin)')
+    .action(async (provider, key) => {
+      if (!key) {
+        process.stdout.write(`Enter API key for ${provider}: `);
+        const rl = createInterface({ input: stdin, output: stdout, terminal: false });
+        for await (const line of rl) {
+          key = line.trim();
+          break;
+        }
+        rl.close();
+      }
+      if (!key) {
+        process.stdout.write(`${chalk.red('✗')} No key provided.\n`);
+        exit(1);
+      }
+      const { config } = await bootstrap();
+      await config.setApiKey(provider as ProviderType, key);
+      process.stdout.write(`${chalk.green('✓')} API key set for ${provider}.\n`);
+    });
+
+  configCmd
+    .command('remove-key <provider>')
+    .description('Remove API key for a provider')
+    .action(async (provider) => {
+      const { config } = await bootstrap();
+      await config.removeApiKey(provider as ProviderType);
+      process.stdout.write(`${chalk.green('✓')} Removed API key for ${provider}.\n`);
+    });
+
+  configCmd
+    .command('set-default <provider>')
+    .description('Set the default LLM provider')
+    .action(async (provider) => {
+      const { config } = await bootstrap();
+      await config.setDefaultProvider(provider as ProviderType);
+      process.stdout.write(`${chalk.green('✓')} Default provider set to ${provider}.\n`);
+    });
+
+  configCmd
+    .command('providers')
+    .description('List all supported LLM providers')
+    .action(() => {
+      process.stdout.write(`${chalk.bold('Supported providers:')}\n`);
+      process.stdout.write(getProviderHelp() + '\n');
+    });
+
+  await program.parseAsync(process.argv);
+}
+
+interface ChatCtx {
+  provider: ProviderType;
+  model?: string;
+  llm: LLMAdapter;
+  config: ConfigAdapter;
+  memory: MemoryAdapter;
+  tools: ToolsRegistry;
+  emitter: EventEmitter<PipelineEvents>;
+}
+
+async function runChat(ctx: ChatCtx): Promise<void> {
+  process.stdout.write(`\n${chalk.bold('🤖 Personal Assistant')} ${chalk.dim(`(${ctx.provider})`)}\n`);
+  process.stdout.write(`${chalk.dim('Type /help for commands, /exit to quit')}\n\n`);
+
+  const personality = PersonalityService.createDefaultIdentity();
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    {
+      role: 'system',
+      content: `${PersonalityService.getPersonalityPrompt(personality)}\n\nBe direct, helpful, and warm. Respond in the user's language.`,
+    },
+  ];
+
+  let emotion = EmotionService.createDefaultEmotion();
+
+  const inputQueue: string[] = [];
+  let pendingResolve: ((v: string) => void) | null = null;
+  let closed = false;
+
+  const rl = createInterface({ input: stdin, output: stdout, terminal: true });
+  rl.on('line', (line) => {
+    if (pendingResolve) {
+      const r = pendingResolve;
+      pendingResolve = null;
+      r(line);
+      return;
+    }
+    inputQueue.push(line);
+  });
+  rl.on('close', () => {
+    closed = true;
+    if (pendingResolve) {
+      const r = pendingResolve;
+      pendingResolve = null;
+      r('__EOF__');
+    }
+  });
+
+  const askQuestion = (): Promise<string> => {
+    if (inputQueue.length > 0) return Promise.resolve(inputQueue.shift()!);
+    if (closed) return Promise.resolve('__EOF__');
+    return new Promise((resolve) => { pendingResolve = resolve; });
+  };
+
+  let turnCount = 0;
+  let running = true;
+
+  while (running) {
+    process.stdout.write('  🧑 You: ');
+    const input = await askQuestion();
+    if (input === '__EOF__') break;
+    if (!input.trim()) continue;
+
+    if (input.startsWith('/')) {
+      const cmd = input.trim().toLowerCase();
+      if (cmd === '/exit' || cmd === '/quit') {
+        running = false;
+        break;
+      }
+      if (cmd === '/help') {
+        process.stdout.write(`${chalk.dim('Commands: /exit /quit /help /emotion /clear')}\n`);
+        continue;
+      }
+      if (cmd === '/emotion') {
+        process.stdout.write(`${chalk.dim(`Current emotion: ${emotion.name} (${emotion.intensity}/100)`)}\n`);
+        continue;
+      }
+      if (cmd === '/clear') {
+        messages.length = 1;
+        process.stdout.write(`${chalk.dim('Conversation cleared.')}\n`);
+        continue;
+      }
+      process.stdout.write(`${chalk.dim(`Unknown command: ${cmd}`)}\n`);
+      continue;
+    }
+
+    turnCount++;
+    messages.push({ role: 'user', content: input });
+
+    let response: ChatResponse;
+    try {
+      response = await ctx.llm.chat({
+        provider: ctx.provider,
+        model: ctx.model,
+        messages,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`\n  ${chalk.red('✗ LLM error:')} ${msg}\n\n`);
+      messages.pop();
+      continue;
+    }
+
+    messages.push({ role: 'assistant', content: response.content });
+    process.stdout.write(`  🤖 Assistant: ${response.content}\n\n`);
+
+    emotion = await EmotionService.onUserInteraction(input, emotion, ctx.llm);
+
+    try {
+      await ctx.memory.remember({
+        input,
+        output: response.content,
+        provider: ctx.provider,
+        model: ctx.model ?? 'default',
+        tags: ['chat', emotion.name, `turn-${turnCount}`],
+      });
+    } catch {
+    }
+  }
+
+  process.stdout.write(`\n${chalk.dim('👋 Goodbye!')}\n`);
+  process.stdout.write(`${chalk.dim(`📊 Session: ${turnCount} turn(s), final emotion: ${emotion.name} (intensity ${emotion.intensity}/100)`)}\n`);
+  rl.close();
+}
+
+interface AgentCtx {
+  task: string;
+  provider: ProviderType;
+  model?: string;
+  llm: LLMAdapter;
+  config: ConfigAdapter;
+  storage: StorageAdapter;
+  memory: MemoryAdapter;
+  shell: ShellExecutor;
+  tools: ToolsRegistry;
+  emitter: EventEmitter<PipelineEvents>;
+}
+
+async function runAgent(ctx: AgentCtx): Promise<void> {
+  process.stdout.write(`\n${chalk.bold('🎯 Task:')} ${ctx.task}\n`);
+  process.stdout.write(`${chalk.dim(`🌐 Provider: ${ctx.provider}${ctx.model ? ' / ' + ctx.model : ''}`)}\n`);
+  process.stdout.write(`${chalk.dim(`🔧 Tools: ${ctx.tools.listAll().map((t) => t.name).join(', ')}`)}\n\n`);
+
+  setupEventForwarding(ctx.emitter);
+
+  const stages = createDefaultStages({
+    llm: ctx.llm,
+    config: ctx.config,
+    storage: ctx.storage,
+    memory: ctx.memory,
+    shell: ctx.shell,
+    tools: ctx.tools,
+    eventBus: ctx.emitter,
+  });
+
+  const initialCtx: PipelineContext = {
+    taskId: randomUUID(),
+    input: ctx.task,
+    errors: [],
+    metadata: { provider: ctx.provider, model: ctx.model ?? 'default' },
+    createdFiles: [],
+    modifiedFiles: [],
+    phaseHistory: [],
+    shouldConfirm: false,
+  };
+
+  let currentCtx: PipelineContext = initialCtx;
+  let failed: string | null = null;
+
+  for (const stage of stages) {
+    process.stdout.write(`\n${chalk.bold(`📍 ${stage.name}`)}\n`);
+    try {
+      currentCtx = await stage.execute(currentCtx);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`  ${chalk.red('✗ failed:')} ${msg}\n`);
+      failed = stage.name;
+      break;
+    }
+  }
+
+  if (failed) {
+    process.stdout.write(`\n${chalk.red('✗ Pipeline failed at stage:')} ${failed}\n`);
+    exit(1);
+  }
+
+  process.stdout.write(`\n${chalk.green('✓ Pipeline completed.')}\n`);
+}
+
+main().catch((err) => {
+  process.stderr.write(`${chalk.red('Fatal:')} ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+  exit(1);
+});

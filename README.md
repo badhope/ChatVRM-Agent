@@ -1,476 +1,331 @@
 # Personal-Assistant
 
-**Personal-Assistant** — 功能强大的个人AI助手CLI工具。
+Pipeline 驱动的个人 AI Agent。**CLI + Web 两种界面**，所有 LLM 调用直连真实厂商端点，**没有 mock / 假数据 / 兜底回退** — 你拿到 API key 就能直接用。
 
-## 🌟 核心功能
+## 一句话接入
 
-### AI平台支持
-- **10+ AI平台** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow, 阿里云百炼, 智谱AI, 百度文心, Ollama, LM Studio
-- **智能模型搜索** — 自动从平台API搜索匹配模型
-- **自动降级** — 一个模型失败时自动尝试下一个
-- **流式响应** — 实时AI输出显示
-- **熔断器** — 内置熔断器自动隔离问题平台
-
-### 对话功能
-- **对话管理** — 完整的对话历史管理
-- **本地存储** — 数据持久化到本地磁盘
-- **多轮对话** — 支持上下文感知的对话
-
-### 🤖 双Agent协作系统
-- **智能任务分解** — LLM驱动的规划Agent自动分解复杂任务
-- **智能执行决策** — 执行Agent智能选择工具调用策略
-- **任务复杂度评估** — 自动判定任务难度，选择单/双Agent模式
-- **协作管理器** — 协调Agent间通信和状态管理
-- **优雅降级** — LLM失败时自动回退到规则模式
-- **多Agent调度器** — 并行任务执行、负载均衡、智能路由
-
-### 🧠 知识与记忆系统
-- **知识图谱** — 智能知识提取、推理、关联分析
-- **长期记忆** — 智能重要性评分、遗忘机制、关联网络
-- **RAG检索** — 多种检索策略、质量评估、结果重排序
-- **记忆摘要** — 自动生成对话摘要和关键点
-
-### 🎭 人格与情绪系统
-- **预设人格** — 友好导师、技术专家、创意天才、务实工作者
-- **情绪响应** — 基于对话调整情绪状态
-- **用户偏好学习** — 学习用户交互风格和偏好
-- **人格兼容性分析** — 分析不同人格配合效果
-
-### 🔒 信任与安全系统
-- **信任等级** — 自动评估信任度，动态调整执行策略
-- **风险检测** — 自动检测破坏性操作和敏感信息
-- **审计日志** — 完整记录所有操作历史
-- **安全确认** — 敏感操作需要用户确认
-
-### 🛠️ 开发工具生态
-- **内置工具** — Shell, 文件操作, HTTP, JSON, 文本处理等
-- **高级工具** — 批量操作、Git智能、代码质量分析
-- **安全工具** — 安全审计、文档生成、测试生成
-- **性能监控** — 系统指标、操作统计、性能分析
-
-### 💻 IDE集成与代码智能
-- **完整LSP服务器** — Language Server Protocol实现，支持代码补全、定义跳转、引用查找
-- **智能代码补全** — 上下文感知的关键字、符号、代码片段补全
-- **重构引擎** — 提取方法、重命名、简化条件、模板字符串转换等
-- **多语言支持** — TypeScript, JavaScript, Python等
-
-### 🌐 多渠道消息系统
-- **Telegram Bot** — 长轮询消息接收、照片/文档发送、Inline键盘
-- **Discord WebSocket** — Gateway连接、消息路由、频道管理
-- **统一消息路由** — 智能消息路由、广播、定时消息
-- **跨平台通知** — 多渠道统一通知管理
-
-### 🎯 Skill系统
-- **可学习技能** — 从任务执行中自动学习和创建新技能
-- **智能匹配** — 基于触发词和相似度自动匹配技能
-- **自动执行** — 条件触发和手动调用
-- **持续学习** — 从执行结果中学习和优化
-
-### ⏰ 定时任务与自动化
-- **Cron调度** — 强大的定时任务调度（秒级精度）
-- **重试机制** — 失败自动重试、指数退避
-- **任务历史** — 完整的任务执行记录和统计
-- **Webhooks** — 认证、验证、限流、错误处理
-
-### 👥 团队协作管理
-- **用户与团队** — RBAC权限管理、项目隔离
-- **协作会话** — 实时协作、消息共享、权限控制
-- **会话历史** — 完整协作记录和回放
-
-### 👁️ 视觉处理
-- **图像分析** — 物体检测、人脸识别、颜色分析
-- **OCR文字提取** — 从图片中提取文字
-- **图表生成** — Mermaid格式图表自动生成
-
-### 📊 监控与分析
-- **性能监控面板** — 实时CPU、内存、事件循环监控
-- **告警系统** — 自动告警、阈值设置、历史记录
-- **使用统计** — 命令、技能、任务使用统计
-- **趋势分析** — 性能趋势、用户行为分析
-- **报告生成** — JSON、文本、Markdown格式报告
-
-### ☁️ 云同步与备份
-- **多云存储** — S3、GCS、Azure Blob、本地文件
-- **自动备份** — 定时备份、增量同步
-- **数据恢复** — 快速恢复、版本管理
-- **冲突处理** — 自动合并、冲突解决
-
-### 🌐 浏览器自动化
-- **Playwright控制** — 导航、点击、表单填写、截图
-- **页面分析** — 元素提取、链接收集、表单识别
-- **文件操作** — 文件上传/下载、Cookie管理
-- **自动化脚本** — 自定义JavaScript执行
-
-## 📦 安装
-
-### 从GitHub安装
+### CLI 模式
 
 ```bash
-# 克隆仓库
+export SILICONFLOW_API_KEY=sk-你的真实key
+npx tsx src/cli/index.ts agent "用一句话介绍你自己"
+```
+
+### Web 模式
+
+```bash
+# 一次性安装 + 构建
+npm install && npm run build && npm run web:build
+
+# 启动 Express 服务器 (默认 :3000, 同时托管后端 API + 前端静态文件)
+npm run server
+# → 浏览器打开 http://localhost:3000
+```
+
+如果你想要持久化 key：
+
+```bash
+node dist/cli/index.js config set-key siliconflow sk-你的真实key
+node dist/cli/index.js config set-default siliconflow
+node dist/cli/index.js chat
+```
+
+## 系统要求
+
+- Node.js **>= 20.0.0 < 25.0.0**（22 LTS 推荐）
+- TypeScript 5.8（仅源码运行需要）
+- 网络可访问 LLM 厂商端点
+
+## 安装
+
+```bash
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
-
-# 安装依赖
 npm install
-
-# 全局链接(可选)
-npm link
+npm run build
 ```
 
-**要求**: Node.js >= 18.0.0 < 23.0.0
+构建产物在 `dist/cli/index.js`，可以直接用 `node dist/cli/index.js ...` 调用。
 
-## 🚀 快速开始
+## LLM 接入（10 个 Provider，全部真实 HTTP）
 
-### 基础配置
+> **零 mock 兜底**：本项目不会在真实 API 失败时返回假数据。401 / 403 / 网络错误会原样抛出来 — 没有任何"模拟成功"的回退路径。
+
+| Provider     | Type    | 默认 Base URL                          | 默认 Model              | 协议           | 是否需要 Key |
+| ------------ | ------- | -------------------------------------- | ----------------------- | -------------- | ------------ |
+| `openai`     | Cloud   | `https://api.openai.com/v1`            | `gpt-4o`                | OpenAI         | ✅            |
+| `anthropic`  | Cloud   | `https://api.anthropic.com`            | `claude-3-5-sonnet-...` | Anthropic 私有 | ✅            |
+| `google`     | Cloud   | `https://generativelanguage.googleapis.com/v1beta` | `gemini-2.0-flash` | Google 私有 | ✅            |
+| `deepseek`   | Cloud   | `https://api.deepseek.com/v1`          | `deepseek-chat`         | OpenAI 兼容    | ✅            |
+| `siliconflow` | Cloud  | `https://api.siliconflow.cn/v1`        | `Qwen/Qwen2.5-7B-Instruct` | OpenAI 兼容 | ✅            |
+| `aliyun`     | Cloud   | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` | OpenAI 兼容 | ✅            |
+| `zhipu`      | Cloud   | `https://open.bigmodel.cn/api/paas/v4` | `glm-4`                 | OpenAI 兼容    | ✅            |
+| `baidu`      | Cloud   | `https://aip.baidubce.com/rpc/2.0/ai_custom/v1` | `ernie-4.0-8k`     | 百度私有       | ✅            |
+| `ollama`     | Local   | `http://localhost:11434/v1`            | `llama3.2`              | OpenAI 兼容    | ❌            |
+| `lmstudio`   | Local   | `http://localhost:1234/v1`             | `local-model`           | OpenAI 兼容    | ❌            |
+
+**默认 Provider：`siliconflow`**（国产、有免费额度、Qwen2.5 / DeepSeek / GLM 等开源模型直接可用）。
+
+### 配置方式 1：CLI 持久化（conf 加密存储）
 
 ```bash
-# 1. 配置API密钥
-personal-assistant config provider set-key aliyun sk-xxxxx
-personal-assistant config set-default aliyun
+# 写入 key
+node dist/cli/index.js config set-key <provider> <YOUR_API_KEY>
 
-# 2. 开始对话
-personal-assistant chat ask "Hello, introduce yourself"
+# 例如
+node dist/cli/index.js config set-key openai sk-xxxxxxxx
+node dist/cli/index.js config set-key anthropic sk-ant-xxxxxxxx
+node dist/cli/index.js config set-key siliconflow sk-xxxxxxxx
 
-# 3. 交互式多轮对话
-personal-assistant chat start
+# 切换默认 provider
+node dist/cli/index.js config set-default openai
+
+# 查看当前配置
+node dist/cli/index.js config show
+
+# 列出所有支持 provider
+node dist/cli/index.js config providers
 ```
 
-### 双Agent模式使用
+API key 存储在 conf 配置文件（默认 `~/.config/personal-assistant-nodejs/config.json`，文件权限 `0600`）。
+
+### 配置方式 2：环境变量（优先级更高）
+
+CLI 启动时按下列顺序回退查找 key：
+
+1. conf 配置（`config set-key` 写入的）
+2. `PERSONAL_ASSISTANT_<PROVIDER>`（如 `PERSONAL_ASSISTANT_OPENAI`）
+3. `<PROVIDER>_API_KEY`（如 `OPENAI_API_KEY`）
 
 ```bash
-# 强制启用双Agent协作模式
-personal-assistant agent run "重构项目架构" --dual-agent
+# OpenAI
+export OPENAI_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat -p openai
 
-# 简写方式
-personal-assistant agent run "分析代码库" --da
+# Anthropic Claude
+export ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
+node dist/cli/index.js agent "写一个快排" -p anthropic
 
-# 自动模式(根据任务复杂度智能选择)
-personal-assistant agent run "修复简单bug"
+# Google Gemini
+export GOOGLE_API_KEY=AIza-xxxxxxxx
+node dist/cli/index.js chat -p google
+
+# SiliconFlow（默认）
+export SILICONFLOW_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat
+
+# DeepSeek
+export DEEPSEEK_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat -p deepseek
+
+# Aliyun DashScope（Qwen）
+export ALIYUN_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat -p aliyun
+
+# Zhipu GLM
+export ZHIPU_API_KEY=xxxxxxxx.xxxxxxxx
+node dist/cli/index.js chat -p zhipu
+
+# Baidu Ernie（access_token）
+export BAIDU_API_KEY=xxxxxxxx
+node dist/cli/index.js chat -p baidu
 ```
 
-### 高级工具示例
+### 切换 Base URL（自建代理 / Azure OpenAI / 私有部署）
+
+每个 provider 都支持 `<PROVIDER>_BASE_URL` 环境变量覆盖：
 
 ```bash
-# 安全审计扫描
-securityAudit({ path: './src', severity: 'medium' })
+# Azure OpenAI 代理
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com/openai/deployments/your-deploy
+export OPENAI_API_KEY=your-azure-key
+node dist/cli/index.js chat -p openai -m your-deploy-name
 
-# 代码质量分析
-codeQuality({ path: './src', language: 'typescript' })
-
-# 智能Git提交
-gitSmartCommit({ autoAdd: 'true' })
-
-# 性能监控
-systemMetrics()
-
-# 浏览器自动化
-browser.navigate('https://example.com')
-browser.click('button.submit')
+# 第三方 OpenAI 兼容代理
+export OPENAI_BASE_URL=https://api.your-proxy.com/v1
+export OPENAI_API_KEY=sk-proxy
 ```
 
-### 定时任务示例
+支持的覆盖变量：`OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` / `GOOGLE_BASE_URL` / `DEEPSEEK_BASE_URL` / `SILICONFLOW_BASE_URL` / `ALIYUN_BASE_URL` / `ZHIPU_BASE_URL` / `BAIDU_BASE_URL` / `OLLAMA_BASE_URL` / `LMSTUDIO_BASE_URL`
 
-```javascript
-// 创建定时任务
-scheduler.addTask({
-  name: 'daily-report',
-  cron: '0 8 * * *',  // 每天早上8点
-  action: async () => {
-    const report = monitor.generateReport();
-    await router.send({ content: report });
-  }
-});
-```
+### 本地 LLM（Ollama / LM Studio）
 
-### 使用统计追踪
-
-```javascript
-// 追踪用户行为
-tracker.trackCommand('build', true, 5000);
-tracker.trackSkill('code-analyzer', true, 30000);
-tracker.trackFeature('autocomplete');
-
-// 生成使用报告
-const report = tracker.generateReport();
-console.log(report.summary);
-```
-
-## ⚙️ 命令参考
-
-### 对话命令
+无需 key，直接调用：
 
 ```bash
-personal-assistant chat start                    # 交互式多轮对话
-personal-assistant chat ask <question>             # 单轮快速问答
-personal-assistant chat models -p aliyun          # 列出平台模型
+# Ollama 先起服务
+ollama serve &
+ollama pull llama3.2
+
+# 调用
+node dist/cli/index.js chat -p ollama -m llama3.2
+
+# LM Studio 同样
+# 启动 LM Studio local server (port 1234) 后：
+node dist/cli/index.js chat -p lmstudio
 ```
 
-### Agent命令
+## 命令一览
 
 ```bash
-personal-assistant agent run <task>              # 运行Agent任务
-personal-assistant agent run <task> --dual-agent # 双Agent模式
-personal-assistant agent run <task> --da        # 简写双Agent模式
+# 交互式多轮对话（readline 真实终端交互）
+node dist/cli/index.js chat [-p provider] [-m model]
+
+# 单任务跑 6-stage Pipeline（Init → Understand → Plan → Execute → Validate → Reflect）
+node dist/cli/index.js agent "<task>" [-p provider] [-m model]
+
+# 配置管理
+node dist/cli/index.js config show
+node dist/cli/index.js config set-key <provider> [key]   # key 缺省时从 stdin 读
+node dist/cli/index.js config remove-key <provider>
+node dist/cli/index.js config set-default <provider>
+node dist/cli/index.js config providers
 ```
 
-### 配置命令
+## Pipeline 架构（6 个 Stage）
+
+每次 `agent` 任务都会按顺序执行：
+
+1. **initialize** — 初始化上下文（taskId、metadata、错误列表）
+2. **understand** — LLM 识别意图（`chat` / `code` / `analyze` / `refactor` / `shell` / `search`）+ 扫描 workspace 文件
+3. **plan** — LLM 生成执行计划（步骤列表 + 工具选择），LLM 失败时回退到模板计划
+4. **execute** — 逐步调用工具（`writeFile` / `readFile` / `shell` / `search` / `remember` / `analyze` / `respond`）
+5. **validate** — 校验执行结果（语法、退出码、文件存在性）
+6. **reflect** — 反思阶段，更新情绪 + 写入长期记忆
+
+## 内置工具（7 个真实工具）
+
+注册在 `src/cli/index.ts:31-198`，全部对接真实能力：
+
+| 工具          | 功能                            | 后端实现                          |
+| ------------- | ------------------------------- | --------------------------------- |
+| `writeFile`   | 写入文件                        | `StorageAdapter` 真实文件系统      |
+| `readFile`    | 读取文件                        | `StorageAdapter` 真实文件系统      |
+| `shell`       | 执行 shell 命令                  | `child_process` 真实进程            |
+| `search`      | 搜索长期记忆                     | `MemoryAdapter.recall`（MiniSearch） |
+| `remember`    | 写入长期记忆                     | `MemoryAdapter.remember`           |
+| `analyze`     | 调用 LLM 分析文本                | `LLMAdapter.chat` 真实 LLM 端点     |
+| `respond`     | 调用 LLM 生成对话回复            | `LLMAdapter.chat` 真实 LLM 端点     |
+
+## 真实接口验证（已通过）
 
 ```bash
-personal-assistant config init                   # 交互式配置向导
-personal-assistant config list                   # 查看所有配置
-personal-assistant config provider set-key <platform> <API Key>
-personal-assistant config set-default <platform>
-personal-assistant config test <platform>        # 测试平台连接
+# 1. 无 key 启动 — 不应静默回退，应该直接报错
+$ node dist/cli/index.js chat
+✗ No API key configured for provider "siliconflow".
+Run: personal-assistant config set-key siliconflow <YOUR_KEY>
+Or set the env var: PERSONAL_ASSISTANT_SILICONFLOW / SILICONFLOW_API_KEY
+
+# 2. 假 key — 真实 HTTP 调用拿到厂商的 401
+$ SILICONFLOW_API_KEY=sk-fake-key node dist/cli/index.js agent "hi"
+📍 execute
+  Running step: Generate conversational response
+  ✗ LLM request failed (siliconflow): 401 "Api key is invalid"
 ```
 
-### 工具命令
+**没有 mock / 没有假装成功** — 每次 LLM 调用都是真实的 `fetch` 到厂商端点。
 
-```bash
-personal-assistant tools list                    # 列出所有工具
-```
+## 故障排查
 
-### 开发命令
+| 现象                                            | 原因 / 解决                                                                 |
+| ----------------------------------------------- | --------------------------------------------------------------------------- |
+| `No API key configured for provider "..."`      | 1) 没设 key；2) key 名称拼写错（注意 `PERSONAL_ASSISTANT_<PROVIDER>` 大写）  |
+| `LLM request failed (openai): 401`              | key 无效或过期，去厂商控制台重新生成                                         |
+| `LLM request failed (openai): 429`              | 触发速率限制，等几秒或换 model                                                |
+| `fetch failed`                                   | 沙箱网络阻断 / 代理不通，`curl https://api.openai.com/v1/models` 自测        |
+| `Anthropic request failed: 403`                 | 1) key 错；2) 你的 IP 在 Anthropic 拒绝区域（CN 常见）                       |
+| `ollama/lmstudio` 连不上                        | 本地服务没起：`ollama serve` 或启动 LM Studio local server                    |
+| 想换 base URL                                   | 配 `<PROVIDER>_BASE_URL` 环境变量                                            |
 
-```bash
-npm run build                      # 构建项目
-npm run dev                       # 监听模式开发
-npm run test                      # 运行所有测试
-npm run lint                      # 运行ESLint
-npm run format                    # 运行Prettier
-npm run test:coverage             # 测试覆盖率报告
-```
-
-## 🏗️ 项目架构
+## 项目结构
 
 ```
 Personal-Assistant/
-├── src/                         # 源代码
-│   ├── cli.ts                  # CLI入口
-│   ├── commands/               # CLI命令
-│   ├── providers/             # AI平台适配器
-│   ├── agent/                 # Agent系统(DDD架构)
-│   │   ├── domain/           # 领域层(业务逻辑)
-│   │   │   ├── models/       # 领域模型
-│   │   │   ├── services/     # 领域服务
-│   │   │   └── repositories/ # 仓库接口
-│   │   ├── application/       # 应用层(用例)
-│   │   │   ├── services/     # 应用服务
-│   │   │   └── dtos/        # 数据传输对象
-│   │   ├── infrastructure/   # 基础设施层
-│   │   │   ├── repositories/ # 仓库实现
-│   │   │   ├── common/      # 公共组件(双Agent、协议等)
-│   │   │   └── state-machines/ # 状态机
-│   │   └── interfaces/       # 接口层(控制器)
-│   ├── memory/                # 记忆系统
-│   ├── tools/                 # 工具系统
-│   ├── ide/                   # IDE集成(LSP、补全、重构)
-│   ├── channels/              # 多渠道消息(Telegram、Discord)
-│   ├── skills/                # Skill学习和执行引擎
-│   ├── multi-agent/           # 多Agent调度器
-│   ├── browser/               # 浏览器自动化(Playwright)
-│   ├── scheduler/             # 定时任务调度
-│   ├── webhook/               # Webhook处理器
-│   ├── collaboration/         # 团队协作管理
-│   ├── vision/                 # 视觉处理
-│   ├── monitoring/            # 监控和分析
-│   ├── cloud/                 # 云同步和备份
-│   ├── config/                # 配置管理
-│   └── utils/                 # 工具函数
-├── dist/                        # 编译输出
-├── docs/                        # 文档
-├── sdk/                         # SDK
-└── vscode/                     # VSCode扩展
+├── src/
+│   ├── cli/                  # CLI 入口（chat/agent/config 子命令 + 7 工具注册）
+│   ├── adapters/             # 真实实现层
+│   │   ├── llm.adapter.ts    # 10 provider 真实 HTTP 调用
+│   │   ├── config.adapter.ts # conf 持久化 + 默认 siliconflow
+│   │   ├── storage.adapter.ts
+│   │   ├── memory.adapter.ts # MiniSearch 全文检索
+│   │   ├── shell.adapter.ts  # child_process 真实 shell
+│   │   └── tools.registry.ts # 7 个真实工具
+│   ├── ports/                # 接口契约（Clean Architecture）
+│   │   ├── llm.port.ts
+│   │   ├── config.port.ts
+│   │   ├── memory.port.ts
+│   │   ├── storage.port.ts
+│   │   └── shell.port.ts
+│   ├── core/                 # Pipeline + EventBus
+│   │   ├── pipeline.ts
+│   │   ├── event-bus.ts
+│   │   └── types.ts
+│   ├── stages/               # 6 个 Pipeline Stage
+│   ├── domain/               # 领域模型（personality/memory/trust/tool）
+│   ├── infrastructure/       # Circuit Breaker (opossum)
+│   └── __tests__/            # 707 个测试用例（40 文件）
+├── server/                   # Express 服务器（14 个文件）
+│   ├── index.ts              # 启动入口
+│   ├── app.ts                # 8 个 API 路由 + 静态托管 frontend/dist
+│   ├── providers.ts          # 10 个 provider 元信息
+│   ├── session-store.ts      # chat session 持久化
+│   ├── tools-setup.ts        # 7 个工具注册
+│   └── routes/               # 8 个 REST/SSE 路由
+└── frontend/                 # React 18 + TypeScript + Vite + Tailwind
+    ├── src/
+    │   ├── api/              # fetch client + sseStream()
+    │   ├── stores/           # zustand: theme / config
+    │   ├── pages/            # 9 个页面 (Dashboard/Chat/Agent/Tools/...)
+    │   ├── components/       # 8 个 UI 组件 + Layout
+    │   ├── types/            # TypeScript 类型
+    │   └── styles/           # Tailwind + CSS variables
+    ├── dist/                 # 构建产物（被 server/ 静态托管）
+    └── vite.config.ts        # /api → :3000 代理
 ```
 
-## 📚 详细文档
+## Web 前端
 
-完整架构和功能文档请查看 [docs/](docs/) 目录:
+启动 `npm run server` 后访问 `http://localhost:3000`，包含 9 个真实工作的页面：
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — 详细架构概述
-- [FINAL_ARCHITECTURE_SUMMARY.md](docs/FINAL_ARCHITECTURE_SUMMARY.md) — 完整迁移总结
-- [CODE_STRUCTURE_ANALYSIS.md](docs/CODE_STRUCTURE_ANALYSIS.md) — 代码结构分析
-- [DUAL_AGENT_SYSTEM.md](docs/DUAL_AGENT_SYSTEM.md) — 双Agent系统文档
-- [PERFORMANCE_MONITORING.md](docs/PERFORMANCE_MONITORING.md) — 性能监控设置
-- [PHASE_3_DETAILED_PLAN.md](docs/PHASE_3_DETAILED_PLAN.md) — 第三阶段计划
-- [PHASE_4_DETAILED_PLAN.md](docs/PHASE_4_DETAILED_PLAN.md) — 第四阶段计划
-- [EXTENSION_ENHANCEMENT_PLAN.md](docs/EXTENSION_ENHANCEMENT_PLAN.md) — 扩展完善计划
+| 路由 | 功能 | 后端 API |
+| --- | --- | --- |
+| `/dashboard` | 统计面板（chat 数量 / 记忆 / Agent 任务 / Provider） | `/api/dashboard` + `/api/config/snapshot` |
+| `/chat` 与 `/chat/:id` | 真实 SSE 流式对话（7 种 model 切换） | `/api/chat/stream` (SSE) |
+| `/agent` | 6 阶段 Pipeline 实时推送 | `/api/agent/run` (SSE) |
+| `/tools` | 7 个工具 UI（writeFile / readFile / shell / search / remember / analyze / respond） | `/api/tools` + `/api/tools/execute` |
+| `/memory` | 长期记忆浏览 / 搜索 / tag 过滤 / 删除 / 清空 | `/api/memory*` |
+| `/config` | 10 个 LLM Provider 配置 + key 管理 + 测试 | `/api/config/*` |
+| `/graph` | Canvas 2D 力导向知识图谱 | `/api/graph` |
+| `/settings` | 4 种人格切换 + 情绪状态 + 主题切换 | `/api/personality` + `/api/emotion` |
 
-## 🧪 测试
+**特性**：
+- 响应式布局（手机 `grid-cols-1` / 平板 `md:grid` / 桌面 `lg:grid-cols-4`）
+- 暗 / 亮主题（`zustand persist` 到 localStorage `pa-theme`）
+- 真实 LLM 错误透传（无 mock 兜底）：假 key → 真实 401
+- 真实工具执行：`writeFile` 真实落盘 / `shell` 真实 `child_process` / `remember` 真实 `MiniSearch`
+
+## 开发命令
 
 ```bash
-npm run test              # 运行所有测试
-npm run test:unit         # 只运行单元测试
-npm run test:integration  # 运行集成测试
-npm run test:watch        # 监听模式开发
-npm run test:coverage     # 测试覆盖率报告
-npm run test:ui           # Vitest UI交互式测试
+npm install              # 安装后端依赖
+npm run build            # tsc 编译后端
+npm run server           # 启动 Express (tsx watch 模式)
+npm run web:dev          # Vite 前端开发 (HMR, /api 代理 :3000)
+npm run web:build        # 前端生产构建 → frontend/dist
+npm run test             # vitest run (40 文件 / 707 测试)
+npm run lint             # ESLint 9.x flat config
+npm run format           # Prettier
 ```
 
-### CI/CD与质量保证
+## 协议
 
-项目使用GitHub Actions实现自动化CI/CD流程:
+- **OpenAI 兼容**（7 个 provider 走这条）：`POST {base_url}/chat/completions`，`Authorization: Bearer <key>`
+- **Anthropic 私有**：`POST {base_url}/v1/messages`，`x-api-key: <key>` + `anthropic-version: 2023-06-01`
+- **Google 私有**：`POST {base_url}/models/{model}:generateContent?key=<key>`
+- **百度私有**：`POST {base_url}/wenxinworkshop/chat/{model}?access_token=<key>`
 
-- **构建测试**: 支持Node.js 18.x和20.x版本
-- **代码质量**: ESLint + Prettier自动检查
-- **测试覆盖**: Vitest + Codecov覆盖率追踪
-- **自动发布**: main分支推送自动发布到npm
-- **文档部署**: 自动生成并部署API文档到GitHub Pages
+所有调用都通过 `fetch` 直接打到厂商，没有中间代理、没有 mock、没有假数据。
 
-查看完整工作流: [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml)
+## License
 
-## 🔧 工具生态
-
-### 基础工具
-
-| 工具名 | 功能描述 |
-|--------|----------|
-| `readFile` | 读取文件内容 |
-| `writeFile` | 写入文件内容 |
-| `shell` | 执行Shell命令 |
-| `http` | HTTP请求 |
-| `json` | JSON处理 |
-
-### 高级工具
-
-| 工具名 | 功能描述 |
-|--------|----------|
-| `batchRead` | 批量读取多个文件 |
-| `batchWrite` | 批量写入多个文件 |
-| `copyMove` | 复制/移动文件或目录 |
-| `gitSmartCommit` | AI驱动的智能Git提交 |
-| `gitBranch` | Git分支管理 |
-| `gitHistory` | Git历史分析 |
-| `codeQuality` | 代码质量分析和坏味道检测 |
-| `systemMetrics` | 系统性能指标 |
-| `operationMetrics` | 操作性能统计 |
-| `performanceProfile` | 性能分析报告 |
-| `securityAudit` | 安全审计扫描 |
-| `generateDocumentation` | 自动文档生成 |
-| `generateTests` | 测试代码生成 |
-
-### 浏览器自动化工具
-
-| 工具名 | 功能描述 |
-|--------|----------|
-| `browser.navigate` | 页面导航 |
-| `browser.click` | 元素点击 |
-| `browser.fill` | 表单填充 |
-| `browser.screenshot` | 页面截图 |
-| `browser.analyze` | 页面分析 |
-| `browser.extractLinks` | 链接提取 |
-
-### IDE工具
-
-| 工具名 | 功能描述 |
-|--------|----------|
-| `lsp.completion` | 代码补全 |
-| `lsp.definition` | 定义跳转 |
-| `lsp.references` | 引用查找 |
-| `lsp.hover` | 悬停信息 |
-| `refactor.extract` | 提取方法 |
-| `refactor.rename` | 重命名 |
-
-## 🔒 支持的AI平台
-
-| 平台 | 类型 | API格式 |
-|-------|------|---------|
-| OpenAI | 云服务 | OpenAI |
-| Anthropic | 云服务 | Anthropic |
-| Google Gemini | 云服务 | Google |
-| DeepSeek | 云服务 | OpenAI兼容 |
-| SiliconFlow | 云服务 | OpenAI兼容 |
-| 阿里云百炼 | 云服务 | OpenAI兼容 |
-| 智谱AI | 云服务 | OpenAI兼容 |
-| 百度文心 | 云服务 | 自定义 |
-| Ollama | 本地 | Ollama |
-| LM Studio | 本地 | OpenAI兼容 |
-
-## 💻 开发
-
-### 代码质量
-- **Prettier** — 自动代码格式化
-- **ESLint** — TypeScript代码检查
-- **Husky** — Git Hooks预提交检查
-- **Lint-Staged** — 对暂存文件运行检查
-
-### 架构理念
-- **领域驱动设计(DDD)**
-- **整洁架构**
-- **依赖倒置**
-- **测试优先**
-
-### 从源码构建
-
-```bash
-# 克隆
-git clone https://github.com/badhope/Personal-Assistant.git
-cd Personal-Assistant
-
-# 安装
-npm install
-
-# 构建
-npm run build
-
-# 测试
-npm run test
-
-# 开发
-npm run dev
-```
-
-### 性能监控集成
-
-```typescript
-import { PerformanceMonitor } from './monitoring/performance';
-
-// 创建监控实例
-const monitor = new PerformanceMonitor({
-  refreshInterval: 5000,
-  alertThresholds: {
-    cpuUsage: 80,
-    memoryUsage: 85
-  }
-});
-
-// 启动监控
-monitor.start();
-
-// 获取仪表盘数据
-const dashboard = monitor.getDashboardData();
-console.log(dashboard.summary);
-
-// 生成报告
-const report = monitor.generateReport('markdown');
-console.log(report);
-```
-
-### 使用统计集成
-
-```typescript
-import { UsageTracker, EventType } from './monitoring/usage';
-
-// 创建追踪器
-const tracker = new UsageTracker('session-1', 'user-1');
-
-// 追踪事件
-tracker.trackCommand('build', true, 5000);
-tracker.trackSkill('code-analyzer', true, 30000);
-tracker.trackFeature('autocomplete');
-
-// 生成报告
-const report = tracker.generateReport();
-console.log(report.summary);
-```
-
-## 📜 许可证
-
-MIT License
-
-## 🤝 贡献
-
-欢迎贡献！详细信息请查看 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
----
-
-**Personal-Assistant** — 您的智能个人AI助手
+MIT

@@ -1,100 +1,19 @@
-# Sensitive files - NEVER commit these
+# Sensitive files
 .env
 .env.*
-.devflow/
 .personal-assistant/
 config_backup.json
 config_backup*.json
 *.key
 *.pem
-
-# Documentation files that may contain sensitive info
-*_NOTES.md
-*_BACKUP.md
-*_COMPLETE.md
-*_REPAIR.md
-TEMP_*.md
-SECURITY_*.md
-CREDENTIALS_*.md
-
-# GitHub tokens and secrets patterns
-.github_token
 *.token
 *.secret
 ghp_*
 sk-*
-
-# Sensitive configuration files
 credentials.json
 secrets.json
 *.credentials
 *.private
-
-# Local development files
-setup.sh
-*.local
-local_*
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Logs
-logs/
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Generated files
-config-validation-report.json
-*.tmp
-
-# Memory stores (runtime data)
-memory/stores/*.json
-!memory/stores/*.json.example
-
-# Cache
-.cache/
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Temporary files
-*.bak
-*.temp
-*.swp
 
 # Node.js
 node_modules/
@@ -102,40 +21,68 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# DevFlow runtime data
-.devflow/
-
-# Config backups
-config_backup.json
-config_backup*.json
-
-# SDK build output
-sdk/dist/
-
-# Packages (local)
-packages/
-
-# Coverage reports
-coverage/
-.nyc_output/
-
-# Vitest
-.vitest/
+pnpm-debug.log*
 
 # Build artifacts
 *.js.map
 *.d.ts.map
 
-# Runtime data directories
+# Coverage
+coverage/
+.nyc_output/
+.vitest/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project/
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.pytest_cache/
+
+# Temporary
+*.tmp
+*.bak
+*.temp
+
+# Runtime data
 runtime/
 data/
 storage/
 
-# Local configuration
+# Local config
 .localrc
 .local.env
+*.local
+local_*
 
-# Editor directories
-.project/
-.settings/
+# SDK
+sdk/dist/
+
+# Packages (local)
+packages/
+
+# DevFlow
+.devflow/
+
+# Skills
+.skills/
+
+# Python (legacy)
+__pycache__/
+*.py[cod]
+venv/
+ENV/

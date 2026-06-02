@@ -15,7 +15,13 @@
     "declaration": true,
     "sourceMap": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false
   },
   "include": [
     "src/**/*.ts"
@@ -23,13 +29,14 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts",
-    "packages/**",
-    "skills/**",
-    "mcp/**"
-  ],
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  }
+    "packages",
+    "skills",
+    "mcp",
+    "vscode",
+    "sdk",
+    "examples",
+    "plugins",
+    "scripts",
+    "docs"
+  ]
 }
