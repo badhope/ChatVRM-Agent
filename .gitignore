@@ -13,6 +13,22 @@ sk-*
 credentials.json
 secrets.json
 *.credentials
+
+# Editor / OS junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local-only / AI session metadata
+.trae/
+.cursor/
+.ai/
+.claude/
+.local-state/
 *.private
 
 # Node.js
