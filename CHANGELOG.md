@@ -17,23 +17,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `SECURITY.md` (private vulnerability disclosure, supported versions, security best practices)
   - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1)
   - `.editorconfig` (cross-editor formatting)
-- **8 runnable TypeScript examples** — `examples/01-basic-chat.ts` through `examples/08-server-api.ts`
-  - Plus `examples/README.md` documenting all 9 examples
+- **8 runnable TypeScript examples** — `examples/01-basic-chat.ts` through `examples/08-server-api.ts` plus `examples/language-demo.ts`
+  - `examples/README.md` documents all of them
 - **`docs/DEPLOYMENT.md`** — production deployment guide (nginx, Caddy, Docker, systemd, security checklist, backup/restore)
 - **`docs/API.md`** — full API reference (adapters, ports, pipeline, REST + SSE)
 - **README improvements**
   - Top-of-file badge bar (license, Node, TS, React, Vite, Tailwind, CI)
   - Table of contents
-  - New sections: i18n, Examples, Deployment, Contributing, Community, Acknowledgements
+  - New sections: i18n, Examples, Deployment, Contributing
   - Expanded project structure (sdk/, vscode/, examples/, docs/DEPLOYMENT.md, etc.)
 
 ### Changed
-- `README_zh.md` — added "Acknowledgement" footer and updated project structure mirror
+- `README_zh.md` — keeps parity with English README
+
+### Housekeeping
+- Removed planning documents under `docs/` (PHASE_*, TASK_*, *_ANALYSIS, *_DETAIL, *_PLAN) — kept only architecture-relevant ADRs and user-facing guides
+- Stripped emoji section headers and marketing-speak filler from README
+- Trimmed `SECURITY.md` (no placeholder Hall of Fame, no TBD GPG fingerprint)
+- Simplified `.github/PULL_REQUEST_TEMPLATE.md` and issue templates (less checkbox-heavy)
+- Replaced repetitive tutorial-style code in `examples/04-tool-execution.ts` with a loop over a tool/args table
+- Added `.trae/`, `.cursor/`, `.ai/`, `.claude/` to `.gitignore` so AI-assistant session metadata never lands in the repo
 
 ## [2.0.0] - 2026-06-02
 
 ### Added
-- **Full Web UI** — React 18 + TypeScript + Vite + Tailwind, 9 working pages with real SSE streaming
+- **Full Web UI** — React 18 + TypeScript + Vite + Tailwind, 8 working pages with real SSE streaming
 - **Express backend** (`server/`) — 8 API routes (REST + SSE) + static hosting of `frontend/dist`
 - **Clean Architecture** — `src/adapters`, `src/core`, `src/stages`, `src/ports`, `src/domain`, `src/infrastructure`
 - **10 LLM providers** — OpenAI / Anthropic / Google / DeepSeek / SiliconFlow / Aliyun / Zhipu / Baidu / Ollama / LMStudio
