@@ -1,28 +1,31 @@
-#!/usr/bin/env node
 /**
- * Example 8 — Server REST + SSE
+ * Talk to the running server (port 4317) over its REST + SSE API.
+ * Demonstrates how a third-party process can integrate with
+ * Personal-Assistant without depending on the npm package.
  *
- * Demonstrates how a third-party process can talk to the running
- * Personal-Assistant server (port 4317) over its REST + SSE API.
- *
- *   1. Start the server in another terminal:
- *        npm run dev:server
- *   2. Run this script:
- *        npx tsx examples/08-server-api.ts
+ *   npm run dev:server     # in another terminal
+ *   npx tsx examples/08-server-api.ts
  */
 
 const BASE = process.env.PA_BASE ?? 'http://localhost:4317';
 
-async function rest(path: string, init?: RequestInit) {
-  const r = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  if (!r.ok) throw new Error(`${path} → ${r.status} ${r.statusText}`);
-  return r.json();
+async function get<T>(path: string): Promise<T> {
+  const r = await fetch(BASE + path);
+  if (!r.ok) throw new Error(`${path} → ${r.status}`);
+  return r.json() as Promise<T>;
 }
 
-async function sse(path: string, body: any, onEvent: (e: string, d: any) => void) {
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${path} → ${r.status}`);
+  return r.json() as Promise<T>;
+}
+
+async function sse(path: string, body: unknown, onEvent: (event: string, data: any) => void) {
   const r = await fetch(BASE + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
@@ -34,7 +37,7 @@ async function sse(path: string, body: any, onEvent: (e: string, d: any) => void
   const decoder = new TextDecoder();
   let buf = '';
 
-  while (true) {
+  for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
     buf += decoder.decode(value, { stream: true });
@@ -43,58 +46,33 @@ async function sse(path: string, body: any, onEvent: (e: string, d: any) => void
     while ((idx = buf.indexOf('\n\n')) >= 0) {
       const frame = buf.slice(0, idx);
       buf = buf.slice(idx + 2);
-      const eventMatch = frame.match(/^event: (.*)$/m);
-      const dataMatch = frame.match(/^data: (.*)$/m);
-      if (eventMatch && dataMatch) {
-        try {
-          onEvent(eventMatch[1], JSON.parse(dataMatch[1]));
-        } catch {
-          onEvent(eventMatch[1], dataMatch[1]);
-        }
+      const event = frame.match(/^event: (.*)$/m)?.[1];
+      const data = frame.match(/^data: (.*)$/m)?.[1];
+      if (event && data) {
+        try { onEvent(event, JSON.parse(data)); } catch { onEvent(event, data); }
       }
     }
   }
 }
 
-async function main() {
-  console.log('🚀 Example 8 — Server REST + SSE\n');
-  console.log(`Base URL: ${BASE}\n`);
+const health = await get<{ status: string; uptime: number }>('/api/health');
+console.log(`health:   ${health.status}  uptime=${health.uptime}s`);
 
-  // 1) Health
-  const health = await rest('/api/health');
-  console.log(`Health:   ${JSON.stringify(health)}`);
+const dash = await get<any>('/api/dashboard');
+console.log(`dash:     ${dash.chatSessions} sessions, ${dash.memoryCount} memories, ${dash.providersConfigured}/${dash.providersTotal} providers`);
 
-  // 2) Dashboard
-  const dash = await rest('/api/dashboard');
-  console.log(
-    `Dashboard: sessions=${dash.chatSessions} memory=${dash.memoryCount} providers=${dash.providersConfigured}/${dash.providersTotal}`,
-  );
+const tools = await get<any[]>('/api/tools');
+console.log(`tools:    ${tools.length} registered`);
 
-  // 3) List tools
-  const tools = await rest('/api/tools');
-  console.log(`Tools:     ${tools.length} registered`);
+const shell = await post<{ output: string }>('/api/tools/execute', {
+  tool: 'shell',
+  args: { command: 'echo "hello from the server"' },
+});
+console.log(`shell:    "${shell.output.trim()}"`);
 
-  // 4) Execute a tool via REST
-  const result = await rest('/api/tools/execute', {
-    method: 'POST',
-    body: JSON.stringify({ tool: 'shell', args: { command: 'echo "hello from $PA server"' } }),
-  });
-  console.log(`Shell:     "${(result.output as string).trim()}"`);
-
-  // 5) Stream a chat
-  console.log('\n─── Stream chat ──────────────────────────────');
-  await sse(
-    '/api/chat/stream',
-    { message: 'What is 2+2? Answer in one word.' },
-    (event, data) => {
-      if (event === 'chunk') process.stdout.write(data.content ?? '');
-      else if (event === 'error') console.error(`\n[error] ${data.message}`);
-      else if (event === 'assistant-end') console.log('\n[end]');
-    },
-  );
-}
-
-main().catch((err) => {
-  console.error('❌ Error:', err);
-  process.exit(1);
+console.log('\nstreaming chat:');
+await sse('/api/chat/stream', { message: 'What is 2+2? Answer in one word.' }, (event, data) => {
+  if (event === 'chunk') process.stdout.write(data.content ?? '');
+  else if (event === 'error') console.error(`\n[error] ${data.message}`);
+  else if (event === 'assistant-end') console.log('\n[end]');
 });
