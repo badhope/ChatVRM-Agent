@@ -7,12 +7,11 @@ describes which versions receive security updates.
 
 | Version | Supported                | Status            |
 | ------- | ------------------------ | ----------------- |
-| 2.x     | ✅ Active                | Current stable    |
-| 1.x     | ⚠️ Critical fixes only  | Maintenance       |
-| 0.x     | ❌ End of life           | EOL — please upgrade |
+| 2.x     | Active                   | Current stable    |
+| 1.x     | Critical fixes only      | Maintenance       |
+| 0.x     | End of life              | EOL — please upgrade |
 
-We strongly recommend running the latest `2.x` release. Older versions may
-have unpatched vulnerabilities.
+We recommend running the latest `2.x` release.
 
 ## Reporting a vulnerability
 
@@ -27,9 +26,8 @@ We use **GitHub private vulnerability reporting** for all security disclosures.
    **30 days** for high / medium
 5. We will coordinate disclosure timing with you (default 90 days)
 
-You can also reach out privately:
-- Email: `security@personal-assistant.local` (placeholder — see repo description for current contact)
-- GPG key: TBD (fingerprint will be published in the next release)
+If private advisory reporting is not available in your region, open a
+non-public issue and we will convert it.
 
 ## What to include in a report
 
@@ -41,17 +39,7 @@ To help us triage quickly, please include:
 - **Attack scenario** (what can an attacker do, who is impacted)
 - **Reproduction steps** (minimal working example)
 - **Impact assessment** (CVSS if known)
-- **Suggested fix** (optional, but appreciated)
-
-## Hall of Fame
-
-We deeply appreciate responsible disclosure. Security researchers who report
-verified vulnerabilities will be listed here (with permission) and credited
-in the next release notes.
-
-| Reporter        | Date       | Issue                                | Status   |
-| --------------- | ---------- | ------------------------------------ | -------- |
-| _your name here_| YYYY-MM-DD | _short description_                  | _fixed_  |
+- **Suggested fix** (optional)
 
 ## Security best practices for users
 
@@ -61,7 +49,7 @@ To keep your deployment safe:
    - The repo's `.gitignore` already covers `ghp_*`, `sk-*`, `.env*`, `*.key`, `*.pem`, `*.secret`
 2. **Use 0600 permissions** on `~/.config/personal-assistant-nodejs/config.json`
    - The CLI sets this automatically
-3. **Restrict network exposure** — the Express server (port 4317) is not designed for direct public exposure
+3. **Restrict network exposure** — the Express server (default port 3000) is not designed for direct public exposure
    - Put it behind a reverse proxy (nginx, Caddy) with TLS
    - Add an auth layer (OAuth proxy, basic auth, or mTLS) if exposing to the internet
 4. **Use a sandbox** — the `shell` tool can execute arbitrary commands

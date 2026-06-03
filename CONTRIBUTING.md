@@ -1,16 +1,16 @@
 # Contributing to Personal-Assistant
 
-Thanks for your interest in contributing! 🎉
-This document outlines the guidelines for contributing to **Personal-Assistant**.
+Thanks for your interest in contributing. This document outlines the
+guidelines for contributing to **Personal-Assistant**.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js **>= 20.0.0 < 25.0.0** (22 LTS recommended)
 - npm
 - TypeScript 5.8 knowledge
 - Git
 
-## 🔧 Setup
+## Setup
 
 ```bash
 # 1. Fork and clone
@@ -19,7 +19,7 @@ cd Personal-Assistant
 
 # 2. Install dependencies (backend + frontend)
 npm install
-cd frontend && npm install && cd ..
+(cd frontend && npm install)
 
 # 3. Build
 npm run build
@@ -29,7 +29,7 @@ npm run web:build
 npm test
 ```
 
-## 🤝 How to Contribute
+## How to Contribute
 
 ### 1. Create a Branch
 
@@ -73,7 +73,7 @@ git push origin feature/your-feature-name
 
 Then open a PR from your branch to `main` on GitHub.
 
-## 📝 Code Style
+## Code Style
 
 - TypeScript everywhere (no plain JS)
 - 2-space indentation
@@ -83,7 +83,7 @@ Then open a PR from your branch to `main` on GitHub.
 - Type annotations required
 - Public APIs should have JSDoc
 
-## 🌐 Internationalization (i18n)
+## Internationalization (i18n)
 
 The project supports multiple languages. When adding new UI strings:
 
@@ -96,7 +96,7 @@ Documentation:
 - `README.md` — primary English docs
 - `README_zh.md` — Chinese mirror
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 1. Search [existing issues](https://github.com/badhope/Personal-Assistant/issues) first
 2. Open a new issue with a clear title and description
@@ -106,21 +106,18 @@ Documentation:
    - Environment (OS, Node version)
    - Relevant logs
 
-## 💡 Feature Requests
+## Feature Requests
 
 Open an issue with the `enhancement` label and describe:
+
 - The problem you're trying to solve
 - Your proposed solution
 - Any alternatives you've considered
 
-## 📄 License
+## License
 
 By contributing, you agree your contributions will be licensed under the [MIT License](LICENSE).
 
-## 📞 Contact
+## Contact
 
 For questions, open a [GitHub Discussion](https://github.com/badhope/Personal-Assistant/discussions).
-
----
-
-Thank you for contributing to **Personal-Assistant**! 🚀
