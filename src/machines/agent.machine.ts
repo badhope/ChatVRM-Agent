@@ -27,6 +27,7 @@ export type AgentMachineEvent =
   | { type: 'VALIDATE_OK' }
   | { type: 'VALIDATE_FAILED' }
   | { type: 'REFLECT_OK' }
+  | { type: 'REFLECT_FAILED' }
   | { type: 'RETRY' }
   | { type: 'ABORT' }
   | { type: 'TIMEOUT' };
@@ -34,14 +35,16 @@ export type AgentMachineEvent =
 const moreSteps = ({ context }: { context: AgentMachineContext }) =>
   context.currentStepIndex < context.plan.length - 1;
 
-export const agentMachine = createMachine(
-  {
+type AgentMachineConfig = Parameters<typeof createMachine>[0];
+
+function buildAgentMachineConfig(taskId: string, input: string): AgentMachineConfig {
+  const config = {
     types: {} as { context: AgentMachineContext; events: AgentMachineEvent },
     id: 'agent',
     initial: 'initializing',
     context: {
-      taskId: '',
-      input: '',
+      taskId,
+      input,
       intent: null,
       plan: [],
       currentStepIndex: 0,
@@ -78,9 +81,11 @@ export const agentMachine = createMachine(
               target: 'executing',
               guard: 'moreSteps',
               actions: assign({
-                currentStepIndex: ({ context }) => context.currentStepIndex + 1,
+                currentStepIndex: ({ context }: { context: AgentMachineContext }) =>
+                  context.currentStepIndex + 1,
               }),
             },
+            { target: 'validating' },
           ],
           ALL_STEPS_OK: 'validating',
           STEP_FAILED: 'error_recovery',
@@ -98,7 +103,8 @@ export const agentMachine = createMachine(
           RETRY: {
             target: 'executing',
             actions: assign({
-              retryCount: ({ context }) => context.retryCount + 1,
+              retryCount: ({ context }: { context: AgentMachineContext }) =>
+                context.retryCount + 1,
             }),
           },
           ABORT: 'failed',
@@ -113,6 +119,7 @@ export const agentMachine = createMachine(
       reflecting: {
         on: {
           REFLECT_OK: 'completed',
+          REFLECT_FAILED: 'failed',
         },
       },
       completed: {
@@ -121,111 +128,23 @@ export const agentMachine = createMachine(
       failed: {
         type: 'final',
       },
-      timeout: {
-        type: 'final',
-      },
     },
-  },
+  };
+  return config as unknown as AgentMachineConfig;
+}
+
+export const agentMachine = createMachine(
+  buildAgentMachineConfig('', '') as unknown as Parameters<typeof createMachine>[0],
   {
-    guards: { moreSteps },
+    guards: { moreSteps: moreSteps as never },
   },
 );
 
 export function createAgentMachine(taskId: string, input: string) {
   return createMachine(
+    buildAgentMachineConfig(taskId, input) as unknown as Parameters<typeof createMachine>[0],
     {
-      types: {} as { context: AgentMachineContext; events: AgentMachineEvent },
-      id: 'agent',
-      initial: 'initializing',
-      context: {
-        taskId,
-        input,
-        intent: null,
-        plan: [],
-        currentStepIndex: 0,
-        results: [],
-        errors: [],
-        retryCount: 0,
-        startTime: Date.now(),
-        modifiedFiles: [],
-      },
-      states: {
-        initializing: {
-          on: {
-            INIT_COMPLETE: 'understanding',
-            TIMEOUT: 'failed',
-          },
-        },
-        understanding: {
-          on: {
-            UNDERSTAND_OK: 'planning',
-            '*': 'error_recovery',
-          },
-        },
-        planning: {
-          on: {
-            PLAN_OK: 'executing',
-            PLAN_FAILED: 'failed',
-            '*': 'error_recovery',
-          },
-        },
-        executing: {
-          on: {
-            STEP_OK: [
-              {
-                target: 'executing',
-                guard: 'moreSteps',
-                actions: assign({
-                  currentStepIndex: ({ context }) => context.currentStepIndex + 1,
-                }),
-              },
-            ],
-            ALL_STEPS_OK: 'validating',
-            STEP_FAILED: 'error_recovery',
-          },
-        },
-        error_recovery: {
-          always: [
-            {
-              target: 'failed',
-              guard: ({ context }: { context: AgentMachineContext }) =>
-                context.retryCount >= MAX_RETRIES,
-            },
-          ],
-          on: {
-            RETRY: {
-              target: 'executing',
-              actions: assign({
-                retryCount: ({ context }) => context.retryCount + 1,
-              }),
-            },
-            ABORT: 'failed',
-          },
-        },
-        validating: {
-          on: {
-            VALIDATE_OK: 'reflecting',
-            VALIDATE_FAILED: 'error_recovery',
-          },
-        },
-        reflecting: {
-          on: {
-            REFLECT_OK: 'completed',
-          },
-        },
-        completed: {
-          type: 'final',
-        },
-        failed: {
-          type: 'final',
-        },
-        timeout: {
-          type: 'final',
-        },
-      },
-    },
-    {
-      guards: { moreSteps },
+      guards: { moreSteps: moreSteps as never },
     },
   );
 }

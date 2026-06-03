@@ -205,8 +205,6 @@ export class PipelineEngine {
 
       return result;
     } catch (error) {
-      const _failedDurationMs = performance.now() - stageStart;
-      void _failedDurationMs;
       phaseRecord.endTime = Date.now();
       phaseRecord.status = 'failed';
 

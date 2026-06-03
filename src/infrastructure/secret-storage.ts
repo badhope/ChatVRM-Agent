@@ -32,9 +32,13 @@ function getEnvKey(service: string, account: string): string | null {
   return process.env[envKey] ?? null;
 }
 
-function setEnvKeyFallback(service: string, account: string, _key: string): void {
+function setEnvKeyFallback(service: string, account: string, _key: string): never {
   const envKey = `${service}_${account}`.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-  logger.warn(`Cannot store secret with keytar; set environment variable ${envKey} instead`);
+  throw new Error(
+    `keytar is not available, so secrets cannot be persisted to the OS keychain. ` +
+      `Set the environment variable ${envKey} instead and restart the process, ` +
+      `or install keytar (e.g. \`npm install keytar\`) to enable secure storage.`,
+  );
 }
 
 export class SecretStorage {

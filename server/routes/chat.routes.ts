@@ -105,16 +105,20 @@ export function chatRoutes(deps: ChatDeps): Router {
       }
     }
 
-    sseHeaders(res);
-
     let session = sessionId ? await deps.sessions.get(sessionId) : null;
     if (!session) {
+      if (sessionId) {
+        res.status(404).json({ error: `session "${sessionId}" not found` });
+        return;
+      }
       session = await deps.sessions.create({
         title: message.slice(0, 40),
         provider: useProvider,
         model,
       });
     }
+
+    sseHeaders(res);
 
     sseSend(res, 'session', { id: session.id, title: session.title });
 

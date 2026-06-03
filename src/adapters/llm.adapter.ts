@@ -97,13 +97,18 @@ export class LLMAdapter implements ILLMPort {
 
     if (provider === 'anthropic') {
       yield* this.streamAnthropic(apiKey, model, params, breaker);
-    } else if (provider === 'google') {
-      yield* this.streamGoogle(apiKey, model, params, breaker);
-    } else if (provider === 'baidu') {
-      yield* this.streamOpenAICompatible(provider, apiKey, model, params, breaker);
-    } else {
-      yield* this.streamOpenAICompatible(provider, apiKey, model, params, breaker);
+      return;
     }
+    if (provider === 'google') {
+      yield* this.streamGoogle(apiKey, model, params, breaker);
+      return;
+    }
+    if (provider === 'baidu') {
+      throw new Error(
+        `Streaming is not supported for provider "${provider}". Baidu Ernie requires a non-streaming chat call.`,
+      );
+    }
+    yield* this.streamOpenAICompatible(provider, apiKey, model, params, breaker);
   }
 
   async listModels(provider: ProviderType): Promise<string[]> {
@@ -115,6 +120,8 @@ export class LLMAdapter implements ILLMPort {
     try {
       const breaker = this.getBreaker(provider);
       if (provider === 'google') {
+        const apiKey = await this.configPort.getApiKey(provider);
+        if (!apiKey) return false;
         return true;
       }
       if (provider === 'anthropic') {

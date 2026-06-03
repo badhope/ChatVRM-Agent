@@ -199,9 +199,10 @@ describe('SecretStorage', () => {
       }
     });
 
-    it('storeKey should fall back to env var warning when keytar unavailable', async () => {
-      await storeKey('my-service', 'my-account', 'my-key');
-
+    it('storeKey should throw with actionable error when keytar unavailable', async () => {
+      await expect(
+        storeKey('my-service', 'my-account', 'my-key'),
+      ).rejects.toThrow(/MY_SERVICE_MY_ACCOUNT/);
       expect(baseMockKeytar.setPassword).not.toHaveBeenCalled();
     });
 
@@ -229,11 +230,12 @@ describe('SecretStorage', () => {
       expect(result).toEqual([]);
     });
 
-    it('storeProviderKey should use SERVICE_NAME with env fallback', async () => {
+    it('storeProviderKey should reject with env-var hint when keytar unavailable', async () => {
       const storage = new SecretStorage.SecretStorage();
 
-      await storage.storeProviderKey('openai', 'sk-key');
-
+      await expect(
+        storage.storeProviderKey('openai', 'sk-key'),
+      ).rejects.toThrow(/PERSONAL_ASSISTANT_OPENAI/);
       expect(baseMockKeytar.setPassword).not.toHaveBeenCalled();
     });
 

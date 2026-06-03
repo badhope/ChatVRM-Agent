@@ -305,6 +305,36 @@ describe('LLMAdapter', () => {
 
       expect(available).toBe(false);
     });
+
+    it('should return false for google provider when no API key is configured', async () => {
+      delete mockApiKeys.google;
+
+      const available = await adapter.isAvailable('google');
+
+      expect(available).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should return true for google provider when API key is configured', async () => {
+      mockApiKeys.google = 'AIza-test-key';
+
+      const available = await adapter.isAvailable('google');
+
+      expect(available).toBe(true);
+    });
+  });
+
+  describe('baidu streaming', () => {
+    it('should throw an explicit error when streaming is requested for baidu', async () => {
+      mockApiKeys.baidu = 'baidu-test-key';
+
+      const iterator = adapter.stream({
+        provider: 'baidu',
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+
+      await expect(iterator.next()).rejects.toThrow(/baidu/i);
+    });
   });
 
   describe('auth headers', () => {
