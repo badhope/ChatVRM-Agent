@@ -19,77 +19,73 @@
   <a href="https://github.com/badhope/Personal-Assistant/blob/main/SECURITY.md"><img alt="Security" src="https://img.shields.io/badge/security-policy-blueviolet?style=flat-square"></a>
 </p>
 
-[🌐 Live Demo](http://localhost:3000) · [📖 中文文档](README_zh.md) · [📋 Changelog](CHANGELOG.md) · [🤝 Contributing](CONTRIBUTING.md) · [🔒 Security](SECURITY.md) · [📄 License](LICENSE)
+[中文文档](README_zh.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
 
 ---
 
-## 📑 Table of contents
+## Table of contents
 
-- [✨ Features](#-features)
-- [🚀 Quick Start](#-quick-start)
-- [🖥 Web UI — 9 pages](#-web-ui--9-pages)
-- [🔌 10 LLM providers](#-10-llm-providers)
-- [⌨️ CLI commands](#-cli-commands)
-- [🏗 Architecture](#-architecture)
-- [🛠 7 tools](#-7-tools)
-- [📂 Project structure](#-project-structure)
-- [🌍 i18n — EN / 中文](#-i18n--en--中文)
-- [💡 Examples](#-examples)
-- [🚀 Deployment](#-deployment)
-- [📦 API protocol](#-api-protocol)
-- [🛠 Development](#-development)
-- [🤝 Contributing](#-contributing)
-- [🐛 Troubleshooting](#-troubleshooting)
-- [📜 License](#-license)
-
----
-
-## ✨ Features
-
-- **🔌 10 LLM providers** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow, Aliyun, Zhipu, Baidu, Ollama, LMStudio
-- **🛠 7 real tools** — `writeFile` / `readFile` / `shell` / `search` / `remember` / `analyze` / `respond`
-- **⚙️ 6-stage pipeline** — `initialize` → `understand` → `plan` → `execute` → `validate` → `reflect`
-- **🌐 Full Web UI** — React 18 + TypeScript + Vite + Tailwind, 9 working pages with real SSE streaming
-- **💬 Multi-turn chat** with persistent sessions (JSON-backed)
-- **🧠 Long-term memory** — MiniSearch full-text retrieval + graphology knowledge graph
-- **🎭 4 personalities** + dynamic emotion state
-- **📡 Server-Sent Events** for real-time chat and pipeline progress
-- **🛡 Circuit Breaker** (opossum) for resilience
-- **📱 Responsive** — works on mobile / tablet / desktop
-- **🌍 i18n** — English / 中文 switcher in the UI
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Web UI pages](#web-ui-pages)
+- [LLM providers](#llm-providers)
+- [CLI commands](#cli-commands)
+- [Pipeline architecture](#pipeline-architecture)
+- [Built-in tools](#built-in-tools)
+- [Real interface verification](#real-interface-verification)
+- [Project structure](#project-structure)
+- [i18n](#i18n)
+- [Examples](examples/README.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [API](docs/API.md)
+- [Development commands](#development-commands)
+- [Troubleshooting](#troubleshooting)
+- [Protocol details](#protocol-details)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🚀 Quick Start
+## Features
 
-### Web Mode (Recommended)
+- **10 LLM providers** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow, Aliyun, Zhipu, Baidu, Ollama, LMStudio
+- **7 real tools** — `writeFile`, `readFile`, `shell`, `search`, `remember`, `analyze`, `respond`
+- **6-stage pipeline** — `initialize` → `understand` → `plan` → `execute` → `validate` → `reflect`
+- **Web UI** — React 18 + TypeScript + Vite + Tailwind, 8 pages with real SSE streaming
+- **Multi-turn chat** with persistent sessions (JSON-backed)
+- **Long-term memory** — MiniSearch full-text retrieval + graphology knowledge graph
+- **4 personalities** plus dynamic emotion state
+- **Server-Sent Events** for real-time chat and pipeline progress
+- **Circuit Breaker** (opossum) for resilience
+- **Responsive** — works on mobile, tablet, and desktop
+- **i18n** — English / 中文 switcher in the UI
+
+---
+
+## Quick Start
+
+### Web
 
 ```bash
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
-
-# Install all dependencies (backend + frontend)
 npm install
-cd frontend && npm install && cd ..
-
-# Build backend and frontend
+(cd frontend && npm install)
 npm run build
 npm run web:build
-
-# Start the server (Express on port 3000)
-npm run server
+npm run server          # Express on port 3000 (override with PORT)
 ```
 
 Open **http://localhost:3000** in your browser.
 
-### CLI Mode
+### CLI
 
 ```bash
 export SILICONFLOW_API_KEY=sk-your-real-key
 npx tsx src/cli/index.ts agent "Introduce yourself in one sentence"
 ```
 
-### Persist API Keys
+### Persist API keys
 
 ```bash
 node dist/cli/index.js config set-key siliconflow sk-your-real-key
@@ -99,7 +95,7 @@ node dist/cli/index.js chat
 
 ---
 
-## 🖥 Web UI Pages
+## Web UI Pages
 
 | Route | Description | Backend API |
 | --- | --- | --- |
@@ -114,9 +110,11 @@ node dist/cli/index.js chat
 
 ---
 
-## 🤖 LLM Providers (10, all real HTTP)
+## LLM Providers
 
-> **Zero mock fallback** — this project never returns fake data when the real API fails. 401 / 403 / network errors are surfaced as-is.
+The project ships with no mock layer. When an LLM call fails (401, 403,
+network error, rate limit), the failure is surfaced to the caller — there
+is no fake success path.
 
 | Provider | Type | Default Base URL | Default Model | Protocol | API Key |
 | --- | --- | --- | --- | --- | --- |
@@ -216,7 +214,7 @@ node dist/cli/index.js chat -p lmstudio
 
 ---
 
-## 📟 CLI Commands
+## CLI Commands
 
 ```bash
 # Interactive multi-turn chat (readline real terminal)
@@ -235,7 +233,7 @@ node dist/cli/index.js config providers
 
 ---
 
-## 🏗 Pipeline Architecture (6 stages)
+## Pipeline architecture
 
 Each `agent` task runs sequentially:
 
@@ -248,7 +246,7 @@ Each `agent` task runs sequentially:
 
 ---
 
-## 🛠 Built-in Tools (7 real tools)
+## Built-in tools
 
 | Tool | Purpose | Backend |
 | --- | --- | --- |
@@ -262,7 +260,7 @@ Each `agent` task runs sequentially:
 
 ---
 
-## ✅ Real Interface Verification
+## Real interface verification
 
 ```bash
 # 1. No key — should not silently fall back, should error
@@ -282,7 +280,7 @@ $ SILICONFLOW_API_KEY=sk-fake-key node dist/cli/index.js agent "hi"
 
 ---
 
-## 🏛 Project Structure
+## Project structure
 
 ```
 Personal-Assistant/
@@ -295,7 +293,7 @@ Personal-Assistant/
 │   ├── infrastructure/           # Circuit Breaker (opossum)
 │   ├── cli/                      # CLI entry (chat/agent/config)
 │   └── __tests__/                # 707 tests (40 files)
-├── server/                       # Express backend (14 files)
+├── server/                       # Express backend (15 files)
 │   ├── index.ts                  # Entry
 │   ├── app.ts                    # 8 API routes + static hosting of frontend/dist
 │   ├── providers.ts              # 10 provider metadata
@@ -307,8 +305,8 @@ Personal-Assistant/
 │   │   ├── api/                  # fetch client + sseStream()
 │   │   ├── stores/               # zustand: theme / config / locale
 │   │   ├── i18n/                 # EN/中文 translations
-│   │   ├── pages/                # 9 pages
-│   │   ├── components/           # 8 UI components + Layout
+│   │   ├── pages/                # 8 pages
+│   │   ├── components/           # Layout + 8 UI components
 │   │   ├── types/                # TypeScript types
 │   │   └── styles/               # Tailwind + CSS variables
 │   └── dist/                     # Build output (served by /server)
@@ -321,7 +319,7 @@ Personal-Assistant/
 │   └── FUNDING.yml               # Sponsorship links
 ├── sdk/                          # Standalone npm SDK (@personal-assistant/sdk)
 ├── vscode/                       # VS Code extension
-├── examples/                     # 9 runnable examples + README
+├── examples/                     # 8 runnable examples + README
 ├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API
 ├── README.md                     # This file (English)
 ├── README_zh.md                  # Chinese version
@@ -340,51 +338,34 @@ Personal-Assistant/
 
 ---
 
-## 🌍 i18n — EN / 中文
+## i18n
 
-The Web UI ships with first-class internationalization. Click the
-globe icon in the header to switch between:
-
-- 🇺🇸 **English** (default, fallback)
-- 🇨🇳 **中文** (Simplified Chinese)
+The Web UI ships with first-class internationalization. The globe icon in
+the header switches between English and Simplified Chinese.
 
 The language preference is persisted to `localStorage` and survives page
-refreshes. Both languages cover ~190 keys across all 9 pages
+refreshes. Both locales cover the same 348 keys across all 8 pages
 (navigation, dashboard, chat, agent, tools, memory, config, graph, settings).
 
 Translation files live in [`frontend/src/i18n/`](frontend/src/i18n/) and
-follow the standard i18next JSON format. Adding a new language is a
-3-step process:
+follow the standard i18next JSON format. Adding a new language:
 
 1. Create `frontend/src/i18n/<code>.json` (copy `en.json` as a starting point)
-2. Register it in [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) `SUPPORTED_LANGUAGES` + `resources`
+2. Register it in [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) `SUPPORTED_LANGUAGES` and `resources`
 3. Add a tab to the language switcher dropdown in [`Layout.tsx`](frontend/src/components/Layout.tsx)
 
 ---
 
-## 💡 Examples
+## Examples
 
-The [`examples/`](examples/) folder contains 9 self-contained, runnable
+The [`examples/`](examples/) folder contains 8 self-contained, runnable
 TypeScript examples. Each is annotated with prerequisites and the exact
-`npx tsx` command to run it.
-
-| #   | File                            | What it shows                                                |
-| --- | ------------------------------- | ------------------------------------------------------------ |
-| 01  | `examples/01-basic-chat.ts`     | One-shot streaming chat with the default provider            |
-| 02  | `examples/02-multi-turn.ts`     | Interactive REPL using readline + growing `Message[]` array   |
-| 03  | `examples/03-pipeline-run.ts`   | Full 6-stage pipeline with real-time event streaming          |
-| 04  | `examples/04-tool-execution.ts` | Invoke all 7 tools directly                                   |
-| 05  | `examples/05-memory.ts`         | Add memories, full-text search, tag filter, stats            |
-| 06  | `examples/06-custom-provider.ts`| Wire a custom OpenAI-compatible endpoint                     |
-| 07  | `examples/07-sdk-quickstart.ts` | Plan-then-execute via the standalone SDK                     |
-| 08  | `examples/08-server-api.ts`     | Talk to the running server over REST + SSE                   |
-| —   | `examples/language-demo.ts`     | Multi-language UI demo                                       |
-
-See [`examples/README.md`](examples/README.md) for details.
+`npx tsx` command to run it. See [`examples/README.md`](examples/README.md)
+for the full table.
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 Ready to ship to a real server? See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 for:
@@ -398,7 +379,7 @@ for:
 
 ---
 
-## 🛠 Development Commands
+## Development commands
 
 ```bash
 npm install              # Install backend deps
@@ -414,7 +395,7 @@ npm run format           # Prettier
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 | Symptom | Cause / Fix |
 | --- | --- |
@@ -428,7 +409,7 @@ npm run format           # Prettier
 
 ---
 
-## 🌐 Protocol Details
+## Protocol details
 
 - **OpenAI-compatible** (7 providers): `POST {base_url}/chat/completions`, `Authorization: Bearer <key>`
 - **Anthropic**: `POST {base_url}/v1/messages`, `x-api-key: <key>` + `anthropic-version: 2023-06-01`
@@ -439,44 +420,17 @@ All calls go directly to vendors via `fetch` — no proxy, no mocks, no fake dat
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-We welcome bug reports, feature requests, documentation fixes, and
-new LLM provider / tool adapters. See [`CONTRIBUTING.md`](CONTRIBUTING.md)
-for the development workflow, coding style, and PR process. Issues and
-PRs should follow the templates in
-[`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/) and
-[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow.
+Use the [issue](.github/ISSUE_TEMPLATE/) and [PR](.github/PULL_REQUEST_TEMPLATE.md)
+templates.
 
-By participating, you agree to abide by our
-[Code of Conduct](CODE_OF_CONDUCT.md).
+By participating, you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+For security issues, follow [`SECURITY.md`](SECURITY.md) and use
+[private disclosure](https://github.com/badhope/Personal-Assistant/security/advisories/new)
+instead of a public issue.
 
-## 👥 Community
+## License
 
-- 💬 [GitHub Discussions](https://github.com/badhope/Personal-Assistant/discussions) — questions, ideas, show & tell
-- 🐛 [Issue tracker](https://github.com/badhope/Personal-Assistant/issues) — bug reports & feature requests
-- 🔒 [Security advisories](https://github.com/badhope/Personal-Assistant/security/advisories/new) — private vulnerability reports
-- 📖 [docs/](docs/) — ARCHITECTURE, SETUP, TROUBLESHOOTING, DEPLOYMENT, API
-- 🇨🇳 [README_zh.md](README_zh.md) — Chinese documentation
-
-## ⭐ Show your support
-
-If Personal-Assistant saved you time, **give it a star** ⭐ on GitHub.
-It helps others discover the project and motivates continued work.
-
-## 🙏 Acknowledgements
-
-- [Vitest](https://vitest.dev) — blazing-fast test runner
-- [MiniSearch](https://lucaong.github.io/minisearch/) — full-text search
-- [xstate](https://xstate.js.org) — state machines for the agent
-- [opossum](https://nodeshift.dev/opossum/) — circuit breaker
-- [i18next](https://www.i18next.com) — internationalization
-- [Tailwind CSS](https://tailwindcss.com) — styling
-- [shadcn](https://ui.shadcn.com) — UI inspiration
-- Every open-source contributor who filed an issue, fixed a typo, or shared feedback
-
----
-
-## 📄 License
-
-MIT — see [LICENSE](LICENSE). © 2026 Personal-Assistant Contributors.
+MIT — see [LICENSE](LICENSE).
