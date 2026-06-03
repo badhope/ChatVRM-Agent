@@ -5,6 +5,12 @@ All notable changes to **Personal-Assistant** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Versions 0.1.0 → 1.0.0 (May 2024) refer to a *previous* architecture
+(dual-agent, MCP-centric) that was rewritten from scratch into the
+v2.0 6-stage pipeline. Their release notes are preserved verbatim
+for the historical record; nothing in the current `main` source
+predates v2.0.
+
 ## [Unreleased]
 
 ### Added
@@ -81,23 +87,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2024-05-28
 
-### Added
-- Dual-Agent collaboration system (Planner + Executor)
-- Knowledge graph system with auto-extraction, reasoning, version control, conflict detection
-- Long-term memory with importance scoring, forgetting mechanism, association network, RAG
-- Personality & emotion system (4 preset personalities, 8 emotion states, user preference learning)
-- Security & trust system (risk assessment, audit log, dynamic trust adjustment)
-- Advanced tool ecosystem (20+ specialized tools)
-- Performance monitoring system
-- TypeScript/JavaScript deep analysis engine
-- 348+ tests, 100% pass rate
-
-### Enhanced
-- MCP tool ecosystem expansion
-- Git smart tools (conflict resolution, history analysis)
-- Code quality analysis tools
-- Smart caching and performance optimization
-- LLM call optimization (batching, cost control)
+> **Note:** v1.0.0 referred to a *previous* version of this project
+> (a dual-agent, MCP-centric design) that was rewritten from scratch
+> into the v2.0 6-stage pipeline. The v1.0.0 release notes are kept
+> here for reference but no source from that release is in the
+> current `main`. See the [README](../README.md) for the current
+> feature list and the [docs/ADR/](docs/ADR/) folder for the
+> architectural decisions behind v2.0.
 
 ## [0.9.0] - 2024-05-20
 

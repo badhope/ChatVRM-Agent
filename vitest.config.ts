@@ -11,7 +11,6 @@ export default defineConfig({
       'dist',
       '**/*.test.ts.skip',
       '**/mcp/**',
-      '**/vscode/**',
       '**/sdk/**',
       '**/examples/**',
       '**/plugins/**',

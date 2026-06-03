@@ -38,7 +38,7 @@ dependency. The layers, in dependency order (outer depends on inner):
 | 3  | Adapters          | `src/adapters/`            | Port implementations, all I/O           |
 | 4  | Core              | `src/core/`                | Pipeline engine, event bus, types       |
 | 5  | Stages            | `src/stages/`              | The 6 stages of the agent pipeline     |
-| 6  | Frontends         | `src/cli/`, `server/`, `frontend/`, `vscode/` | User-facing surfaces |
+| 6  | Frontends         | `src/cli/`, `server/`, `frontend/`            | User-facing surfaces |
 
 Infrastructure (`src/infrastructure/` — logger, circuit-breaker,
 secret-storage) sits *between* adapters and the outside world, but

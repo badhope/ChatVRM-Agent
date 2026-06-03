@@ -228,5 +228,3 @@ whole `personal-assistant` monorepo.
   adapters, events, and the pipeline engine.
 - [ARCHITECTURE.md](./ARCHITECTURE.md#sdk) — how the SDK fits into
   the six-layer model.
-- [vscode/](../vscode/) — the bundled VS Code extension, which is
-  itself a thin wrapper around this SDK.

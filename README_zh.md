@@ -246,9 +246,8 @@ Personal-Assistant/
 │   ├── CODEOWNERS                # 代码评审负责人
 │   ├── dependabot.yml            # 每周依赖更新 PR
 │   └── FUNDING.yml               # 赞助链接
-├── sdk/                          # 独立 npm SDK（@personal-assistant/sdk）
-├── vscode/                       # VS Code 扩展
-├── examples/                     # 8 个可运行示例 + README
+├── sdk/                          # 独立 npm 包 (@personal-assistant/sdk)
+├── examples/                     # 7 个可运行示例脚本
 ├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API
 ├── README.md                     # 英文版
 ├── README_zh.md                  # 中文版（本文件）

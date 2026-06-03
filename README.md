@@ -328,9 +328,8 @@ Personal-Assistant/
 │   ├── CODEOWNERS                # Code review owners
 │   ├── dependabot.yml            # Weekly dependency PRs
 │   └── FUNDING.yml               # Sponsorship links
-├── sdk/                          # Standalone npm SDK (@personal-assistant/sdk)
-├── vscode/                       # VS Code extension
-├── examples/                     # 8 runnable examples + README
+├── sdk/                          # Standalone npm package (@personal-assistant/sdk)
+├── examples/                     # 7 runnable example scripts
 ├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API
 ├── README.md                     # This file (English)
 ├── README_zh.md                  # Chinese version

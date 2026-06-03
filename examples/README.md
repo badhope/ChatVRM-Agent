@@ -11,9 +11,8 @@ run with `npx tsx examples/<filename>`.
 | [03-pipeline-run.ts](03-pipeline-run.ts)| 6-stage pipeline with live event bus                         |
 | [04-tool-execution.ts](04-tool-execution.ts) | Invoke all 7 tools directly, no LLM                      |
 | [05-memory.ts](05-memory.ts)            | Add memories, full-text search, tag filter                   |
-| [07-sdk-quickstart.ts](07-sdk-quickstart.ts) | Plan-then-execute via the standalone SDK                 |
-| [08-server-api.ts](08-server-api.ts)    | Talk to the running server over REST + SSE                   |
-| [language-demo.ts](language-demo.ts)    | Multi-language UI demo (EN / 中文)                            |
+| [06-sdk-quickstart.ts](06-sdk-quickstart.ts) | Plan-then-execute via the standalone SDK                 |
+| [07-server-api.ts](07-server-api.ts)    | Talk to the running server over REST + SSE                   |
 
 ## Prerequisites
 
