@@ -38,6 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced repetitive tutorial-style code in `examples/04-tool-execution.ts` with a loop over a tool/args table
 - Added `.trae/`, `.cursor/`, `.ai/`, `.claude/` to `.gitignore` so AI-assistant session metadata never lands in the repo
 
+### Documentation overhaul
+- **`docs/ARCHITECTURE.md`** — rewritten to describe the current 6-layer Clean Architecture (domain / ports / adapters / core / stages / frontends) instead of the obsolete 4-layer DDD plan
+- **`docs/SETUP.md`** — rewritten around real scripts (`npm run server` / `npm run web:dev`), real engines range (>=20 <25), real test count (707 across 40 files), real ESLint flat config; dropped the fake `.env.example` and `.eslintrc.cjs` references
+- **`docs/DEPLOYMENT.md`** — port 4317 → 3000 in all 10 occurrences (architecture diagram, nginx, Caddy, Docker, systemd, health check, security checklist)
+- **`docs/TROUBLESHOOTING.md`** — replaced invented CLI flags with the real command surface (`chat`, `agent <task>`, `config {show,set-key,remove-key,set-default,providers}`) and documented real failure modes (provider 401/429, Ollama not running, keytar build, port 3000 in use, SSE buffering, memory file corruption); `DEBUG=1` env var (which never existed) replaced with `LOG_LEVEL=debug` (Pino)
+- **`docs/ADR/002`** — superseded DDD 4-layer decision; recorded the migration to 6 layers and why
+- **`docs/ADR/004`** — superseded dual-agent decision; recorded the collapse into the current 6-stage single-agent pipeline
+- **`docs/SDK.md`** — new; documents the real `@personal-assistant/sdk` surface (`runAgent`, `planTask`, `executePlan`, `PersonalAssistantAgent`, `PersonalAssistantParser`, `PersonalAssistantEditor`, `PersonalAssistantPlugins`, error hierarchy)
+
 ## [2.0.0] - 2026-06-02
 
 ### Added
