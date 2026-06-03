@@ -167,14 +167,19 @@ export class TrustService {
     const issues = TrustService.detectIssues(output, context);
     const score = TrustService.calculateScore(issues);
     const level = scoreToLevel(score);
-    const requiresConfirmation = TrustService.shouldConfirm({ level, score, requiresConfirmation: false, issues, summary: '' });
-
+    const summary = generateSummary(issues, level);
     return {
       level,
       score,
-      requiresConfirmation,
+      requiresConfirmation: TrustService.shouldConfirm({
+        level,
+        score,
+        requiresConfirmation: false,
+        issues,
+        summary,
+      }),
       issues,
-      summary: generateSummary(issues, level),
+      summary,
     };
   }
 

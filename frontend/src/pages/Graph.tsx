@@ -60,7 +60,7 @@ export function Graph() {
       setTick((tk) => tk + 1);
     }, 50);
     return () => clearInterval(id);
-  }, [edges, nodes.length === 0]);
+  }, [edges, nodes]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

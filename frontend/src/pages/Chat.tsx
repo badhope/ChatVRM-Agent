@@ -423,7 +423,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           isUser ? 'bg-zinc-700' : 'bg-gradient-to-br from-indigo-500 to-violet-600',
         )}
       >
-        {isUser ? t('chat.you').charAt(0).toUpperCase() + t('chat.you').slice(1) : 'AI'}
+        {isUser ? t('chat.you').charAt(0) : 'AI'}
       </div>
       <div className={cn('flex-1 min-w-0 max-w-[85%]', isUser && 'flex flex-col items-end')}>
         <div className="flex items-center gap-1.5 mb-1">

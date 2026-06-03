@@ -99,7 +99,7 @@
     "knowledgeGraphSub": "记忆关联可视化",
     "heroTagline": "Pipeline 驱动的 AI 智能体 · 真实 LLM / 真实工具 / 真实记忆 · 0 mock",
     "readyStatus": "{provider} · ready",
-    "noKeyStatus": "no API key configured",
+    "noKeyStatus": "未配置 API key",
     "configureKey": "配置 API key",
     "loadError": "无法加载仪表盘"
   },

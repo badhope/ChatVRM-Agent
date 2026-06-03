@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   PersonalityService,
   PRESET_TRAITS,
+  isValidPersonalityPreset,
 } from '../../../domain/personality/personality.service.js';
 import type {
   PersonalityProfile,
@@ -170,6 +171,30 @@ describe('PersonalityService', () => {
 
       const newTimestamp = new Date(updated.updatedAt).getTime();
       expect(newTimestamp).toBeGreaterThanOrEqual(originalTimestamp);
+    });
+  });
+
+  describe('preset validation (regression: invalid preset crashed)', () => {
+    it('isValidPersonalityPreset returns true for known presets', () => {
+      expect(isValidPersonalityPreset('friendly_mentor')).toBe(true);
+      expect(isValidPersonalityPreset('tech_expert')).toBe(true);
+    });
+
+    it('isValidPersonalityPreset returns false for unknown presets', () => {
+      expect(isValidPersonalityPreset('not_a_real_preset')).toBe(false);
+      expect(isValidPersonalityPreset('')).toBe(false);
+    });
+
+    it('isValidPersonalityPreset rejects prototype-pollution attempts', () => {
+      expect(isValidPersonalityPreset('__proto__')).toBe(false);
+      expect(isValidPersonalityPreset('toString')).toBe(false);
+      expect(isValidPersonalityPreset('hasOwnProperty')).toBe(false);
+    });
+
+    it('createIdentity throws a helpful error for invalid preset (not a crash)', () => {
+      expect(() =>
+        PersonalityService.createIdentity('not_real' as PersonalityPreset),
+      ).toThrow(/Unknown personality preset.*not_real/);
     });
   });
 });

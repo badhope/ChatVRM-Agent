@@ -145,15 +145,14 @@ export class LLMAdapter implements ILLMPort {
 
   private async resolveApiKey(provider: ProviderType): Promise<string | undefined> {
     let key = await this.configPort.getApiKey(provider);
-    if (key && key.length > 0) return key;
-
+    if (key && key.length > 0) return key.trim();
     const envCandidates = [
       `PERSONAL_ASSISTANT_${provider.toUpperCase()}`,
       `${provider.toUpperCase()}_API_KEY`,
     ];
     for (const envKey of envCandidates) {
       const val = process.env[envKey];
-      if (val && val.length > 0) return val;
+      if (val && val.length > 0) return val.trim();
     }
     return undefined;
   }

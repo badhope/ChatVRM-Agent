@@ -4,6 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn, copyToClipboard } from '@/utils';
 
 interface MarkdownProps {
@@ -12,6 +13,7 @@ interface MarkdownProps {
 }
 
 function CodeBlock({ language, value }: { language: string; value: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <div className="my-3 rounded-lg overflow-hidden border border-border bg-bg-soft/60 group/code">
@@ -26,7 +28,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
           className="opacity-0 group-hover/code:opacity-100 transition-opacity inline-flex items-center gap-1 text-fg-soft hover:text-fg"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? '已复制' : '复制'}
+          {copied ? t('common.copied') : t('common.copy')}
         </button>
       </div>
       <SyntaxHighlighter

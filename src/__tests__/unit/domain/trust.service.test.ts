@@ -233,4 +233,23 @@ describe('TrustService', () => {
       expect(formatted).toContain('[?]');
     });
   });
+
+  describe('evaluate (regression: summary always populated, not empty)', () => {
+    it('should populate summary when verdict is safe', () => {
+      const verdict = TrustService.evaluate('Hello, world!');
+
+      expect(verdict.summary).toBeTruthy();
+      expect(verdict.summary).not.toBe('');
+      expect(verdict.summary).toContain('No trust issues');
+    });
+
+    it('should populate summary and requireConfirmation for dangerous output', () => {
+      const verdict = TrustService.evaluate('rm -rf /');
+
+      expect(verdict.summary).toBeTruthy();
+      expect(verdict.summary).toContain('Trust level');
+      expect(verdict.summary).toContain('issue');
+      expect(verdict.requiresConfirmation).toBe(true);
+    });
+  });
 });

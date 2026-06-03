@@ -70,12 +70,23 @@ function now(): string {
   return new Date().toISOString();
 }
 
+export function isValidPersonalityPreset(
+  preset: string,
+): preset is PersonalityPreset {
+  return Object.prototype.hasOwnProperty.call(PRESET_TRAITS, preset);
+}
+
 export class PersonalityService {
   static createDefaultIdentity(): PersonalityProfile {
     return PersonalityService.createIdentity('friendly_mentor');
   }
 
   static createIdentity(preset: PersonalityPreset): PersonalityProfile {
+    if (!isValidPersonalityPreset(preset)) {
+      throw new Error(
+        `Unknown personality preset "${preset}". Valid presets: ${Object.keys(PRESET_TRAITS).join(', ')}`,
+      );
+    }
     const config = PRESET_TRAITS[preset];
     const timestamp = now();
     return {

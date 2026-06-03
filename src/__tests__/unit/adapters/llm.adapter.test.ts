@@ -370,4 +370,23 @@ describe('LLMAdapter', () => {
       expect(headers['Authorization']).toBeUndefined();
     });
   });
+
+  describe('api key whitespace handling (regression)', () => {
+    it('should trim leading/trailing whitespace from configured keys', async () => {
+      mockApiKeys.openai = '  sk-trimmed  ';
+      mockFetch.mockResolvedValue(
+        createMockResponse(200, {
+          choices: [{ message: { content: 'ok' } }],
+          model: 'gpt-4',
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        }),
+      );
+
+      await adapter.chat({ provider: 'openai', messages: [{ role: 'user', content: 'hi' }] });
+
+      const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const headers = init.headers as Record<string, string>;
+      expect(headers['Authorization']).toBe('Bearer sk-trimmed');
+    });
+  });
 });

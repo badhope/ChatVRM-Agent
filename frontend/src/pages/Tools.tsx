@@ -76,7 +76,14 @@ export function Tools() {
         return;
       }
       if (v && v.length > 0) {
-        payload[f.name] = f.type === 'number' ? Number(v) : f.type === 'string[]' ? v.split(',').map((s) => s.trim()).filter(Boolean) : v;
+        if (f.type === 'number') {
+          const n = Number(v);
+          payload[f.name] = Number.isNaN(n) ? 0 : n;
+        } else if (f.type === 'string[]') {
+          payload[f.name] = v.split(',').map((s) => s.trim()).filter(Boolean);
+        } else {
+          payload[f.name] = v;
+        }
       }
     }
 

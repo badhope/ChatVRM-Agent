@@ -4,19 +4,45 @@ export function cn(...inputs: ClassValue[]): string {
   return clsx(inputs);
 }
 
-export function formatTime(iso: string): string {
+function isChineseLocale(lang: string | undefined): boolean {
+  return !!lang && lang.toLowerCase().startsWith('zh');
+}
+
+function currentLanguage(): string {
+  if (typeof document === 'undefined') return 'en';
+  return document.documentElement.lang || (typeof localStorage !== 'undefined'
+    ? localStorage.getItem('i18nextLng') ?? 'en'
+    : 'en');
+}
+
+export function formatTime(iso: string, locale?: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 60_000) return '刚刚';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)} 天前`;
-  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const isZh = isChineseLocale(locale ?? currentLanguage());
+  if (diff < 60_000) return isZh ? '刚刚' : 'just now';
+  if (diff < 3_600_000) {
+    const n = Math.floor(diff / 60_000);
+    return isZh ? `${n} 分钟前` : `${n} min ago`;
+  }
+  if (diff < 86_400_000) {
+    const n = Math.floor(diff / 3_600_000);
+    return isZh ? `${n} 小时前` : `${n} hr ago`;
+  }
+  if (diff < 7 * 86_400_000) {
+    const n = Math.floor(diff / 86_400_000);
+    return isZh ? `${n} 天前` : `${n} day${n === 1 ? '' : 's'} ago`;
+  }
+  return d.toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 }
 
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('zh-CN', {
+export function formatDateTime(iso: string, locale?: string): string {
+  const isZh = isChineseLocale(locale ?? currentLanguage());
+  return new Date(iso).toLocaleString(isZh ? 'zh-CN' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
