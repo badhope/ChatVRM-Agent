@@ -140,9 +140,14 @@ export function chatRoutes(deps: ChatDeps): Router {
     messages.push({ role: 'user', content: message });
 
     let accumulated = '';
+    const abortController = new AbortController();
     let aborted = false;
     req.on('close', () => {
       aborted = true;
+      try {
+        abortController.abort();
+      } catch {
+      }
     });
 
     sseSend(res, 'assistant-start', { id: assistantId, provider: useProvider, model: model ?? meta.defaultModel });
@@ -154,6 +159,7 @@ export function chatRoutes(deps: ChatDeps): Router {
         messages,
         temperature: 0.7,
         maxTokens: 2048,
+        signal: abortController.signal,
       })) {
         if (aborted) break;
         if (chunk.content) {
@@ -187,7 +193,9 @@ export function chatRoutes(deps: ChatDeps): Router {
         tags: ['chat', useProvider],
       });
       incrementToolCall();
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[chat] memory write failed: ${msg}\n`);
     }
 
     if (accumulated.length > 0) {

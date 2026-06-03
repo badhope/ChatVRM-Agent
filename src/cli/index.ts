@@ -415,7 +415,12 @@ async function runChat(ctx: ChatCtx): Promise<void> {
     messages.push({ role: 'assistant', content: response.content });
     process.stdout.write(`  🤖 Assistant: ${response.content}\n\n`);
 
-    emotion = await EmotionService.onUserInteraction(input, emotion, ctx.llm);
+    try {
+      emotion = await EmotionService.onUserInteraction(input, emotion, ctx.llm);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`  ${chalk.dim(`(emotion update skipped: ${msg})`)}\n`);
+    }
 
     try {
       await ctx.memory.remember({
@@ -425,7 +430,9 @@ async function runChat(ctx: ChatCtx): Promise<void> {
         model: ctx.model ?? 'default',
         tags: ['chat', emotion.name, `turn-${turnCount}`],
       });
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`  ${chalk.dim(`(memory write skipped: ${msg})`)}\n`);
     }
   }
 

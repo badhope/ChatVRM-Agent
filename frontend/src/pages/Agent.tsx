@@ -35,7 +35,7 @@ export function Agent() {
 
   const [task, setTask] = useState('');
   const [running, setRunning] = useState(false);
-  const [steps, setSteps] = useState<Record<AgentStage, AgentStep>>({} as any);
+  const [steps, setSteps] = useState<Partial<Record<AgentStage, AgentStep>>>({});
   const [recentPlan, setRecentPlan] = useState<PlanStep[]>([]);
   const [recentToolCalls, setRecentToolCalls] = useState<ToolCallRecord[]>([]);
   const [intent, setIntent] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function Agent() {
   }, [logs.length]);
 
   function reset() {
-    setSteps({} as any);
+    setSteps({});
     setRecentPlan([]);
     setRecentToolCalls([]);
     setIntent(null);

@@ -24,11 +24,16 @@ interface ServerProviderMeta extends ProviderMeta {
   hasKey: boolean;
 }
 
+interface ConfigSnapshot {
+  defaultProvider: ProviderType;
+  chat: { model?: string; temperature?: number; maxTokens?: number };
+}
+
 export function Config() {
   const { t } = useTranslation();
   const refresh = useConfigStore((s) => s.refresh);
   const [providers, setProviders] = useState<ServerProviderMeta[]>([]);
-  const [snapshot, setSnapshot] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<ConfigSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingProvider, setEditingProvider] = useState<ProviderType | null>(null);
   const [keyInput, setKeyInput] = useState('');
@@ -49,9 +54,7 @@ export function Config() {
     try {
       const [plist, snap] = await Promise.all([
         api.get<ServerProviderMeta[]>('/config/providers'),
-        api.get<{ defaultProvider: ProviderType; chat: { model?: string; temperature?: number; maxTokens?: number } }>(
-          '/config/snapshot',
-        ),
+        api.get<ConfigSnapshot>('/config/snapshot'),
       ]);
       setProviders(plist);
       setSnapshot(snap);
@@ -77,14 +80,19 @@ export function Config() {
 
   async function saveKey() {
     if (!editingProvider) return;
+    if (keyInput.length === 0 && baseUrlInput.length === 0) return;
     setSaving(true);
     try {
       if (keyInput.length > 0) {
         await api.post('/config/set-key', { provider: editingProvider, key: keyInput });
       }
+      if (baseUrlInput.length > 0) {
+        await api.post('/config/set-base-url', { provider: editingProvider, baseUrl: baseUrlInput });
+      }
       toast({ type: 'success', title: t('config.keySaved') });
       setEditingProvider(null);
       setKeyInput('');
+      setBaseUrlInput('');
       await load();
       refresh();
     } catch (err) {
@@ -333,7 +341,7 @@ export function Config() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setEditingProvider(null)}>{t('common.cancel')}</Button>
-              <Button variant="primary" onClick={saveKey} loading={saving} disabled={keyInput.length === 0}>
+              <Button variant="primary" onClick={saveKey} loading={saving} disabled={keyInput.length === 0 && baseUrlInput.length === 0}>
                 {t('common.save')}
               </Button>
             </div>

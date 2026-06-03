@@ -20,6 +20,10 @@ export class MemoryAdapter implements IMemoryPort {
   private searchEngine: Minisearch | null = null;
   private initialized = false;
 
+  private _initializing = false;
+  private _initPromise: Promise<void> | null = null;
+  private _lastConsolidation: number | null = null;
+
   private async ensureInit(): Promise<void> {
     if (this.initialized) return;
     if (this._initializing) {
@@ -27,16 +31,16 @@ export class MemoryAdapter implements IMemoryPort {
       return;
     }
     this._initializing = true;
-    this._initPromise = this._doInit();
-    try {
-      await this._initPromise;
-    } finally {
-      this._initializing = false;
-    }
+    this._initPromise = (async () => {
+      try {
+        await this._doInit();
+        this.initialized = true;
+      } finally {
+        this._initializing = false;
+      }
+    })();
+    await this._initPromise;
   }
-
-  private _initializing = false;
-  private _initPromise: Promise<void> | null = null;
 
   private async _doInit(): Promise<void> {
     await fs.mkdir(MEMORY_DIR, { recursive: true });
@@ -129,6 +133,8 @@ export class MemoryAdapter implements IMemoryPort {
     await this.ensureInit();
 
     const maxResults = limit ?? 10;
+    const allRecords = await this.loadAll();
+    if (allRecords.length === 0) return [];
 
     if (this.searchEngine && this.searchEngine.documentCount > 0) {
       try {
@@ -137,17 +143,15 @@ export class MemoryAdapter implements IMemoryPort {
           fuzzy: 0.2,
         });
 
-        const topIds = results.slice(0, maxResults).map((r) => r.id);
-        const allRecords = await this.loadAll();
-        const matched = allRecords.filter((r) => topIds.includes(r.id));
-        return matched.slice(0, maxResults);
+        const topIds = new Set(results.slice(0, maxResults).map((r) => String(r.id)));
+        const matched = allRecords.filter((r) => topIds.has(r.id));
+        if (matched.length > 0) return matched.slice(0, maxResults);
       } catch {
       }
     }
 
-    const records = await this.loadAll();
     const lowerQuery = query.toLowerCase();
-    const scored = records
+    const scored = allRecords
       .map((r) => {
         let score = 0;
         if (r.input.toLowerCase().includes(lowerQuery)) score += 3;
@@ -227,12 +231,11 @@ export class MemoryAdapter implements IMemoryPort {
       const records = await this.loadAll();
       const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-      const keep = new Set<string>();
       const toRemove: MemoryRecord[] = [];
 
       for (const record of records) {
-        if (record.timestamp >= cutoff && keep.size < MAX_RECORDS) {
-          keep.add(record.id);
+        if (record.timestamp >= cutoff && records.length - toRemove.length <= MAX_RECORDS) {
+          consolidated++;
         } else {
           toRemove.push(record);
         }
@@ -247,11 +250,14 @@ export class MemoryAdapter implements IMemoryPort {
         }
       }
 
-      consolidated = records.length;
-
-      if (this.searchEngine) {
-        this.searchEngine.removeAll(toRemove.map((r) => r.id));
+      if (this.searchEngine && toRemove.length > 0) {
+        try {
+          this.searchEngine.removeAll(toRemove.map((r) => r.id));
+        } catch {
+        }
       }
+
+      this._lastConsolidation = Date.now();
     } finally {
       release();
     }
@@ -270,13 +276,10 @@ export class MemoryAdapter implements IMemoryPort {
       totalTokens += Math.ceil(record.output.length / 4);
     }
 
-    const timestamps = records.map((r) => r.timestamp);
-    const lastConsolidation = timestamps.length > 0 ? Math.max(...timestamps) : 0;
-
     return {
       totalRecords: records.length,
       totalTokens,
-      lastConsolidation,
+      lastConsolidation: this._lastConsolidation ?? 0,
     };
   }
 }

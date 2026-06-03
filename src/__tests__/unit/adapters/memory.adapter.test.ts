@@ -215,6 +215,52 @@ describe('MemoryAdapter', () => {
       expect(stats.totalTokens).toBeGreaterThan(0);
       expect(typeof stats.lastConsolidation).toBe('number');
     });
+
+    it('should report lastConsolidation as 0 before any consolidation', async () => {
+      await initAdapter();
+      const stats = await adapter.stats();
+      expect(stats.lastConsolidation).toBe(0);
+    });
+  });
+
+  describe('consolidate lastConsolidation tracking', () => {
+    it('should update lastConsolidation after running consolidate', async () => {
+      const recent: MemoryRecord = {
+        id: 'recent-x',
+        input: 'recent',
+        output: 'recent',
+        provider: 'openai',
+        model: 'm1',
+        timestamp: Date.now(),
+        tags: [],
+      };
+      const recentPath = path.join(memoryDir, 'recent-x.json');
+      await fs.writeFile(recentPath, JSON.stringify(recent, null, 2), 'utf-8');
+
+      const freshAdapter = new MemoryAdapter();
+      const loadAllSpy = vi.spyOn(freshAdapter, 'loadAll').mockResolvedValueOnce([recent]);
+      await freshAdapter.consolidate();
+      loadAllSpy.mockRestore();
+
+      const stats = await freshAdapter.stats();
+      expect(stats.lastConsolidation).toBeGreaterThan(0);
+    });
+  });
+
+  describe('recall performance (regression)', () => {
+    it('should not call loadAll multiple times per recall', async () => {
+      await initAdapter();
+      await adapter.remember({ input: 'a', output: 'b', provider: 'openai', model: 'm', tags: [] });
+      await adapter.remember({ input: 'c', output: 'd', provider: 'openai', model: 'm', tags: [] });
+
+      const loadAllSpy = vi.spyOn(adapter, 'loadAll');
+      await adapter.recall('a');
+      await adapter.recall('xyz_no_match');
+      const calls = loadAllSpy.mock.calls.length;
+      loadAllSpy.mockRestore();
+
+      expect(calls).toBeLessThanOrEqual(2);
+    });
   });
 
   describe('consolidate', () => {

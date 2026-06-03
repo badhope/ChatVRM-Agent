@@ -161,8 +161,13 @@ export function agentRoutes(deps: AgentDeps): Router {
     sseSend(res, 'pipeline-start', { taskId: ctx.taskId, task, provider: useProvider, model: model ?? meta.defaultModel, stages: stageOrder });
 
     let aborted = false;
+    const abortController = new AbortController();
     req.on('close', () => {
       aborted = true;
+      try {
+        abortController.abort();
+      } catch {
+      }
     });
 
     let currentCtx: PipelineContext = ctx;
@@ -200,7 +205,9 @@ export function agentRoutes(deps: AgentDeps): Router {
               model: model ?? meta.defaultModel,
               tags: ['agent', currentCtx.intent ?? 'task', useProvider],
             });
-          } catch {
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            process.stderr.write(`[agent] memory write failed: ${msg}\n`);
           }
         }
       } catch (err) {

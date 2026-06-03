@@ -13,6 +13,7 @@ import type {
 } from '../ports/config.port.js';
 
 const ApiKeysSchema = z.record(z.string());
+const BaseUrlsSchema = z.record(z.string().url().or(z.literal('')));
 const ChatConfigSchema = z.object({
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
@@ -36,6 +37,7 @@ const FullConfigSchema = z.object({
   version: z.literal(1),
   defaultProvider: z.string().optional(),
   apiKeys: ApiKeysSchema,
+  baseUrls: BaseUrlsSchema,
   chat: ChatConfigSchema,
   sandbox: SandboxConfigSchema,
   circuitBreaker: CircuitBreakerConfigSchema,
@@ -47,6 +49,7 @@ const DEFAULT_CONFIG: FullConfig = {
   version: 1,
   defaultProvider: undefined,
   apiKeys: {},
+  baseUrls: {},
   chat: {},
   sandbox: {
     enabled: false,
@@ -63,6 +66,10 @@ const JSON_SCHEMA_FOR_CONF = {
   version: { type: 'number', minimum: 1, maximum: 1 },
   defaultProvider: { type: ['string', 'null'] },
   apiKeys: {
+    type: 'object',
+    additionalProperties: { type: 'string' },
+  },
+  baseUrls: {
     type: 'object',
     additionalProperties: { type: 'string' },
   },
@@ -134,12 +141,14 @@ export class ConfigAdapter implements IConfigPort {
 
   async getApiKey(provider: ProviderType): Promise<string | undefined> {
     const config = this.getValidatedConfig();
-    return config.apiKeys[provider];
+    const key = config.apiKeys[provider];
+    if (typeof key === 'string' && key.length > 0) return key.trim();
+    return undefined;
   }
 
   async setApiKey(provider: ProviderType, key: string): Promise<void> {
     const config = this.getValidatedConfig();
-    config.apiKeys[provider] = key;
+    config.apiKeys[provider] = key.trim();
     this.store.set('apiKeys', config.apiKeys);
   }
 
@@ -147,6 +156,30 @@ export class ConfigAdapter implements IConfigPort {
     const config = this.getValidatedConfig();
     delete config.apiKeys[provider];
     this.store.set('apiKeys', config.apiKeys);
+  }
+
+  async getBaseUrl(provider: ProviderType): Promise<string | undefined> {
+    const config = this.getValidatedConfig();
+    const value = config.baseUrls[provider];
+    if (typeof value === 'string' && value.length > 0) return value;
+    return undefined;
+  }
+
+  async setBaseUrl(provider: ProviderType, baseUrl: string): Promise<void> {
+    const config = this.getValidatedConfig();
+    const trimmed = baseUrl.trim();
+    if (trimmed.length === 0) {
+      delete config.baseUrls[provider];
+    } else {
+      config.baseUrls[provider] = trimmed;
+    }
+    this.store.set('baseUrls', config.baseUrls);
+  }
+
+  async resetBaseUrl(provider: ProviderType): Promise<void> {
+    const config = this.getValidatedConfig();
+    delete config.baseUrls[provider];
+    this.store.set('baseUrls', config.baseUrls);
   }
 
   async getDefaultProvider(): Promise<ProviderType> {
@@ -200,9 +233,13 @@ export class ConfigAdapter implements IConfigPort {
     const raw = this.store.store;
     const parsed = FullConfigSchema.safeParse(raw);
     if (parsed.success) {
-      return parsed.data;
+      const cfg = parsed.data;
+      if (!cfg.baseUrls) cfg.baseUrls = {};
+      return cfg;
     }
-    return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    const fallback = JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as FullConfig;
+    if (!fallback.baseUrls) fallback.baseUrls = {};
+    return fallback;
   }
 
   private async backupAndRestore(raw: unknown): Promise<void> {

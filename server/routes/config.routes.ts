@@ -11,7 +11,14 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     const enriched = await Promise.all(
       PROVIDER_META.map(async (p) => {
         const hasKey = !!(await resolveApiKey(cfg, p.id));
-        return { ...p, baseUrl: PROVIDER_BASE_URLS[p.id], hasKey };
+        const configuredBaseUrl = await cfg.getBaseUrl(p.id);
+        const effectiveBaseUrl = configuredBaseUrl ?? PROVIDER_BASE_URLS[p.id];
+        return {
+          ...p,
+          baseUrl: effectiveBaseUrl,
+          defaultBaseUrl: PROVIDER_BASE_URLS[p.id],
+          hasKey,
+        };
       }),
     );
     res.json(enriched);
@@ -47,6 +54,39 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
       return;
     }
     await cfg.setApiKey(provider, key);
+    res.json({ ok: true });
+  });
+
+  r.post('/set-base-url', async (req: Request, res: Response) => {
+    const { provider, baseUrl } = req.body as { provider: ProviderType; baseUrl: string };
+    if (!provider || typeof baseUrl !== 'string') {
+      res.status(400).json({ error: 'provider and baseUrl are required' });
+      return;
+    }
+    if (!PROVIDER_META.find((p) => p.id === provider)) {
+      res.status(400).json({ error: `unknown provider "${provider}"` });
+      return;
+    }
+    const trimmed = baseUrl.trim();
+    if (trimmed.length > 0) {
+      try {
+        new URL(trimmed);
+      } catch {
+        res.status(400).json({ error: `baseUrl "${trimmed}" is not a valid URL` });
+        return;
+      }
+    }
+    await cfg.setBaseUrl(provider, trimmed);
+    res.json({ ok: true });
+  });
+
+  r.post('/reset-base-url', async (req: Request, res: Response) => {
+    const { provider } = req.body as { provider: ProviderType };
+    if (!provider) {
+      res.status(400).json({ error: 'provider is required' });
+      return;
+    }
+    await cfg.resetBaseUrl(provider);
     res.json({ ok: true });
   });
 

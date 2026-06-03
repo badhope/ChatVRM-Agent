@@ -5,6 +5,7 @@ const { mockStorage, MockConf } = vi.hoisted(() => {
     version: 1,
     defaultProvider: undefined,
     apiKeys: {} as Record<string, string>,
+    baseUrls: {} as Record<string, string>,
     chat: {},
     sandbox: { enabled: false },
     circuitBreaker: { enabled: true },
@@ -55,6 +56,7 @@ describe('ConfigAdapter', () => {
       version: 1,
       defaultProvider: undefined,
       apiKeys: {},
+      baseUrls: {},
       chat: {},
       sandbox: { enabled: false },
       circuitBreaker: { enabled: true },
@@ -120,6 +122,51 @@ describe('ConfigAdapter', () => {
 
       const antKey = await adapter.getApiKey('anthropic');
       expect(antKey).toBe('sk-ant');
+    });
+  });
+
+  describe('getBaseUrl', () => {
+    it('should return undefined when not configured', async () => {
+      const url = await adapter.getBaseUrl('openai');
+      expect(url).toBeUndefined();
+    });
+
+    it('should return stored value', async () => {
+      mockStorage.baseUrls = { openai: 'https://example.com/v1' };
+      const url = await adapter.getBaseUrl('openai');
+      expect(url).toBe('https://example.com/v1');
+    });
+  });
+
+  describe('setBaseUrl', () => {
+    it('should store URL with trim', async () => {
+      await adapter.setBaseUrl('openai', '  https://example.com/v1  ');
+      const url = await adapter.getBaseUrl('openai');
+      expect(url).toBe('https://example.com/v1');
+    });
+
+    it('should treat empty string as reset', async () => {
+      mockStorage.baseUrls = { openai: 'https://example.com/v1' };
+      await adapter.setBaseUrl('openai', '');
+      const url = await adapter.getBaseUrl('openai');
+      expect(url).toBeUndefined();
+    });
+  });
+
+  describe('resetBaseUrl', () => {
+    it('should clear configured URL', async () => {
+      mockStorage.baseUrls = { openai: 'https://example.com/v1' };
+      await adapter.resetBaseUrl('openai');
+      const url = await adapter.getBaseUrl('openai');
+      expect(url).toBeUndefined();
+    });
+  });
+
+  describe('api key whitespace handling (regression)', () => {
+    it('should trim whitespace on set', async () => {
+      await adapter.setApiKey('openai', '  sk-trim  ');
+      const key = await adapter.getApiKey('openai');
+      expect(key).toBe('sk-trim');
     });
   });
 

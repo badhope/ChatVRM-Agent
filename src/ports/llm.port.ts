@@ -11,6 +11,7 @@ export interface ChatParams {
   provider?: ProviderType;
   temperature?: number;
   maxTokens?: number;
+  signal?: AbortSignal;
 }
 
 export interface ChatResponse {

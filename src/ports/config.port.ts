@@ -36,6 +36,9 @@ export interface IConfigPort {
   getApiKey(provider: ProviderType): Promise<string | undefined>;
   setApiKey(provider: ProviderType, key: string): Promise<void>;
   removeApiKey(provider: ProviderType): Promise<void>;
+  getBaseUrl(provider: ProviderType): Promise<string | undefined>;
+  setBaseUrl(provider: ProviderType, baseUrl: string): Promise<void>;
+  resetBaseUrl(provider: ProviderType): Promise<void>;
   getDefaultProvider(): Promise<ProviderType>;
   setDefaultProvider(provider: ProviderType): Promise<void>;
   getChatConfig(): Promise<ChatConfig>;

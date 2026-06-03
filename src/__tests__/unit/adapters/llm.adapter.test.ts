@@ -3,6 +3,7 @@ import type { IConfigPort, ProviderType } from '../../../ports/config.port.js';
 import type { StreamChunk } from '../../../ports/llm.port.js';
 
 const mockApiKeys: Record<string, string | undefined> = {};
+const mockBaseUrls: Record<string, string | undefined> = {};
 const mockDefaultProvider: ProviderType = 'openai';
 
 const mockConfigPort: IConfigPort = {
@@ -13,6 +14,13 @@ const mockConfigPort: IConfigPort = {
   }),
   removeApiKey: vi.fn(async (provider: ProviderType) => {
     delete mockApiKeys[provider];
+  }),
+  getBaseUrl: vi.fn(async (provider: ProviderType) => mockBaseUrls[provider]),
+  setBaseUrl: vi.fn(async (provider: ProviderType, baseUrl: string) => {
+    mockBaseUrls[provider] = baseUrl;
+  }),
+  resetBaseUrl: vi.fn(async (provider: ProviderType) => {
+    delete mockBaseUrls[provider];
   }),
   getDefaultProvider: vi.fn(async () => mockDefaultProvider),
   setDefaultProvider: vi.fn(async (provider: ProviderType) => {
@@ -387,6 +395,54 @@ describe('LLMAdapter', () => {
       const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
       const headers = init.headers as Record<string, string>;
       expect(headers['Authorization']).toBe('Bearer sk-trimmed');
+    });
+  });
+
+  describe('AbortSignal support', () => {
+    it('should pass AbortSignal through to fetch', async () => {
+      mockApiKeys.openai = 'sk-test';
+      mockFetch.mockResolvedValue(
+        createMockResponse(200, {
+          choices: [{ message: { content: 'ok' } }],
+          model: 'gpt-4',
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        }),
+      );
+
+      const controller = new AbortController();
+      await adapter.chat({
+        provider: 'openai',
+        messages: [{ role: 'user', content: 'hi' }],
+        signal: controller.signal,
+      });
+
+      const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const passedSignal = init.signal as AbortSignal;
+      expect(passedSignal).toBeDefined();
+      expect(passedSignal.aborted).toBe(false);
+      controller.abort();
+      expect(passedSignal.aborted).toBe(true);
+    });
+
+    it('should propagate user-configured baseUrl', async () => {
+      mockApiKeys.openai = 'sk-test';
+      mockBaseUrls.openai = 'https://custom.example.com/v1';
+      mockFetch.mockResolvedValue(
+        createMockResponse(200, {
+          choices: [{ message: { content: 'ok' } }],
+          model: 'gpt-4',
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        }),
+      );
+
+      await adapter.chat({
+        provider: 'openai',
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+
+      const [url] = mockFetch.mock.calls[0] as [string];
+      expect(url).toContain('custom.example.com');
+      expect(url).not.toContain('api.openai.com');
     });
   });
 });

@@ -28,15 +28,29 @@ export function Dashboard() {
   const refresh = useConfigStore((s) => s.refresh);
 
   useEffect(() => {
-    api
-      .get<DashboardStats>('/dashboard')
-      .then(setStats)
-      .catch((e) => setError(String(e)));
+    let cancelled = false;
+    const load = () => {
+      api
+        .get<DashboardStats>('/dashboard')
+        .then((data) => {
+          if (cancelled) return;
+          setStats(data);
+          setError(null);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setError(String(e));
+        });
+    };
+    load();
     refresh();
     const id = setInterval(() => {
       api.get<DashboardStats>('/dashboard').then(setStats).catch(() => {});
     }, 8000);
-    return () => clearInterval(id);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [refresh]);
 
   if (error) {

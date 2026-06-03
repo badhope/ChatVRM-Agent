@@ -43,14 +43,14 @@ export async function listProviders(): Promise<ProviderMeta[]> {
 
 export async function resolveApiKey(cfg: ConfigAdapter, provider: ProviderType): Promise<string | undefined> {
   const stored = await cfg.getApiKey(provider);
-  if (stored && stored.length > 0) return stored;
+  if (stored && stored.length > 0) return stored.trim();
   const envCandidates = [
     `PERSONAL_ASSISTANT_${provider.toUpperCase()}`,
     `${provider.toUpperCase()}_API_KEY`,
   ];
   for (const envKey of envCandidates) {
     const v = process.env[envKey];
-    if (v && v.length > 0) return v;
+    if (v && v.length > 0) return v.trim();
   }
   return undefined;
 }

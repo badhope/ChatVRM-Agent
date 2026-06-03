@@ -61,6 +61,13 @@ const STREAM_DONE_MARKER = '[DONE]';
 
 const NO_API_KEY_REQUIRED = new Set<ProviderType>(['ollama', 'lmstudio']);
 
+function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+  const defined = signals.filter((s): s is AbortSignal => s !== undefined);
+  if (defined.length === 0) return undefined;
+  if (defined.length === 1) return defined[0];
+  return AbortSignal.any(defined);
+}
+
 interface AnthropicMessage {
   role: 'user' | 'assistant';
   content: string | Array<{ type: 'text'; text: string }>;
@@ -143,6 +150,12 @@ export class LLMAdapter implements ILLMPort {
     return this.breakers.get(provider)!;
   }
 
+  private async getBaseUrl(provider: ProviderType): Promise<string> {
+    const configured = await this.configPort.getBaseUrl(provider);
+    if (configured && configured.length > 0) return configured;
+    return PROVIDER_BASE_URLS[provider];
+  }
+
   private async resolveApiKey(provider: ProviderType): Promise<string | undefined> {
     let key = await this.configPort.getApiKey(provider);
     if (key && key.length > 0) return key.trim();
@@ -179,7 +192,7 @@ export class LLMAdapter implements ILLMPort {
     model: string,
     params: ChatParams,
   ): Promise<ChatResponse> {
-    const baseUrl = PROVIDER_BASE_URLS[provider];
+    const baseUrl = await this.getBaseUrl(provider);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -199,7 +212,7 @@ export class LLMAdapter implements ILLMPort {
       method: 'POST',
       headers,
       body,
-      signal: AbortSignal.timeout(120_000),
+      signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
     });
 
     if (!response.ok) {
@@ -243,7 +256,8 @@ export class LLMAdapter implements ILLMPort {
     if (systemPrompt) body.system = systemPrompt;
     if (params.temperature !== undefined) body.temperature = params.temperature;
 
-    const response = await fetch(`${PROVIDER_BASE_URLS.anthropic}/v1/messages`, {
+    const anthropicBase = await this.getBaseUrl('anthropic');
+    const response = await fetch(`${anthropicBase}/v1/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -251,7 +265,7 @@ export class LLMAdapter implements ILLMPort {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000),
+      signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
     });
 
     if (!response.ok) {
@@ -301,12 +315,13 @@ export class LLMAdapter implements ILLMPort {
     if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
     if (Object.keys(generationConfig).length > 0) body.generationConfig = generationConfig;
 
-    const url = `${PROVIDER_BASE_URLS.google}/models/${model}:generateContent?key=${apiKey}`;
+    const googleBase = await this.getBaseUrl('google');
+    const url = `${googleBase}/models/${model}:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000),
+      signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
     });
 
     if (!response.ok) {
@@ -354,12 +369,13 @@ export class LLMAdapter implements ILLMPort {
       ],
     };
 
-    const url = `${PROVIDER_BASE_URLS.baidu}/wenxinworkshop/chat/${model}?access_token=${apiKey}`;
+    const baiduBase = await this.getBaseUrl('baidu');
+    const url = `${baiduBase}/wenxinworkshop/chat/${model}?access_token=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000),
+      signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
     });
 
     if (!response.ok) {
@@ -392,7 +408,7 @@ export class LLMAdapter implements ILLMPort {
     params: ChatParams,
     breaker: CircuitBreaker,
   ): AsyncGenerator<StreamChunk> {
-    const baseUrl = PROVIDER_BASE_URLS[provider];
+    const baseUrl = await this.getBaseUrl(provider);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -413,7 +429,7 @@ export class LLMAdapter implements ILLMPort {
         method: 'POST',
         headers,
         body,
-        signal: AbortSignal.timeout(120_000),
+        signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
       }),
     );
 
@@ -488,8 +504,9 @@ export class LLMAdapter implements ILLMPort {
     if (systemPrompt) body.system = systemPrompt;
     if (params.temperature !== undefined) body.temperature = params.temperature;
 
+    const anthropicBase = await this.getBaseUrl('anthropic');
     const response = await breaker.fire(() =>
-      fetch(`${PROVIDER_BASE_URLS.anthropic}/v1/messages`, {
+      fetch(`${anthropicBase}/v1/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -497,7 +514,7 @@ export class LLMAdapter implements ILLMPort {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120_000),
+        signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
       }),
     );
 
@@ -570,13 +587,14 @@ export class LLMAdapter implements ILLMPort {
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
-    const url = `${PROVIDER_BASE_URLS.google}/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const googleBase = await this.getBaseUrl('google');
+    const url = `${googleBase}/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
     const response = await breaker.fire(() =>
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120_000),
+        signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
       }),
     );
 
@@ -640,7 +658,7 @@ export class LLMAdapter implements ILLMPort {
       return ['ernie-4.0-8k', 'ernie-3.5-8k', 'ernie-speed-128k'];
     }
 
-    const baseUrl = PROVIDER_BASE_URLS[provider];
+    const baseUrl = await this.getBaseUrl(provider);
     const headers: Record<string, string> = {};
     if (apiKey && !NO_API_KEY_REQUIRED.has(provider)) {
       headers['Authorization'] = `Bearer ${apiKey}`;
@@ -664,7 +682,7 @@ export class LLMAdapter implements ILLMPort {
 
   private async doHeadRequest(provider: ProviderType): Promise<void> {
     const apiKey = await this.configPort.getApiKey(provider);
-    const baseUrl = PROVIDER_BASE_URLS[provider];
+    const baseUrl = await this.getBaseUrl(provider);
     const headers: Record<string, string> = {};
     if (apiKey && !NO_API_KEY_REQUIRED.has(provider)) {
       headers['Authorization'] = `Bearer ${apiKey}`;
