@@ -1,156 +1,270 @@
-# Personal Assistant - 架构设计文档 v2.0
+# Architecture
 
-## 📋 概述
+This document describes the runtime architecture of Personal Assistant v2.0.
+For decision history, see [docs/ADR/](ADR/); for the public type
+surface, see [API.md](API.md); for deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
-本文档定义了 Personal Assistant 项目的新架构，旨在解决现有架构中的问题：
-- 模块职责不清
-- 重复代码和文件
-- 命名规范不一致
-- 依赖关系混乱
+## Goals
 
-## 🎯 设计原则
+The codebase is organised around four non-negotiable properties:
 
-1. **领域驱动设计 (DDD)**：按业务领域组织代码
-2. **单一职责原则 (SRP)**：每个模块只负责一件事
-3. **依赖倒置原则 (DIP)**：高层模块不依赖低层模块
-4. **开放/封闭原则 (OCP)**：对扩展开放，对修改封闭
-5. **清晰的分层架构**：从 UI → Application → Domain → Infrastructure
+1. **Swappable infrastructure.** Providers, storage, secrets, and the
+   shell can be replaced without touching business logic.
+2. **Deterministic core.** Domain logic is pure and testable; all
+   side effects live behind ports.
+3. **Observable pipeline.** Every stage emits strongly-typed events
+   the UI, CLI, and server can all subscribe to.
+4. **Single source of truth for the LLM contract.** Every adapter
+   speaks the same `ILLMPort` regardless of provider.
 
-## 📁 新目录结构
+## Top-level layout
 
 ```
-src/
-├── core/                    # 核心基础设施
-│   ├── errors/             # 错误处理系统
-│   ├── types/              # 全局类型定义
-│   ├── utils/              # 工具函数（已存在，需要清理）
-│   └── di/                # 依赖注入容器
-│
-├── domain/                  # 领域层（核心业务逻辑）
-│   ├── agent/             # Agent 领域
-│   │   ├── models/        # 领域模型
-│   │   ├── services/      # 领域服务
-│   │   └── repositories/  # 仓储接口
-│   ├── memory/            # 记忆领域
-│   │   ├── models/
-│   │   ├── services/
-│   │   └── repositories/
-│   └── analysis/          # 代码分析领域
-│
-├── application/             # 应用层（用例编排）
-│   ├── commands/          # 命令处理（已存在，重构）
-│   ├── services/          # 应用服务
-│   └── orchestrators/     # 编排器
-│
-├── infrastructure/          # 基础设施层
-│   ├── persistence/       # 持久化
-│   ├── providers/         # LLM 提供者（已存在）
-│   ├── git/              # Git 操作（已存在）
-│   └── tools/            # 工具系统（已存在）
-│
-├── ui/                      # 用户界面层
-│   ├── display/           # 显示组件
-│   ├── handlers/          # 事件处理器
-│   └── menu/             # 菜单系统
-│
-├── sdk/                     # SDK（独立包）
-│   └── ...
-│
-└── cli.ts                  # 入口点
+Personal-Assistant/
+├── src/                # Core (Clean Architecture, framework-free)
+│   ├── ports/          # Interface contracts (what the core needs)
+│   ├── adapters/       # Concrete implementations of those ports
+│   ├── core/           # Pipeline engine, event bus, shared types
+│   ├── stages/         # 6 stages of the agent pipeline
+│   ├── domain/         # Pure domain logic (memory, personality, trust)
+│   ├── infrastructure/ # Cross-cutting (logging, circuit-breaker, secrets)
+│   ├── machines/       # XState machine describing the agent FSM
+│   ├── cli/            # `personal-assistant` command-line entry point
+│   └── __tests__/      # Unit, integration, e2e suites (707 tests)
+├── server/             # Express + SSE backend (15 .ts files)
+├── frontend/           # React 18 + Vite + Tailwind web UI (8 pages)
+├── sdk/                # Standalone npm package (@personal-assistant/sdk)
+├── vscode/             # VS Code extension (thin wrapper around the SDK)
+├── examples/           # 8 runnable example scripts
+├── docs/               # This folder
+└── typedoc.json        # TypeDoc config for the API reference site
 ```
 
-## 🔧 重构计划
+Each top-level folder has its own `tsconfig.json` and is independently
+buildable, but they share a single root-level test runner (Vitest).
 
-### Phase 1: 基础设施重构
-1. **更新依赖包**：升级 0.x 版本的包到稳定版本
-2. **建立命名规范**：统一文件名和类型定义
-3. **清理工具函数**：重构 `src/utils/`
+## The six layers
 
-### Phase 2: 领域层重构
-1. **分离 agent 模块**：将 `src/agent/` 重构为领域层
-2. **合并 editor 功能**：明确 `src/agent/editor.ts` 和 `src/editor/` 的职责
-3. **统一 memory 系统**：整合 `knowledgeGraph` 和 `memoryGraph`
-
-### Phase 3: 应用层重构
-1. **重构 commands**：清理并统一命令结构
-2. **建立服务层**：提供清晰的应用服务接口
-
-### Phase 4: 文档和测试
-1. **完善文档**
-2. **添加集成测试**
-
-## 📝 命名规范
-
-### 文件命名
-- **模块文件**：kebab-case（如 `user-profile.ts`）
-- **测试文件**：`*.test.ts`（如 `user-profile.test.ts`）
-- **类型文件**：`*.types.ts` 或单独的 `types/` 目录
-- **索引文件**：`index.ts`（只做 re-export）
-
-### 变量和函数命名
-- **函数**：camelCase（如 `getUserProfile()`）
-- **类**：PascalCase（如 `UserProfile`）
-- **常量**：UPPER_SNAKE_CASE（如 `MAX_RETRY_COUNT`）
-- **接口/类型**：PascalCase，不以 I 开头（如 `UserProfile`）
-
-### 导出规范
-- 优先使用 named export
-- 只在必要时使用 default export（如 React 组件）
-- `index.ts` 只做 re-export，不包含业务逻辑
-
-## 🔄 依赖管理
-
-### package.json 升级计划
-
-需要升级的 0.x 包：
 ```
-tree-sitter: ^0.25.0 → ^1.0.0 (等稳定版)
-tree-sitter-javascript: ^0.25.0 → ^1.0.0
-tree-sitter-python: ^0.25.0 → ^1.0.0
-tree-sitter-typescript: ^0.23.2 → ^1.0.0
-cli-table3: ^0.6.5 → ^1.0.0 (或寻找替代方案)
-reflect-metadata: ^0.2.2 → ^0.2.2 (保持，社区标准)
+        ┌─────────────────────────────────────────────────────┐
+        │  Frontends (CLI · Web UI · VS Code · Server REST)  │
+        └────────────────────────┬────────────────────────────┘
+                                 │ uses
+        ┌────────────────────────▼────────────────────────────┐
+        │  Stages (init · understand · plan · execute ·       │
+        │           validate · reflect)                       │
+        └────────────────────────┬────────────────────────────┘
+                                 │ reads / writes
+        ┌────────────────────────▼────────────────────────────┐
+        │  Core (event bus · pipeline engine · shared types)  │
+        └────────────────────────┬────────────────────────────┘
+                                 │ depends on
+        ┌────────────────────────▼────────────────────────────┐
+        │  Ports (ILLMPort · IMemoryPort · IConfigPort ·       │
+        │        IStoragePort · IShellPort · IToolPort ·       │
+        │        IGitPort · IContextPort · ITrustPort)         │
+        └────────────────────────┬────────────────────────────┘
+                                 │ implemented by
+        ┌────────────────────────▼────────────────────────────┐
+        │  Adapters (LLM · Memory · Config · Storage ·         │
+        │            Shell · Tools · Git · Context)            │
+        └────────────────────────┬────────────────────────────┘
+                                 │ calls
+        ┌────────────────────────▼────────────────────────────┐
+        │  Infrastructure & Domain (HTTP, fs, keytar,         │
+        │  MiniSearch, Graphology, personality, trust)         │
+        └─────────────────────────────────────────────────────┘
 ```
 
-### SDK 依赖关系
-- SDK 应该是独立包，不依赖主项目
-- 主项目可以依赖 SDK
-- 使用 TypeScript project references 进行管理
+### 1. Ports — `src/ports/`
 
-## 🔐 安全规范
+Interfaces the rest of the system depends on. They describe *what* the
+core needs, never *how* it is provided. The set of ports in v2.0:
 
-### 敏感信息处理
-1. 所有 API keys 和 secrets 必须从环境变量读取
-2. 测试中使用 mock keys，如 `test-api-key`
-3. `.env` 文件必须在 `.gitignore` 中
-4. 添加 `.env.example` 作为模板
+| Port                | Responsibility                                              |
+| ------------------- | ----------------------------------------------------------- |
+| `ILLMPort`          | Provider-agnostic chat, streaming, token counting           |
+| `IMemoryPort`      | Long-term memory CRUD, semantic search, stats              |
+| `IConfigPort`       | Persistent configuration, provider keys, chat defaults      |
+| `IStoragePort`      | File system abstraction with workspace scoping             |
+| `IShellPort`       | Sandboxed shell execution with timeout and redaction        |
+| `IToolPort`         | Tool registry, invocation, schema exposure                 |
+| `IGitPort`          | Diff, status, commit, history — no raw `simple-git` leaks   |
+| `IContextPort`      | Build LLM context windows from working set + memory        |
+| `ITrustPort`        | Trust scoring for tools, providers, and command sources     |
 
-### 错误处理
-1. 统一错误类型系统
-2. 错误消息不包含敏感信息
-3. 使用结构化错误对象
+A port is always a `*.port.ts` file exporting an `IXxxPort` interface
+plus the value types it operates on. Ports must not import from
+adapters, infrastructure, or frontends.
 
-## 🧪 测试策略
+### 2. Adapters — `src/adapters/`
 
-### 测试金字塔
-- **单元测试**：覆盖领域逻辑（≥ 80%）
-- **集成测试**：测试模块间交互
-- **E2E 测试**：关键用户流程
+The only place in the codebase that talks to the outside world. Each
+adapter implements exactly one port and contains all of its I/O,
+parsing, and provider-specific quirks.
 
-### 测试文件位置
-- 单元测试：与源文件同级，`*.test.ts`
-- 集成测试：`src/__tests__/integration/`
-- E2E 测试：`e2e/`
+```
+src/adapters/
+├── llm.adapter.ts        # Routes ILLMPort to one of 10 LLM providers
+├── memory.adapter.ts     # MiniSearch + JSONL persistence
+├── config.adapter.ts     # `conf` package, 0600-protected files
+├── storage.adapter.ts    # Path-safe fs wrapper, atomic writes
+├── shell.adapter.ts      # child_process + redaction + timeout
+├── git.adapter.ts        # thin simple-git wrapper
+├── context.builder.ts    # Implements IContextPort
+├── tools.registry.ts     # Name → handler map, schema validation
+└── index.ts              # `createAdapters()` factory (singleton)
+```
 
-## 📊 迁移策略
+The `createAdapters()` factory returns the same singleton per process
+and is the only sanctioned way to obtain an adapter from the CLI or
+server. The server and CLI both call it during bootstrap.
 
-### 渐进式迁移
-1. 新建新架构目录结构
-2. 逐步迁移代码到新位置
-3. 使用别名保持兼容性
-4. 最终清理旧目录
+### 3. Core — `src/core/`
 
-### 兼容性保证
-- 使用 `package.json` 的 `exports` 字段
-- 提供迁移指南
-- 保持 API 稳定，直到下一个 major 版本
+Framework-free orchestration. Three files:
+
+- `core/pipeline.ts` — runs the six stages in order, manages the
+  shared `PipelineContext`, surfaces a single `run()` entry point.
+- `core/event-bus.ts` — typed `EventEmitter<PipelineEvents>` wrapper
+  used by every stage and consumed by the CLI, server, and web UI.
+- `core/types.ts` — `PipelineContext`, `PipelineEvents`,
+  `StageResult`, and the cross-stage error type.
+
+Nothing in `core/` may import from `adapters/`, `infrastructure/`, or
+any frontend. Tests in `__tests__/unit/core/` use a hand-rolled fake
+bus and in-memory port implementations.
+
+### 4. Stages — `src/stages/`
+
+The six stages of the agent pipeline. Each stage is a pure function
+`(ctx) => Promise<ctx>`, receives the shared `PipelineContext`, and
+emits events on the bus:
+
+| # | Stage              | File                  | Responsibility                                     |
+| - | ------------------ | --------------------- | -------------------------------------------------- |
+| 1 | `init`             | `init.stage.ts`       | Allocate task ID, seed metadata, validate input  |
+| 2 | `understand`       | `understand.stage.ts` | LLM intent classification + confidence score      |
+| 3 | `plan`             | `plan.stage.ts`       | Produce a `PlanStep[]` with tool bindings         |
+| 4 | `execute`          | `execute.stage.ts`    | Run each step, call tools, collect outputs        |
+| 5 | `validate`         | `validate.stage.ts`   | Type-check, lint, dry-run tools on changed files  |
+| 6 | `reflect`          | `reflect.stage.ts`    | LLM self-review, store reflection in memory       |
+
+Stages are registered via `createDefaultStages({...adapters, eventBus})`
+in `stages/index.ts`. The pipeline engine in `core/pipeline.ts` walks
+the array in order. A stage can short-circuit by setting
+`ctx.shouldConfirm = true`, which halts the pipeline before
+`execute`.
+
+### 5. Domain — `src/domain/`
+
+Pure business logic with no I/O. The current domains are:
+
+- `domain/memory` — entry, recall, decay scoring, tag taxonomy.
+- `domain/personality` — `PersonalityService` (system-prompt builder)
+  and `EmotionService` (valence / intensity state machine).
+- `domain/trust` — trust scoring for tool calls, providers, command
+  sources; gates sensitive operations.
+
+Domain modules never touch adapters or ports — they take plain values
+in and return plain values out. This keeps unit tests trivial and
+allows the same domain logic to be reused in the SDK.
+
+### 6. Infrastructure — `src/infrastructure/`
+
+Cross-cutting concerns that are not domain logic but are shared by
+multiple adapters:
+
+- `logger.ts` — Pino with redacting transport (API keys, tokens, PII).
+- `circuit-breaker.ts` — `opossum`-backed breaker for outbound HTTP.
+- `secret-storage.ts` — `keytar` for OS keychain; falls back to
+  0600-protected files in dev.
+
+Adapters depend on infrastructure; infrastructure depends on neither
+adapters nor stages.
+
+## State machine
+
+`src/machines/agent.machine.ts` is an XState v5 state chart that
+describes the legal transitions of a single task:
+
+```
+idle → planning → executing → validating → reflecting → done
+                                       ↘ failed
+```
+
+The pipeline engine in `core/pipeline.ts` is the canonical
+implementation; the XState machine is the *specification* and is used
+by the web UI's Agent page to render the live state graph and by the
+VS Code extension to display a progress indicator.
+
+## Frontends
+
+Three frontends share the same core and emit the same events:
+
+- **CLI** (`src/cli/index.ts`) — `commander`-based, three top-level
+  commands: `chat`, `agent <task>`, `config`. Configuration is
+  persisted to `~/.config/personal-assistant-nodejs/config.json`
+  (0600). The CLI subscribes to the event bus and prints
+  stage-by-stage output to stdout.
+- **Web UI** (`frontend/`) — React 18 + Vite + Tailwind. Eight
+  pages: Chat, Agent, Tools, Memory, Graph, Config, Settings,
+  Dashboard. i18n is handled by `react-i18next` with 348 keys across
+  English and Simplified Chinese. The web UI talks to the server
+  over the REST + SSE surface documented in [API.md](API.md).
+- **VS Code extension** (`vscode/`) — thin client wrapping the SDK
+  (`@personal-assistant/sdk`). It uses the same ports and emits the
+  same events; the host is just a different renderer.
+
+## Server
+
+`server/` is an Express 4.21 application that exposes the core over
+HTTP. It has 15 source files:
+
+- `app.ts` — Express app wiring, CORS, static hosting of
+  `frontend/dist`, error handler.
+- `index.ts` — process entry point, binds to `PORT` (default `3000`).
+- `session-store.ts` — in-memory session + SSE fan-out.
+- `tools-setup.ts` — bridges the CLI's `ToolsRegistry` to the server.
+- `providers.ts` — provider metadata for the dashboard.
+- `types.ts` — request/response shared types.
+- `routes/` — 9 route modules, one per resource: agent, chat,
+  config, dashboard, emotion, graph, memory, personality, tools.
+- `sse/` — Server-Sent Event helpers.
+
+The server holds no state of its own beyond the in-memory session
+store — persistence is the responsibility of the adapters.
+
+## SDK
+
+`@personal-assistant/sdk` (in `sdk/`) is a separately published npm
+package that re-exports the core types and the agent runner for use
+in third-party applications. It depends on `personal-assistant` but
+not on the CLI, server, or frontends. See [SDK.md](SDK.md).
+
+## Build & test
+
+- `npm run build` — `tsc` to `dist/`
+- `npm run dev` — `tsc --watch` (typecheck only, no dev server)
+- `npm run server` — `tsx watch server/index.ts` (backend, port 3000)
+- `npm run web:dev` — Vite dev server for the React UI
+- `npm test` — Vitest single run (707 tests across 40 files)
+- `npm run lint` — ESLint flat config (`eslint.config.js`)
+- `npm run docs` — TypeDoc → static HTML
+
+`tsconfig.json` targets `ES2022`, module `NodeNext`. Engine constraint
+is Node `>=20.0.0 <25.0.0`.
+
+## Why Clean Architecture and not framework-first
+
+Two reasons:
+
+1. **Portability.** The same core runs in the CLI, an Express
+   server, a browser-hosted React app, and a VS Code extension.
+   Coupling to a framework would force three different cores.
+2. **Testability.** Domain logic and pipeline logic are tested with
+   in-memory fakes; no mocks, no network, no `await new Promise(...)`
+   in the suite. 707 tests run in under four seconds on a laptop.
+
+The trade-off is more boilerplate at the boundary (you do write
+adapters), but the boundary is small and the gain compounds.

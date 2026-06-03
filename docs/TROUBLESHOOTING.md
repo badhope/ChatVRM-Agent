@@ -1,394 +1,344 @@
-# Troubleshooting Guide
-
-This guide helps you diagnose and fix common issues with Personal Assistant.
-
-## Table of Contents
-- [Installation Issues](#installation-issues)
-- [Configuration Issues](#configuration-issues)
-- [CLI Issues](#cli-issues)
-- [Agent Execution Issues](#agent-execution-issues)
-- [Git Issues](#git-issues)
-- [LLM Provider Issues](#llm-provider-issues)
-- [Performance Issues](#performance-issues)
-- [VSCode Extension Issues](#vscode-extension-issues)
-
----
-
-## Installation Issues
-
-### Problem: `npm install` fails
-
-**Possible Solutions:**
-1. Clear npm cache:
-   ```bash
-   npm cache clean --force
-   ```
-
-2. Delete `node_modules` and lock file:
-   ```bash
-   rm -rf node_modules package-lock.json
-   npm install
-   ```
-
-3. Check Node.js version (requires 18+):
-   ```bash
-   node --version
-   ```
-
-4. Try using a different registry:
-   ```bash
-   npm install --registry=https://registry.npmmirror.com
-   ```
-
-### Problem: `personal-assistant` command not found
-
-**Possible Solutions:**
-1. Ensure global installation:
-   ```bash
-   npm install -g @personal-assistant/cli
-   ```
-
-2. Check your PATH:
-   ```bash
-   echo $PATH
-   which personal-assistant
-   ```
-
-3. Use npx instead:
-   ```bash
-   npx @personal-assistant/cli <command>
-   ```
-
----
-
-## Configuration Issues
-
-### Problem: Cannot configure LLM provider
-
-**Possible Solutions:**
-1. Check config file location:
-   ```bash
-   personal-assistant config path
-   ```
-
-2. Initialize config if missing:
-   ```bash
-   personal-assistant config init
-   ```
-
-3. Verify config format (JSON):
-   ```bash
-   personal-assistant config show
-   ```
-
-4. Set provider explicitly:
-   ```bash
-   personal-assistant config set provider anthropic
-   personal-assistant config set apiKey YOUR_API_KEY
-   ```
-
-### Problem: API key not being detected
-
-**Possible Solutions:**
-1. Check if API key is set:
-   ```bash
-   personal-assistant config show
-   ```
-
-2. Try setting via environment variable:
-   ```bash
-   export ANTHROPIC_API_KEY=your_key_here
-   # or
-   export OPENAI_API_KEY=your_key_here
-   ```
-
-3. Verify API key validity in provider dashboard
-
----
-
-## CLI Issues
-
-### Problem: Command hangs or takes too long
-
-**Possible Solutions:**
-1. Check internet connectivity
-2. Increase timeout:
-   ```bash
-   personal-assistant --timeout 120 <command>
-   ```
-
-3. Check for verbose output:
-   ```bash
-   personal-assistant -v <command>
-   ```
-
-4. Disable cache temporarily:
-   ```bash
-   personal-assistant --no-cache <command>
-   ```
-
-### Problem: Permission denied errors
-
-**Possible Solutions:**
-1. Check file/directory permissions
-2. Run with appropriate user permissions
-3. On Unix systems:
-   ```bash
-   chmod +x /path/to/personal-assistant
-   ```
-
-4. Avoid running as root unless necessary
-
----
-
-## Agent Execution Issues
-
-### Problem: Agent fails to start
-
-**Possible Solutions:**
-1. Verify LLM provider configuration
-2. Check API key and quota
-3. Try a different model:
-   ```bash
-   personal-assistant agent --model claude-3-haiku-20240307 "your task"
-   ```
-
-4. Check logs for details:
-   ```bash
-   personal-assistant logs
-   ```
-
-### Problem: Agent makes incorrect changes
-
-**Possible Solutions:**
-1. Use git checkpoint to revert:
-   ```bash
-   personal-assistant git checkpoint
-   # make changes
-   personal-assistant git undo
-   ```
-
-2. Review the plan before executing:
-   ```bash
-   personal-assistant agent --plan-only "your task"
-   ```
-
-3. Provide clearer, more specific instructions
-4. Break complex tasks into smaller steps
-
-### Problem: Agent runs out of context window
-
-**Possible Solutions:**
-1. Use a larger context model
-2. Exclude irrelevant files:
-   ```bash
-   personal-assistant agent --exclude "**/node_modules/**" "your task"
-   ```
-
-3. Focus on specific directories:
-   ```bash
-   personal-assistant agent --focus src "your task"
-   ```
-
-4. Enable context compression:
-   ```bash
-   personal-assistant config set contextCompression true
-   ```
-
----
-
-## Git Issues
-
-### Problem: Git checkpoint fails
-
-**Possible Solutions:**
-1. Ensure git is initialized:
-   ```bash
-   git init
-   ```
-
-2. Check git status:
-   ```bash
-   git status
-   ```
-
-3. Configure git user if needed:
-   ```bash
-   git config user.name "Your Name"
-   git config user.email "your.email@example.com"
-   ```
-
-### Problem: Cannot undo checkpoint
-
-**Possible Solutions:**
-1. Check git log:
-   ```bash
-   git log --oneline -10
-   ```
-
-2. Manual git reset if needed:
-   ```bash
-   git reset --hard HEAD~1
-   ```
-
-3. Ensure you're in the correct branch
-
----
-
-## LLM Provider Issues
-
-### Problem: Authentication errors
-
-**Possible Solutions:**
-1. Verify API key is correct
-2. Check for typos or extra whitespace
-3. Ensure API key has appropriate permissions
-4. Regenerate API key in provider dashboard
-
-### Problem: Rate limiting
-
-**Possible Solutions:**
-1. Wait and try again later
-2. Enable request batching:
-   ```bash
-   personal-assistant config set batchRequests true
-   ```
-
-3. Use a lower tier model for simpler tasks
-4. Check provider's rate limit documentation
-
-### Problem: Model not found
-
-**Possible Solutions:**
-1. Check available models:
-   ```bash
-   personal-assistant provider models
-   ```
-
-2. Use a supported model name
-3. Verify model availability in your region
-
----
-
-## Performance Issues
-
-### Problem: Slow startup
-
-**Possible Solutions:**
-1. Enable caching:
-   ```bash
-   personal-assistant config set cacheEnabled true
-   ```
-
-2. Clear old cache:
-   ```bash
-   personal-assistant cache clear
-   ```
-
-3. Exclude large directories from analysis
-
-### Problem: High memory usage
-
-**Possible Solutions:**
-1. Limit concurrent operations
-2. Reduce context window size
-3. Disable unused features in config
-4. Monitor with:
-   ```bash
-   personal-assistant monitor
-   ```
-
-### Problem: Slow code analysis
-
-**Possible Solutions:**
-1. Use incremental analysis:
-   ```bash
-   personal-assistant config set incrementalAnalysis true
-   ```
-
-2. Focus on specific directories
-3. Increase cache TTL
-4. Exclude build artifacts and dependencies
-
----
-
-## VSCode Extension Issues
-
-### Problem: Extension not activating
-
-**Possible Solutions:**
-1. Check VSCode version (requires 1.85+)
-2. Reload VSCode window:
-   - Press `Ctrl+Shift+P`
-   - Type "Developer: Reload Window"
-
-3. Check extension logs in Output panel:
-   - Select "Personal Assistant" from dropdown
-
-### Problem: CLI path not found
-
-**Possible Solutions:**
-1. Set CLI path explicitly in settings
-2. Verify CLI is installed:
-   ```bash
-   which personal-assistant
-   ```
-
-3. Use absolute path in extension settings
-
-### Problem: Chat not responding
-
-**Possible Solutions:**
-1. Check CLI is properly configured
-2. Verify API key and provider settings
-3. Restart VSCode
-4. Check extension logs for errors
-
----
-
-## Getting More Help
-
-If you can't find a solution here:
-
-1. Check the logs:
-   ```bash
-   personal-assistant logs
-   ```
-
-2. Enable debug mode:
-   ```bash
-   personal-assistant -v <command>
-   ```
-
-3. Search existing GitHub Issues:
-   [https://github.com/badhope/personal-assistant/issues](https://github.com/badhope/personal-assistant/issues)
-
-4. Create a new issue with:
-   - Detailed description of the problem
-   - Steps to reproduce
-   - Error messages and logs
-   - Your environment information (OS, Node.js version, etc.)
-
----
-
-## Environment Information
-
-To help diagnose issues, collect this information:
+# Troubleshooting
+
+Real issues and their real fixes. The CLI is `personal-assistant` (or
+`npx tsx src/cli/index.ts` during development); its only subcommands
+are `chat`, `agent <task>`, and `config {show,set-key,remove-key,
+set-default,providers}`. If a command in older documentation does not
+appear here, it does not exist.
+
+For installation steps see [SETUP.md](./SETUP.md); for architecture
+see [ARCHITECTURE.md](./ARCHITECTURE.md); for deployment see
+[DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Contents
+
+- [Installation](#installation)
+- [LLM providers](#llm-providers)
+- [CLI](#cli)
+- [Agent pipeline](#agent-pipeline)
+- [Backend / Web UI](#backend--web-ui)
+- [Shell tool](#shell-tool)
+- [Memory](#memory)
+- [VS Code extension](#vs-code-extension)
+- [Capturing a useful bug report](#capturing-a-useful-bug-report)
+
+## Installation
+
+### `npm install` fails on `keytar`
+
+`keytar` links against the OS keychain. Install the system library
+first.
 
 ```bash
-# Personal Assistant version
-personal-assistant --version
+# Debian / Ubuntu
+sudo apt-get install -y libsecret-1-dev
 
-# Node.js version
-node --version
+# Fedora / RHEL
+sudo dnf install -y libsecret-devel
 
-# npm version
-npm --version
+# macOS — works out of the box (Keychain.app is built in)
 
-# OS information
-uname -a  # Unix
-systeminfo  # Windows
-
-# Git version
-git --version
+# Windows — prebuilt binary is fetched automatically
 ```
+
+If you cannot install the system library, the secret-storage
+infrastructure falls back to a 0600-protected JSON file in
+`~/.config/personal-assistant-nodejs/`. This fallback is automatic
+but slower; a warning is logged once at startup.
+
+### `npm install` warns about peer dependencies
+
+The project uses `npm install` (no `--legacy-peer-deps` needed). If
+your environment forces the flag, the project still builds and tests
+pass. The legacy flag is only required if a transitive dependency
+declares a peer range that excludes Node 20.
+
+### `tsc` reports `Cannot find module` or `import.meta` errors
+
+You are on Node 18. The project's `engines` field requires
+`>=20.0.0 <25.0.0`. Install Node 20+ (or use `.nvmrc`):
+
+```bash
+nvm install 20.20.2
+nvm use
+```
+
+## LLM providers
+
+### `No API key configured for provider "openai"`
+
+The CLI checks three sources in this order: environment variable,
+keychain, 0600 config file.
+
+```bash
+# Persist to disk (0600, never logged)
+npx tsx src/cli/index.ts config set-key openai
+
+# Or set the env var for this session only
+export OPENAI_API_KEY=sk-...
+```
+
+Ollama and LM Studio are exceptions: they do not require an API key,
+but the server has to be reachable on `http://localhost:11434` or
+`http://localhost:1234` respectively. The CLI will not complain about
+a missing key for these two providers.
+
+### `401 Unauthorized` / `403 Forbidden` from the provider
+
+The key is wrong, revoked, or scoped to a different org. Regenerate
+it in the provider's dashboard, then re-run:
+
+```bash
+npx tsx src/cli/index.ts config set-key openai sk-NEW_KEY
+```
+
+### `429 Too Many Requests` / rate limit
+
+The circuit breaker in `src/infrastructure/circuit-breaker.ts` will
+back off automatically; just retry after a few seconds. For sustained
+load, lower `maxTokens` in the chat config or switch to a model with
+a higher RPM quota.
+
+### Provider not in the list
+
+The list of providers is fixed: `openai`, `anthropic`, `google`,
+`deepseek`, `siliconflow`, `aliyun`, `zhipu`, `baidu`, `ollama`,
+`lmstudio`. If you need another one, add a new case to the dispatch
+table in `src/adapters/llm.adapter.ts` and wire it into
+`getProviderHelp()` in `src/cli/index.ts`.
+
+### `connect ECONNREFUSED 127.0.0.1:11434` (Ollama)
+
+Ollama is not running. Start it with `ollama serve` (or the desktop
+app) and pull a model with `ollama pull llama3.1`.
+
+## CLI
+
+### The `personal-assistant` binary is not found
+
+There are three ways to invoke the CLI:
+
+```bash
+# 1. From a build (after `npm run build`)
+node dist/cli/index.js chat
+
+# 2. From source via tsx (no build step)
+npx tsx src/cli/index.ts chat
+
+# 3. Global install
+npm link
+personal-assistant chat
+```
+
+### `chat` exits immediately with no message
+
+Either the default provider has no key, or the key resolves to a
+provider that returns an error. Run `config show` to confirm which
+provider is selected, then `config set-key` to fix it.
+
+### I want to use a different model than the default
+
+Pass `--model` to either subcommand:
+
+```bash
+npx tsx src/cli/index.ts chat --model claude-3-5-sonnet-latest
+npx tsx src/cli/index.ts agent --model deepseek-chat "Refactor src/utils/"
+```
+
+If the model name is wrong the provider returns `400 model_not_found`;
+the error message from the provider is shown verbatim.
+
+### How do I clear the conversation?
+
+`chat` accepts the slash command `/clear` to drop all messages except
+the system prompt. `/exit` (or `/quit`) ends the session. `/emotion`
+prints the current emotion state. `/help` lists all of them.
+
+## Agent pipeline
+
+### Pipeline fails at `understand`
+
+The LLM could not classify the task. Usually this means the
+intent-prompt is too ambiguous. Try:
+
+- Reword the task with a single, concrete verb
+  ("Refactor X to Y", "Add Z to W", "Explain …").
+- Pass a model with a larger context window via `--model`.
+
+### Pipeline fails at `plan` with `no plan returned`
+
+Same root cause as above: the LLM produced a response the planner
+could not parse. Inspect the raw response by re-running with
+`LOG_LEVEL=debug`:
+
+```bash
+LOG_LEVEL=debug npx tsx src/cli/index.ts agent "..."
+```
+
+### Pipeline fails at `validate`
+
+A tool produced an output that did not pass validation (type-check,
+lint, or a tool-level dry run). The stage's error message includes
+the file path and the failing check. Re-run the agent with a more
+specific instruction, or run the failed check by hand first and
+re-run the agent once it is green.
+
+### Pipeline succeeds but no files changed
+
+The plan was a no-op (often because the task was a question, not a
+change). Inspect `ctx.createdFiles` and `ctx.modifiedFiles` on the
+final result — the CLI prints them, the SSE stream emits them in
+the `pipeline-end` event, and the web UI surfaces them on the Agent
+page.
+
+## Backend / Web UI
+
+### `EADDRINUSE: address already in use :::3000`
+
+Another process is bound to port 3000. Either stop it or pick a
+different port:
+
+```bash
+PORT=3100 npm run server
+```
+
+If you change the port, update `frontend/vite.config.ts` `server.proxy`
+to match, otherwise the SPA will not be able to reach the API.
+
+### Web UI loads but every API call 404s
+
+The Vite dev proxy is misconfigured. Open
+`frontend/vite.config.ts` and confirm:
+
+```ts
+server: {
+  proxy: { '/api': 'http://localhost:3000' },
+}
+```
+
+The dev server only honours this on restart — `npm run web:dev`
+must be relaunched after editing the config.
+
+### `GET /api/health` returns 500
+
+The server is up but an adapter failed to initialise. The most
+common cause is a corrupted config file. Move it aside and let the
+server recreate it:
+
+```bash
+mv ~/.config/personal-assistant-nodejs/config.json{,.bak}
+npm run server
+```
+
+### SSE stream stalls mid-task
+
+Reverse proxies buffer SSE by default. If you are running behind
+nginx, make sure `proxy_buffering off;` and
+`proxy_read_timeout 86400;` are set on the location block that
+proxies to the backend. See [DEPLOYMENT.md](./DEPLOYMENT.md) for
+the full nginx and Caddy snippets.
+
+## Shell tool
+
+### `shell: command timed out after 60000ms`
+
+The default timeout is 60 s. If you need longer, pass the timeout
+in the tool call:
+
+```json
+{ "command": "npm run build", "timeout": 300000 }
+```
+
+There is no global config for the shell timeout; the value is set
+per invocation.
+
+### `shell: permission denied for "/etc/passwd"`
+
+The shell adapter runs commands with the current user but does not
+elevate. Commands that need root must be run by the user outside
+the agent. There is no `sudo` inside the agent.
+
+### `shell: command not allowlisted`
+
+The shell adapter has an optional allow-list read from the config
+file (`shell.allowedCommands`). If you set it, only commands that
+match the regex are allowed. To inspect the current value, open
+`~/.config/personal-assistant-nodejs/config.json` in your editor.
+
+## Memory
+
+### Memory search returns nothing
+
+`memory.search` uses MiniSearch with stemming. Queries that are
+single very common words ("the", "a", "to") match too many entries
+and are filtered out by the score threshold. Use 2-3 distinctive
+words instead.
+
+### Memory file is corrupted
+
+The memory store is JSONL at
+`~/.local/share/personal-assistant-nodejs/memory/entries.jsonl`.
+If it is corrupted, the adapter falls back to an empty index and
+logs a warning. To rebuild:
+
+```bash
+rm -rf ~/.local/share/personal-assistant-nodejs/memory
+```
+
+You will lose the existing entries; back the directory up first if
+you want to keep them.
+
+### Memory grows unbounded
+
+The memory adapter has no automatic eviction. Periodically prune:
+
+```bash
+rm ~/.local/share/personal-assistant-nodejs/memory/entries.jsonl
+```
+
+Or implement a retention policy in your fork — the `IMemoryPort`
+interface in `src/ports/memory.port.ts` is the extension point.
+
+## VS Code extension
+
+### Extension is installed but `Personal Assistant` view is empty
+
+The extension shells out to the CLI. It searches for
+`personal-assistant` on `PATH`, then `npx tsx src/cli/index.ts` in
+the workspace root. Open a workspace that contains this repo (or
+run `npm link` so the binary is on `PATH`) and reload the window.
+
+### `command 'personalAssistant.chat' not found`
+
+The extension did not activate. Check the Output panel:
+View → Output → Personal Assistant. The most common cause is a
+missing CLI; the second most common is a Node version mismatch.
+
+## Capturing a useful bug report
+
+When opening an issue, include:
+
+```bash
+# Personal Assistant version (from package.json, or commit hash)
+git rev-parse --short HEAD
+
+# Node / npm / OS
+node --version
+npm --version
+uname -a        # Linux / macOS
+systeminfo      # Windows
+
+# Configured providers (keys are redacted)
+npx tsx src/cli/index.ts config show
+
+# Failing command, with the env var that enables verbose logs
+LOG_LEVEL=debug npx tsx src/cli/index.ts agent "the exact task that fails"
+```
+
+`LOG_LEVEL=debug` (accepted values: `trace`, `debug`, `info`, `warn`,
+`error`, `fatal`; default `info`) bumps the Pino logger to its
+lowest level. Every LLM request, every tool call, and every stage
+transition is logged to stderr.
+
+Search existing issues first:
+<https://github.com/badhope/Personal-Assistant/issues>.
