@@ -1,280 +1,322 @@
-# 个人助手 (Personal Assistant) — 中文版
+# Personal-Assistant（个人助手）
 
-> Pipeline 驱动的个人 AI 智能体 · 10 个 LLM Provider · 7 个真实工具 · 6 阶段 Pipeline · 真实 SSE 流式 · 0 mock
+> Pipeline 驱动的个人 AI 智能体，配 Web UI 和 CLI。
+> 10 个 LLM Provider · 7 个真实工具 · 6 阶段 Pipeline · 完整 SSE 流式。
+> **无 mock、无兜底、无假数据** —— 每次 API 调用都打到厂商真实端点。
 
 [English](README.md) | **中文**
 
-一个**真实可用**的个人 AI 智能体。不是 demo，不是包装，是真实调用 LLM、真实执行工具、真实落盘的工程化项目。
+---
+
+## 核心特性
+
+- **10 个 LLM Provider** —— OpenAI、Anthropic、Google、DeepSeek、SiliconFlow、阿里云百炼、智谱 AI、百度千帆、Ollama、LMStudio
+- **7 个真实工具** —— `writeFile`、`readFile`、`shell`、`search`、`remember`、`analyze`、`respond`
+- **6 阶段 Pipeline** —— `initialize` → `understand` → `plan` → `execute` → `validate` → `reflect`
+- **Web UI** —— React 18 + TypeScript + Vite + Tailwind，8 个页面，真实 SSE 流式
+- **多轮对话** —— 持久化 session（JSON 落盘）
+- **长期记忆** —— MiniSearch 全文检索 + graphology 知识图谱
+- **4 种人格** + 动态情绪状态
+- **Server-Sent Events** —— 实时推送 chat 与 pipeline 进度
+- **Circuit Breaker**（opossum）提升韧性
+- **响应式布局** —— 适配手机 / 平板 / 桌面
+- **国际化** —— UI 内置 EN / 中 切换
 
 ---
 
-## ✨ 核心特性
+## 快速开始
 
-- 🤖 **10 个 LLM Provider** — OpenAI、Anthropic、Google、DeepSeek、SiliconFlow、阿里云百炼、智谱 AI、百度千帆、Ollama、LMStudio，全部真实 HTTP 调用，0 mock 兜底
-- 🛠 **7 个真实工具** — `writeFile` / `readFile` / `shell` / `search` / `remember` / `analyze` / `respond`，所有工具直连 `ToolsRegistry`
-- 🧠 **6 阶段 Pipeline** — `Initialize → Understand → Plan → Execute → Validate → Reflect`，事件驱动的状态机
-- 🧩 **Clean Architecture** — Ports & Adapters，core/stages/adapters/ports 分层
-- 🔍 **MiniSearch 全文检索** + **graphology 知识图谱**
-- ⚡ **完整 SSE 流式** — `chat`、`agent` 路由的实时事件流
-- 💾 **真实持久化** — API key 存 `~/.config/...` (0600 权限)，记忆落盘 `MiniSearch`
-- 🛡 **Sandbox + Circuit Breaker (opossum)** — 工具调用的安全网
-- 🎨 **现代 Web UI** — React 18 + TypeScript + Vite + Tailwind · 9 个页面 · 中英双语
-- ✅ **707 个 vitest 测试** 跨 40 个文件，全绿
-
----
-
-## 🚀 快速开始
-
-### 前置要求
-- Node.js ≥ 20
-- npm ≥ 9
-
-### Web UI 模式
+### Web 模式
 
 ```bash
-# 1. 克隆并安装
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
 npm install
-
-# 2. 一键启动 (后端 + 前端 dev server)
-npm run dev
-
-# 后端  http://localhost:4317
-# 前端  http://localhost:5173
+(cd frontend && npm install)
+npm run build
+npm run web:build
+npm run server          # Express 默认 3000 端口（可用 PORT 环境变量覆盖）
 ```
 
-打开 [http://localhost:5173](http://localhost:5173) → 进入 **Config** 页面配置至少一个 LLM 的 API Key → 开始聊天或跑 Agent。
+浏览器打开 <http://localhost:3000>。
 
 ### CLI 模式
 
 ```bash
-# 启动交互式 REPL
-npx pa
-
-# 或一次性提问
-npx pa -m "用 Python 写一个快排"
-npx pa chat -m "解释 Transformer self-attention"
-npx pa agent -m "写一个 TypeScript 函数统计文件行数"
-npx pa tools list
-npx pa memory search "Python"
-npx pa --help
+export SILICONFLOW_API_KEY=sk-your-real-key
+npx tsx src/cli/index.ts agent "用一句话介绍你自己"
 ```
 
----
-
-## 🖥 Web 界面 (9 个页面)
-
-| 页面 | 描述 |
-|---|---|
-| **Dashboard** | 实时概览 — Provider 状态 / 记忆数 / Agent 任务数 / 近期活动 |
-| **Chat** | 多轮 LLM 对话 · 真实流式 · 10 个 provider 切换 |
-| **Agent** | 6 阶段 Pipeline 可视化 · 实时事件流 · 工具调用记录 |
-| **Tools** | 7 个真实工具的浏览器 · 填参数即执行 |
-| **Memory** | 长期记忆搜索 · 按 tag 过滤 · 详情查看 |
-| **Config** | 10 个 LLM Provider · API key 管理 · Chat 默认参数 |
-| **Graph** | 记忆 + tag 的力导向图 (Canvas 2D) |
-| **Settings** | 主题 / 人格 / 情绪状态 / 数据导出 |
-
-界面右上角切换 **EN / 中** 即可在英文和中文之间实时切换。
-
----
-
-## 🔌 10 个 LLM Provider
-
-| Provider | 协议 | 默认模型 | 需要 key |
-|---|---|---|---|
-| `openai` | OpenAI | gpt-4o-mini | ✅ |
-| `anthropic` | Anthropic | claude-3-5-sonnet-latest | ✅ |
-| `google` | Google | gemini-2.0-flash-exp | ✅ |
-| `deepseek` | OpenAI | deepseek-chat | ✅ |
-| `siliconflow` | OpenAI | Qwen/Qwen2.5-7B-Instruct | ✅ |
-| `aliyun` | OpenAI | qwen-turbo | ✅ |
-| `zhipu` | OpenAI | glm-4-flash | ✅ |
-| `baidu` | Baidu | ernie-4.0-8k | ✅ |
-| `ollama` | OpenAI | llama3.1:8b | ❌ (本地) |
-| `lmstudio` | OpenAI | qwen2.5-7b-instruct | ❌ (本地) |
-
-### 配置 API Key
-
-优先级 (高 → 低):
-1. Web UI 的 **Config** 页面 (存储在 `~/.config/personal-assistant-nodejs/config.json`，0600 权限)
-2. 环境变量 `PERSONAL_ASSISTANT_<PROVIDER>` (例如 `PERSONAL_ASSISTANT_OPENAI`)
-3. 环境变量 `<PROVIDER>_API_KEY` (例如 `OPENAI_API_KEY`)
-
----
-
-## ⌨️ CLI 命令
+### 持久化 API Key
 
 ```bash
-pa                          # 启动交互式 REPL
-pa chat -m "..."            # 一次性对话
-pa agent -m "..."           # 跑 6 阶段 Agent 任务
-pa tools list               # 列出所有工具
-pa tools exec <name> -a '{}'  # 直接执行工具
-pa memory list              # 列出记忆
-pa memory search "q"        # 搜索记忆
-pa memory clear             # 清空记忆
-pa config get               # 查看配置
-pa config set-default <p>   # 设置默认 provider
-pa emotion                  # 查看情绪状态
-pa personality list         # 列出可用人格
-pa help                     # 查看帮助
+node dist/cli/index.js config set-key siliconflow sk-your-real-key
+node dist/cli/index.js config set-default siliconflow
+node dist/cli/index.js chat
 ```
 
 ---
 
-## 🏗 架构
+## Web 页面（8 个）
 
-### 6 阶段 Pipeline
-
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ initialize   │───▶│  understand  │───▶│    plan      │
-│  build ctx   │    │  LLM intent  │    │  LLM plan    │
-└──────────────┘    └──────────────┘    └──────┬───────┘
-                                                │
-┌──────────────┐    ┌──────────────┐    ┌──────▼───────┐
-│   reflect    │◀───│   validate   │◀───│   execute    │
-│ write memory │    │ check output │    │ call tools   │
-└──────────────┘    └──────────────┘    └──────────────┘
-```
-
-每个阶段都有事件 (SSE)，可以被 Web UI 实时消费。
-
-### 7 个工具
-
-| 工具 | 作用 |
-|---|---|
-| `writeFile` | 写入文件 (支持 `content` + `path`) |
-| `readFile` | 读取文件 |
-| `shell` | 执行 shell 命令 (带 sandbox 校验) |
-| `search` | 搜索 workspace (glob + content) |
-| `remember` | 写入长期记忆 (MiniSearch index) |
-| `analyze` | 分析输入 / 输出 (LLM 调用) |
-| `respond` | 直接生成回复 (LLM 调用) |
+| 路由 | 说明 | 后端 API |
+| --- | --- | --- |
+| `/dashboard` | 统计：对话数、记忆、Agent 任务、Provider 状态 | `/api/dashboard`、`/api/config/snapshot` |
+| `/chat`、`/chat/:id` | 真实 SSE 流式对话，10 个模型切换 | `/api/chat/stream`（SSE） |
+| `/agent` | 6 阶段 Pipeline + 实时进度 | `/api/agent/run`（SSE） |
+| `/tools` | 7 个真实工具：`writeFile`、`readFile`、`shell`、`search`、`remember`、`analyze`、`respond` | `/api/tools`、`/api/tools/execute` |
+| `/memory` | 浏览、搜索、按 tag 过滤、删除、清空长期记忆 | `/api/memory/*` |
+| `/config` | 10 个 Provider 配置 + key 管理 + 真实连通性测试 | `/api/config/*` |
+| `/graph` | Canvas 2D 力导向知识图谱 | `/api/graph` |
+| `/settings` | 4 种人格切换 + 情绪状态 + 主题 | `/api/personality`、`/api/emotion` |
 
 ---
 
-## 📂 项目结构
+## LLM Provider
+
+项目不带 mock 层。LLM 调用失败（401 / 403 / 网络错误 / 限流）时，错误会原样抛给调用方 —— 不会有假的"成功"路径。
+
+| Provider | 类型 | 默认 Base URL | 默认模型 | 协议 | API Key |
+| --- | --- | --- | --- | --- | --- |
+| `openai` | 云 | `https://api.openai.com/v1` | `gpt-4o` | OpenAI | 需要 |
+| `anthropic` | 云 | `https://api.anthropic.com` | `claude-3-5-sonnet-...` | Anthropic | 需要 |
+| `google` | 云 | `https://generativelanguage.googleapis.com/v1beta` | `gemini-2.0-flash` | Google | 需要 |
+| `deepseek` | 云 | `https://api.deepseek.com/v1` | `deepseek-chat` | OpenAI 兼容 | 需要 |
+| `siliconflow` | 云 | `https://api.siliconflow.cn/v1` | `Qwen/Qwen2.5-7B-Instruct` | OpenAI 兼容 | 需要 |
+| `aliyun` | 云 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` | OpenAI 兼容 | 需要 |
+| `zhipu` | 云 | `https://open.bigmodel.cn/api/paas/v4` | `glm-4` | OpenAI 兼容 | 需要 |
+| `baidu` | 云 | `https://aip.baidubce.com/rpc/2.0/ai_custom/v1` | `ernie-4.0-8k` | Baidu | 需要 |
+| `ollama` | 本地 | `http://localhost:11434/v1` | `llama3.2` | OpenAI 兼容 | 不需要 |
+| `lmstudio` | 本地 | `http://localhost:1234/v1` | `local-model` | OpenAI 兼容 | 不需要 |
+
+**默认 Provider**：`siliconflow`（国内厂商、有免费额度、支持 Qwen2.5 / DeepSeek / GLM）。
+
+### CLI：持久化 Key
+
+```bash
+node dist/cli/index.js config set-key <provider> <YOUR_API_KEY>
+node dist/cli/index.js config set-default <provider>
+node dist/cli/index.js config show
+node dist/cli/index.js config providers
+```
+
+API key 存放在 conf（默认 `~/.config/personal-assistant-nodejs/config.json`，文件权限 `0600`）。
+
+### 环境变量（优先级更高）
+
+CLI 查找顺序：conf → `PERSONAL_ASSISTANT_<PROVIDER>` → `<PROVIDER>_API_KEY`。
+
+```bash
+export SILICONFLOW_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat
+
+export DEEPSEEK_API_KEY=sk-xxxxxxxx
+node dist/cli/index.js chat -p deepseek
+```
+
+每个 Provider 还支持 `<PROVIDER>_BASE_URL` 自定义代理 / Azure / 自托管端点。
+
+### 本地 LLM（Ollama / LM Studio）
+
+```bash
+ollama serve &
+ollama pull llama3.2
+node dist/cli/index.js chat -p ollama -m llama3.2
+
+# LM Studio —— 先在 1234 端口启动本地 server
+node dist/cli/index.js chat -p lmstudio
+```
+
+---
+
+## CLI 命令
+
+```bash
+# 交互式多轮对话（readline 真终端）
+node dist/cli/index.js chat [-p provider] [-m model]
+
+# 单任务 6 阶段 Pipeline
+node dist/cli/index.js agent "<任务>" [-p provider] [-m model]
+
+# 配置管理
+node dist/cli/index.js config show
+node dist/cli/index.js config set-key <provider> [key]   # 不传 key 时从 stdin 读取
+node dist/cli/index.js config remove-key <provider>
+node dist/cli/index.js config set-default <provider>
+node dist/cli/index.js config providers
+```
+
+---
+
+## 6 阶段 Pipeline
+
+每个 `agent` 任务顺序执行：
+
+1. **initialize** —— 初始化上下文（taskId、metadata、错误列表）
+2. **understand** —— LLM 识别意图（`chat` / `code` / `analyze` / `refactor` / `shell` / `search`）+ workspace 扫描
+3. **plan** —— LLM 生成执行计划（步骤列表 + 工具选择）；LLM 失败时回退到模板计划
+4. **execute** —— 按步骤调用工具（`writeFile` / `readFile` / `shell` / `search` / `remember` / `analyze` / `respond`）
+5. **validate** —— 验证结果（语法、退出码、文件存在性）
+6. **reflect** —— 自我反思，更新情绪状态，写入长期记忆
+
+---
+
+## 7 个真实工具
+
+| 工具 | 作用 | 后端 |
+| --- | --- | --- |
+| `writeFile` | 写文件 | `StorageAdapter` 真实文件系统 |
+| `readFile` | 读文件 | `StorageAdapter` 真实文件系统 |
+| `shell` | 执行 shell 命令 | `child_process` 真实进程 |
+| `search` | 搜索长期记忆 | `MemoryAdapter.recall`（MiniSearch） |
+| `remember` | 写入长期记忆 | `MemoryAdapter.remember` |
+| `analyze` | 调用 LLM 分析文本 | `LLMAdapter.chat` 真实 LLM |
+| `respond` | 调用 LLM 对话回复 | `LLMAdapter.chat` 真实 LLM |
+
+---
+
+## 真实接口验证
+
+```bash
+# 1. 没有 key —— 不会静默 fallback，会报错
+$ node dist/cli/index.js chat
+✗ No API key configured for provider "siliconflow".
+Run: personal-assistant config set-key siliconflow <YOUR_KEY>
+Or set the env var: PERSONAL_ASSISTANT_SILICONFLOW / SILICONFLOW_API_KEY
+
+# 2. 假 key —— 真实 HTTP 调用，厂商直接返回 401
+$ SILICONFLOW_API_KEY=sk-fake-key node dist/cli/index.js agent "hi"
+📍 execute
+  Running step: Generate conversational response
+  ✗ LLM request failed (siliconflow): 401 "Api key is invalid"
+```
+
+**没有 mock、没有假的成功** —— 每次 LLM 调用都是真实的 `fetch` 到厂商端点。
+
+---
+
+## 国际化（EN / 中）
+
+Web UI 内置中英双语。点击页眉的地球图标在英文和简体中文之间切换。
+
+语言偏好会持久化到 `localStorage`，刷新页面后保留。两种语言覆盖相同的 348 个 key，涵盖全部 8 个页面（navigation、dashboard、chat、agent、tools、memory、config、graph、settings）。
+
+翻译文件位于 [`frontend/src/i18n/`](frontend/src/i18n/)，采用标准 i18next JSON 格式。新增语言的步骤：
+
+1. 新建 `frontend/src/i18n/<code>.json`（以 `en.json` 作为起点）
+2. 在 [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) 的 `SUPPORTED_LANGUAGES` 和 `resources` 中注册
+3. 在 [`Layout.tsx`](frontend/src/components/Layout.tsx) 的语言下拉菜单中添加一项
+
+---
+
+## 项目结构
 
 ```
 Personal-Assistant/
-├── src/                       # 核心库 (npm package)
-│   ├── adapters/             # 10 个 LLM + memory + config 适配器
-│   ├── core/                 # 核心 (Pipeline, EventEmitter)
-│   ├── stages/               # 6 阶段实现
-│   ├── ports/                # 端口接口 (LLM, Memory, Config, Tools)
-│   ├── domain/               # 领域模型 (personality, memory, trust, emotion)
-│   ├── infrastructure/       # 基础设施 (circuit-breaker, sandbox)
-│   ├── cli/                  # CLI 入口
-│   └── index.ts              # 主入口
-├── server/                    # Express 后端 (REST + SSE)
-│   ├── routes/               # 11 个路由模块
-│   ├── middleware/
-│   ├── services/
-│   └── index.ts
-├── frontend/                  # React + Vite + Tailwind Web UI
+├── src/                          # 核心（Clean Architecture）
+│   ├── adapters/                 # 7 个适配器：LLM/Config/Memory/Storage/Shell/Tools/ToolsRegistry
+│   ├── core/                     # Pipeline + EventBus
+│   ├── stages/                   # 6 个阶段：init/understand/plan/execute/validate/reflect
+│   ├── ports/                    # 5 个接口契约（Clean Architecture）
+│   ├── domain/                   # personality / memory / trust / tool / emotion
+│   ├── infrastructure/           # Circuit Breaker（opossum）
+│   ├── cli/                      # CLI 入口（chat/agent/config）
+│   └── __tests__/                # 707 个测试（40 个文件）
+├── server/                       # Express 后端
+│   ├── index.ts                  # 入口
+│   ├── app.ts                    # 8 个 API 路由 + 静态托管 frontend/dist
+│   ├── providers.ts              # 10 个 provider 元数据
+│   ├── session-store.ts          # 对话 session 持久化
+│   ├── tools-setup.ts            # 7 个工具注册
+│   └── routes/                   # 8 个 REST/SSE 路由
+├── frontend/                     # React 18 + TypeScript + Vite + Tailwind
 │   ├── src/
-│   │   ├── pages/            # 8 个页面 + Layout
-│   │   ├── components/       # 30+ 通用组件
-│   │   ├── stores/           # Zustand stores
-│   │   ├── i18n/             # 中英双语 (en.json, zh.json)
-│   │   ├── api/              # API 客户端
-│   │   └── main.tsx
-│   ├── tailwind.config.js
-│   ├── vite.config.ts
-│   └── package.json
-├── __tests__/                 # 707 个 vitest 测试
+│   │   ├── api/                  # fetch 客户端 + sseStream()
+│   │   ├── stores/               # zustand：theme / config / locale
+│   │   ├── i18n/                 # EN/中 翻译
+│   │   ├── pages/                # 8 个页面
+│   │   ├── components/           # Layout + 8 个 UI 组件
+│   │   ├── types/                # TypeScript 类型
+│   │   └── styles/               # Tailwind + CSS 变量
+│   └── dist/                     # 构建产物（由 /server 托管）
 ├── .github/
-│   ├── workflows/            # CI/CD
-│   └── ISSUE_TEMPLATE/
-├── typedoc.json              # API 文档生成
-└── package.json
+│   ├── workflows/ci-cd.yml       # CI/CD（Node 20/22、前端构建）
+│   ├── ISSUE_TEMPLATE/           # bug / feature / docs / new_provider
+│   ├── PULL_REQUEST_TEMPLATE.md  # PR 模板
+│   ├── CODEOWNERS                # 代码评审负责人
+│   ├── dependabot.yml            # 每周依赖更新 PR
+│   └── FUNDING.yml               # 赞助链接
+├── sdk/                          # 独立 npm SDK（@personal-assistant/sdk）
+├── vscode/                       # VS Code 扩展
+├── examples/                     # 8 个可运行示例 + README
+├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API
+├── README.md                     # 英文版
+├── README_zh.md                  # 中文版（本文件）
+├── CHANGELOG.md                  # Keep-a-Changelog 格式
+├── CONTRIBUTING.md               # 贡献指南
+├── SECURITY.md                   # 安全策略
+├── CODE_OF_CONDUCT.md            # 贡献者公约 2.1
+├── LICENSE                       # MIT 许可证
+├── .editorconfig                 # 跨编辑器配置
+├── .prettierrc                   # Prettier 配置
+├── .npmignore                    # npm 发布过滤
+├── codecov.yml                   # Codecov 配置
+├── typedoc.json                  # API 文档生成
+└── package.json                  # 根 package
 ```
 
 ---
 
-## 🛠 开发
+## 开发命令
 
 ```bash
-# 安装依赖
-npm install
-npm --prefix frontend install
-
-# 类型检查
-npm run typecheck
-
-# 测试
-npm test                    # 707 测试
-npm test:coverage           # 覆盖率
-
-# Lint
-npm run lint
-
-# 构建
-npm run build               # 库
-npm run web:build           # 前端
-
-# 同时启动 (concurrently)
-npm run dev                 # 后端 4317 + 前端 5173
-npm run dev:server          # 仅后端
-npm run dev:web             # 仅前端
+npm install              # 安装后端依赖
+npm run build            # 编译后端（tsc）
+npm run server           # 启动 Express（tsx watch）
+npm run web:dev          # Vite 前端开发模式（HMR，/api 代理 → :3000）
+npm run web:build        # 前端生产构建 → frontend/dist
+npm run test             # vitest run（40 个文件 / 707 个测试）
+npm run test:coverage    # 覆盖率
+npm run lint             # ESLint 9.x flat config
+npm run format           # Prettier
 ```
 
 ---
 
-## 📦 API 协议
+## 排错
 
-### REST
-
-```
-GET  /api/health                      # 健康检查
-GET  /api/dashboard                   # 仪表盘统计
-GET  /api/config/snapshot             # 当前配置
-GET  /api/config/providers            # 所有 provider 元数据
-POST /api/config/set-key              # 设置 API key
-POST /api/config/remove-key           # 移除 API key
-POST /api/config/set-default          # 设置默认 provider
-POST /api/config/test-message         # 测试 provider
-GET  /api/tools                       # 工具列表
-POST /api/tools/execute               # 执行工具
-GET  /api/memory                      # 搜索记忆
-DELETE /api/memory/:id                # 删除单条
-POST /api/memory/clear                # 清空所有
-GET  /api/graph                       # 知识图谱
-GET  /api/emotion                     # 情绪状态
-POST /api/personality                 # 切换人格
-```
-
-### SSE (Server-Sent Events)
-
-```
-POST /api/chat/stream                 # 流式对话
-POST /api/agent/run                   # 流式 Agent 任务
-```
-
-每个事件都是 `event: <name>` + `data: <json>` 格式。
+| 现象 | 原因 / 修复 |
+| --- | --- |
+| `No API key configured for provider "..."` | 1) 未设置 key；2) key 名称拼写错误（注意 `PERSONAL_ASSISTANT_<PROVIDER>` 大写） |
+| `LLM request failed (openai): 401` | key 无效或过期，去厂商控制台重新生成 |
+| `LLM request failed (openai): 429` | 触发限流，稍等几秒或换模型 |
+| `fetch failed` | 沙箱网络受限 / 代理不通，可 `curl https://api.openai.com/v1/models` 验证 |
+| `Anthropic request failed: 403` | 1) key 错误；2) IP 在 Anthropic 拒绝区域（国内常见） |
+| `ollama/lmstudio` 不可达 | 本地服务未启动：`ollama serve` 或打开 LM Studio 的本地 server |
+| 想改 base URL | 设置 `<PROVIDER>_BASE_URL` 环境变量 |
 
 ---
 
-## 🐛 排错
+## 协议细节
 
-### API key 不生效
-- 检查存储位置: `~/.config/personal-assistant-nodejs/config.json`
-- 确认文件权限是 `0600`
-- 试 `npx pa config get` 验证加载顺序
+- **OpenAI 兼容**（7 个 Provider）：`POST {base_url}/chat/completions`，`Authorization: Bearer <key>`
+- **Anthropic**：`POST {base_url}/v1/messages`，`x-api-key: <key>` + `anthropic-version: 2023-06-01`
+- **Google**：`POST {base_url}/models/{model}:generateContent?key=<key>`
+- **百度**：`POST {base_url}/wenxinworkshop/chat/{model}?access_token=<key>`
 
-### 工具执行失败
-- 检查 sandbox 设置 (`config.sandbox.allowedCommands`)
-- 工具调用都会经过 sandbox 校验，不在白名单的命令会被拒绝
-
-### 端口冲突
-- 后端默认 `4317` 端口，前端 `5173`
-- 通过环境变量 `PORT` 修改后端
+所有请求都通过 `fetch` 直接打到厂商，无代理、无 mock、无假数据。
 
 ---
 
-## 📜 协议
+## 贡献
 
-[MIT](LICENSE) © 2026 Personal-Assistant Contributors
+参见 [`CONTRIBUTING.md`](CONTRIBUTING.md) 了解开发流程。
+使用 [issue](.github/ISSUE_TEMPLATE/) 和 [PR](.github/PULL_REQUEST_TEMPLATE.md) 模板。
+
+参与即表示同意 [Code of Conduct](CODE_OF_CONDUCT.md)。
+安全问题请按 [`SECURITY.md`](SECURITY.md) 走
+[私有披露](https://github.com/badhope/Personal-Assistant/security/advisories/new)，不要发公开 issue。
+
+## 协议
+
+MIT —— 见 [LICENSE](LICENSE)。
