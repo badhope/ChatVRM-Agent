@@ -69,14 +69,17 @@
 ```bash
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
-npm install
-(cd frontend && npm install)
+npm run install:all     # installs both root and frontend deps
 npm run build
 npm run web:build
 npm run server          # Express on port 3000 (override with PORT)
 ```
 
 Open **http://localhost:3000** in your browser.
+
+If you only want to confirm the build is green without running the
+server, `npm run verify` runs `lint + 707 tests + tsc build +
+frontend build` and exits non-zero on the first failure.
 
 ### CLI
 
@@ -92,6 +95,14 @@ node dist/cli/index.js config set-key siliconflow sk-your-real-key
 node dist/cli/index.js config set-default siliconflow
 node dist/cli/index.js chat
 ```
+
+> **Why `npm run install:all` instead of `npm install`?**
+> This repo is not a workspaces monorepo — root and `frontend/` each
+> have their own `package.json`. A single `npm install` at the root
+> installs the CLI, the server, and the core but leaves the web UI's
+> `node_modules` empty, so `npm run web:dev` and `npm run web:build`
+> would fail with `Cannot find module 'react'`. The `install:all`
+> script does both steps for you.
 
 ---
 

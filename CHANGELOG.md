@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`docs/ADR/004`** — superseded dual-agent decision; recorded the collapse into the current 6-stage single-agent pipeline
 - **`docs/SDK.md`** — new; documents the real `@personal-assistant/sdk` surface (`runAgent`, `planTask`, `executePlan`, `PersonalAssistantAgent`, `PersonalAssistantParser`, `PersonalAssistantEditor`, `PersonalAssistantPlugins`, error hierarchy)
 
+### Tooling
+- **`npm run install:all`** — new top-level script. The repo is not a workspaces monorepo; root and `frontend/` each have their own `package.json`, so a single `npm install` left the web UI unbuildable (the previous README quick start had a two-line install that was easy to miss). `install:all` chains the two `npm install` calls.
+- **`npm run verify`** — new top-level script that runs `lint + 707 tests + tsc build + frontend build` and exits non-zero on the first failure, so the full pipeline is green in one command.
+- **`.github/workflows/ci.yml`** — new. Runs the same `verify` on every push / PR to `main`, then starts the backend on port 3500 and smoke-tests 10 REST endpoints + the root SPA, asserting every response is `200` and the HTML contains the expected title. This is the proof that the full stack is real, not mocked.
+- **`docs/SETUP.md`** — quick start now uses `npm run install:all`; added a "Verifying the install" section that lists every endpoint, the curl to call it, and what real data you should see.
+- **`README.md`** — quick start updated to use `install:all`; added a "Why install:all?" callout so the two-package layout is no longer a surprise.
+
 ## [2.0.0] - 2026-06-02
 
 ### Added

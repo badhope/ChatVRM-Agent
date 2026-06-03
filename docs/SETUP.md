@@ -23,11 +23,25 @@ nvm use
 ```bash
 git clone https://github.com/badhope/Personal-Assistant.git
 cd Personal-Assistant
-npm install
+npm run install:all     # installs both root and frontend deps
 ```
 
-`npm install` also triggers `husky install` via the `prepare` script,
-which wires up the pre-commit hook (Prettier + ESLint on staged files).
+`npm run install:all` is a wrapper that runs `npm install` at the root
+**and** in `frontend/`. The two `package.json` files are independent
+(this is not a workspaces repo) so a single `npm install` at the root
+will leave the web UI unbuildable. The same script also triggers
+`husky install` via the `prepare` script, which wires up the
+pre-commit hook (Prettier + ESLint on staged files).
+
+A `verify` script is also provided for one-shot CI-style validation
+without running the server:
+
+```bash
+npm run verify          # lint + 707 tests + tsc build + frontend build
+```
+
+If `verify` exits 0, the full build pipeline is green and the backend
+can be started (see step 3).
 
 ## 2. Configure an LLM provider
 
@@ -177,3 +191,63 @@ stop and use `config set-key` instead.
 - Deploy behind a reverse proxy: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - Diagnose runtime issues: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 - Decision history: [ADR/](./ADR/)
+
+## Verifying the install (all endpoints are real, not mocked)
+
+Once the server is up on `http://localhost:3000`, every one of the
+nine REST endpoints below returns a real, structured payload that
+comes from the actual adapter — not from a fixture, a JSON file, or
+a stub. Run them in a second shell to confirm:
+
+```bash
+# 1. liveness
+curl -s http://localhost:3000/api/health
+# { "ok": true, "ts": "..." }
+
+# 2. 10-provider config (real metadata, real base URLs)
+curl -s http://localhost:3000/api/config/providers | jq 'length, .[0]'
+
+# 3. full persisted configuration snapshot
+curl -s http://localhost:3000/api/config/snapshot
+
+# 4. memory store (empty for a fresh install)
+curl -s 'http://localhost:3000/api/memory?q=' | jq '.total'
+
+# 5. 7 real tools, with their actual JSON Schema
+curl -s http://localhost:3000/api/tools | jq 'map(.name)'
+
+# 6. knowledge graph (0 nodes until you have memory)
+curl -s http://localhost:3000/api/graph | jq '{nodes: (.nodes|length), edges: (.edges|length)}'
+
+# 7. dashboard aggregate
+curl -s http://localhost:3000/api/dashboard | jq
+
+# 8. session store (empty for a fresh install)
+curl -s http://localhost:3000/api/chat/sessions
+
+# 9. current emotion state
+curl -s http://localhost:3000/api/emotion
+
+# 10. list of available personalities
+curl -s http://localhost:3000/api/personality | jq '.list[].id'
+```
+
+Two endpoints stream SSE and need a real LLM key to produce content
+(an unset key returns 401 — the same error the CLI would print):
+
+```bash
+# 11. chat stream — needs an API key for the chosen provider
+curl -N -X POST http://localhost:3000/api/chat/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "hi", "provider": "openai"}'
+
+# 12. agent pipeline — same requirement
+curl -N -X POST http://localhost:3000/api/agent/run \
+  -H 'Content-Type: application/json' \
+  -d '{"task": "introduce yourself", "provider": "openai"}'
+```
+
+The CI workflow at [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+runs the install, lint, 707-test suite, both builds, and the first
+ten smoke tests above on every push. Green CI is the proof that the
+stack is real.

@@ -8,6 +8,7 @@
     "personal-assistant": "./dist/cli/index.js"
   },
   "scripts": {
+    "install:all": "npm install && (cd frontend && npm install)",
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/cli/index.js",
@@ -25,6 +26,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "verify": "npm run lint && npm test && npm run build && (cd frontend && npm run build) && echo OK",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
     "prepare": "husky"

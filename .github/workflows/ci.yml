@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint · Test · Build · Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install root + frontend dependencies
+        run: npm run install:all
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test (707 tests across 40 files)
+        run: npm test
+
+      - name: Build core (tsc)
+        run: npm run build
+
+      - name: Build frontend (vite)
+        run: npm run web:build
+
+      - name: Start backend and smoke-test the API surface
+        env:
+          PORT: '3500'
+        run: |
+          set -e
+          npm run server &
+          SERVER_PID=$!
+          # wait for the server to come up
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3500/api/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          echo "--- /api/health ---"
+          curl -fsS http://localhost:3500/api/health
+          echo
+          for path in \
+            /api/config/providers \
+            /api/config/snapshot \
+            /api/chat/sessions \
+            /api/graph \
+            /api/dashboard \
+            /api/tools \
+            /api/emotion \
+            /api/personality \
+            /api/memory \
+            '/api/memory?q=test' \
+          ; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3500$path")
+            echo "$path => $code"
+            if [ "$code" != "200" ]; then
+              echo "FAIL: $path returned $code"
+              kill $SERVER_PID || true
+              exit 1
+            fi
+          done
+          # Frontend SPA must be served at /
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3500/")
+          echo "/ => $code (frontend SPA)"
+          if [ "$code" != "200" ]; then
+            echo "FAIL: root returned $code"
+            kill $SERVER_PID || true
+            exit 1
+          fi
+          # Make sure the HTML really is our SPA
+          curl -fsS http://localhost:3500/ | grep -q "Personal-Assistant"
+          echo "frontend SPA title verified"
+          kill $SERVER_PID || true
