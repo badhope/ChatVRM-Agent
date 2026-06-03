@@ -47,6 +47,10 @@ export function Chat() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Session id we just minted from an SSE `session` event. The sessionId
+  // effect uses this to skip the server round-trip (which would clobber the
+  // in-flight streamed messages with `[]`).
+  const locallyCreatedRef = useRef<string | null>(null);
 
   useEffect(() => {
     refreshConfig();
@@ -58,6 +62,13 @@ export function Chat() {
 
   useEffect(() => {
     if (sessionId) {
+      // If we just created this session via the SSE `session` event we already
+      // have an accurate local view; skip the round-trip and the race against
+      // our own in-flight stream that would otherwise reset messages to [].
+      if (locallyCreatedRef.current === sessionId) {
+        locallyCreatedRef.current = null;
+        return;
+      }
       api
         .get<ChatSession>(`/chat/sessions/${sessionId}`)
         .then((s) => {
@@ -146,6 +157,9 @@ export function Chat() {
               model,
             };
             setActiveSession(newSession);
+            // Mark this session so the sessionId effect doesn't refetch
+            // (which would clobber the in-flight streamed messages).
+            locallyCreatedRef.current = data.id;
             navigate(`/chat/${data.id}`, { replace: true });
           }
         } else if (ev.event === 'chunk') {
