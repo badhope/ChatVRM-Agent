@@ -142,7 +142,7 @@ export function Tools() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-mono font-medium truncate">{tool.name}</div>
-                  <div className="text-[10.5px] text-fg-mute">{t('tools.argsCount', { n: tool.schema.length })}</div>
+                  <div className="text-[10.5px] text-fg-mute">{t('tools.argsCount', { count: tool.schema.length, n: tool.schema.length })}</div>
                 </div>
               </div>
             </button>
@@ -163,7 +163,7 @@ export function Tools() {
               {selected ?? '—'}
             </div>
             <span className="text-[10.5px] text-fg-mute font-mono">
-              {t('tools.argsCount', { n: tools.find((tool) => tool.name === selected)?.schema.length ?? 0 })}
+              {t('tools.argsCount', { count: tools.find((tool) => tool.name === selected)?.schema.length ?? 0, n: tools.find((tool) => tool.name === selected)?.schema.length ?? 0 })}
             </span>
           </CardHeader>
           <CardBody className="space-y-3">
@@ -286,7 +286,7 @@ export function Tools() {
         <Card className="mt-4">
           <CardHeader>
             <div className="text-sm font-semibold">{t('tools.historyTitle')}</div>
-            <span className="text-xs text-fg-mute">{t('tools.historyCount', { n: history.length })}</span>
+            <span className="text-xs text-fg-mute">{t('tools.historyCount', { count: history.length, n: history.length })}</span>
           </CardHeader>
           <CardBody className="p-0">
             <div className="divide-y divide-border">

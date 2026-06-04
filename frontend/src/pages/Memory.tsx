@@ -84,7 +84,7 @@ export function Memory() {
           <p className="text-sm text-fg-mute mt-1">{t('memory.realPersist')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="brand">{t('memory.total', { n: total })}</Badge>
+          <Badge variant="brand">{t('memory.total', { count: total, n: total })}</Badge>
           <Button
             variant="outline"
             size="sm"
@@ -149,7 +149,7 @@ export function Memory() {
                 {query && <span className="text-fg-mute">· "{query}"</span>}
                 {activeTag && <span className="text-fg-mute"> · #{activeTag}</span>}
               </div>
-              <span className="text-xs text-fg-mute">{t('memory.total', { n: items.length })}</span>
+              <span className="text-xs text-fg-mute">{t('memory.total', { count: items.length, n: items.length })}</span>
             </CardHeader>
             <CardBody className="p-0">
               {loading ? (

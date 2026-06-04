@@ -30,6 +30,8 @@ void i18n
       caches: ['localStorage'],
     },
     interpolation: {
+      prefix: '{',
+      suffix: '}',
       escapeValue: false,
     },
     returnNull: false,

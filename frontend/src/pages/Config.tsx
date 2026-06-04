@@ -161,7 +161,7 @@ export function Config() {
         onToggle={() => toggle('providers')}
         icon={<KeyRound size={14} />}
         title={t('config.section.providers')}
-        subtitle={t('config.section.providersDesc', { n: providers.length })}
+        subtitle={t('config.section.providersDesc', { count: providers.length, n: providers.length })}
       >
         <ProvidersPanel
           providers={providers}
