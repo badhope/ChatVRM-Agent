@@ -10,13 +10,23 @@ import { cn, formatTime } from '@/utils';
 import { toast } from '@/components/Toast';
 import type { EmotionState } from '@/types';
 
-const PERSONALITIES = [
-  { id: 'default', name: 'default', emoji: '🧑‍💻', desc: 'Balanced, professional, efficient' },
-  { id: 'mentor', name: 'mentor', emoji: '👨‍🏫', desc: 'Patient, didactic, encouraging' },
-  { id: 'pirate', name: 'pirate', emoji: '🏴‍☠️', desc: 'Adventurous, colourful, witty' },
-  { id: 'conservative', name: 'conservative', emoji: '🤵', desc: 'Cautious, formal, low-risk' },
-  { id: 'creative', name: 'creative', emoji: '🎨', desc: 'Imaginative, bold, divergent' },
-] as const;
+interface PersonalityOption {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt?: string;
+}
+
+const PERSONALITY_EMOJI: Record<string, string> = {
+  friendly_mentor: '👨‍🏫',
+  tech_expert: '🧑‍💻',
+  creative_genius: '🎨',
+  pragmatic_worker: '🤵',
+};
+
+function emojiFor(id: string): string {
+  return PERSONALITY_EMOJI[id] ?? '🙂';
+}
 
 export function Settings() {
   const { t } = useTranslation();
@@ -24,12 +34,14 @@ export function Settings() {
   const setTheme = useThemeStore((s) => s.setTheme);
   const [emotion, setEmotion] = useState<EmotionState | null>(null);
   const [loadingEmotion, setLoadingEmotion] = useState(false);
-  const [currentPersonality, setCurrentPersonality] = useState('default');
+  const [personalities, setPersonalities] = useState<PersonalityOption[]>([]);
+  const [currentPersonality, setCurrentPersonality] = useState('');
   const [stats, setStats] = useState<{ count: number; totalTokens: number; avgImportance: number } | null>(null);
 
   useEffect(() => {
     loadEmotion();
     loadStats();
+    loadPersonalities();
   }, []);
 
   async function loadEmotion() {
@@ -55,13 +67,26 @@ export function Settings() {
     }
   }
 
+  async function loadPersonalities() {
+    try {
+      const res = await api.get<{ current: string; list: PersonalityOption[] }>('/personality');
+      setPersonalities(res.list);
+      setCurrentPersonality(res.current);
+    } catch (err) {
+      toast({ type: 'error', title: t('settings.refreshFailed'), message: String(err) });
+    }
+  }
+
   async function switchPersonality(id: string) {
+    const previous = currentPersonality;
     setCurrentPersonality(id);
     try {
-      await api.post('/personality', { id });
-      const p = PERSONALITIES.find((x) => x.id === id);
-      toast({ type: 'success', title: t('settings.switchedTo', { name: p?.name ?? id }) });
+      await api.post('/personality/set', { id });
+      const p = personalities.find((x) => x.id === id);
+      const displayName = t(`settings.personalities.${id}.name`, p?.name ?? id);
+      toast({ type: 'success', title: t('settings.switchedTo', { name: displayName }) });
     } catch (err) {
+      setCurrentPersonality(previous);
       toast({ type: 'error', title: t('settings.switchFailed'), message: String(err) });
     }
   }
@@ -90,7 +115,7 @@ export function Settings() {
       toast({ type: 'success', title: t('settings.cleared') });
       loadStats();
     } catch (err) {
-      toast({ type: 'error', title: t('settings.clearConfirm'), message: String(err) });
+      toast({ type: 'error', title: t('settings.clearFailed'), message: String(err) });
     }
   }
 
@@ -147,7 +172,7 @@ export function Settings() {
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {PERSONALITIES.map((p) => (
+            {personalities.map((p) => (
               <button
                 key={p.id}
                 onClick={() => switchPersonality(p.id)}
@@ -157,13 +182,16 @@ export function Settings() {
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{p.emoji}</span>
-                  <span className="text-sm font-medium">{p.name}</span>
+                  <span className="text-lg">{emojiFor(p.id)}</span>
+                  <span className="text-sm font-medium">{t(`settings.personalities.${p.id}.name`, p.name)}</span>
                   {currentPersonality === p.id && <Badge variant="brand" size="sm">{t('settings.currentPersonality')}</Badge>}
                 </div>
-                <p className="text-[10.5px] text-fg-mute mt-1">{p.desc}</p>
+                <p className="text-[10.5px] text-fg-mute mt-1">{t(`settings.personalities.${p.id}.desc`, p.description)}</p>
               </button>
             ))}
+            {personalities.length === 0 && (
+              <div className="col-span-2 text-xs text-fg-mute">—</div>
+            )}
           </div>
         </CardBody>
       </Card>

@@ -469,6 +469,7 @@
     "exportFailed": "导出失败",
     "clearMemory": "清空记忆",
     "clearConfirm": "确认清空所有记忆？此操作不可恢复。",
+    "clearFailed": "清空失败",
     "cleared": "已清空",
     "about": "关于",
     "aboutLine1": "Personal-Assistant Web · v2.0",
@@ -486,8 +487,26 @@
       "frustrated": "受挫",
       "tired": "疲惫"
     },
-    "intensityFormat": "intensity {n}/100",
-    "triggersCount": "最近触发 ({n})"
+    "intensityFormat": "强度 {n}/100",
+    "triggersCount": "最近触发 ({n})",
+    "personalities": {
+      "friendly_mentor": {
+        "name": "友好导师",
+        "desc": "耐心 · 鼓励式 · 善解人意"
+      },
+      "tech_expert": {
+        "name": "技术专家",
+        "desc": "善于分析 · 精确 · 逻辑严密"
+      },
+      "creative_genius": {
+        "name": "创意天才",
+        "desc": "富有想象 · 富表现力 · 妙趣横生"
+      },
+      "pragmatic_worker": {
+        "name": "务实员工",
+        "desc": "高效 · 直接 · 实用可靠"
+      }
+    }
   },
   "emotion": {
     "neutral": "平静",

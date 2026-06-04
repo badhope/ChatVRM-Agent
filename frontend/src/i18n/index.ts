@@ -37,6 +37,18 @@ void i18n
     returnNull: false,
   });
 
+// Sync <html lang> to the actual active language so utilities (e.g. formatTime)
+// that read document.documentElement.lang pick up the right locale.
+if (typeof document !== 'undefined') {
+  const active = i18n.language?.startsWith('zh') ? 'zh' : 'en';
+  document.documentElement.lang = active;
+}
+i18n.on('languageChanged', (lng: string) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lng.startsWith('zh') ? 'zh' : 'en';
+  }
+});
+
 export function setLanguage(code: LanguageCode): void {
   void i18n.changeLanguage(code);
   try {

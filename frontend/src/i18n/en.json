@@ -468,6 +468,7 @@
     "exportFailed": "Export failed",
     "clearMemory": "Clear memory",
     "clearConfirm": "Delete all memories? This cannot be undone.",
+    "clearFailed": "Clear failed",
     "cleared": "Cleared",
     "about": "About",
     "aboutLine1": "Personal-Assistant Web · v2.0",
@@ -486,7 +487,25 @@
       "tired": "Tired"
     },
     "intensityFormat": "intensity {n}/100",
-    "triggersCount": "Recent triggers ({n})"
+    "triggersCount": "Recent triggers ({n})",
+    "personalities": {
+      "friendly_mentor": {
+        "name": "Friendly Mentor",
+        "desc": "Patient · encouraging · empathetic"
+      },
+      "tech_expert": {
+        "name": "Tech Expert",
+        "desc": "Analytical · precise · logical"
+      },
+      "creative_genius": {
+        "name": "Creative Genius",
+        "desc": "Imaginative · expressive · playful"
+      },
+      "pragmatic_worker": {
+        "name": "Pragmatic Worker",
+        "desc": "Efficient · direct · practical"
+      }
+    }
   },
   "emotion": {
     "neutral": "Neutral",
