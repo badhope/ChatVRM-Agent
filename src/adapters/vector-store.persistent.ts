@@ -10,7 +10,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { InMemoryVectorStore } from './vector-store.memory.js';
-import type { VectorRecord, VectorQuery, VectorHit } from '../ports/vector-store.port.js';
+import type { VectorRecord, VectorQuery, VectorHit, VectorStore } from '../ports/vector-store.port.js';
 
 interface Persisted {
   dim: number;

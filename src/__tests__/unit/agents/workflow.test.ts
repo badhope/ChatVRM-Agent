@@ -4,7 +4,7 @@ import { renderWorkflowSVG } from '../../../agents/workflow-render.js';
 import { workflowJsonSchema } from '../../../agents/workflow-schema.js';
 import type { WorkflowSpec } from '../../../agents/workflow.js';
 
-interface S {
+interface S extends Record<string, unknown> {
   n: number;
   log: string[];
 }

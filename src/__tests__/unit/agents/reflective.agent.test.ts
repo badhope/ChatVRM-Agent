@@ -30,10 +30,15 @@ function makeTools(): IToolsPort {
   ];
   return {
     register: (d) => defs.push(d),
-    unregister: () => {},
+    unregister: (_n: string) => true,
     list: () => defs,
     listAll: () => defs,
-    get: (n) => defs.find((d) => d.name === n),
+    has: (n: string) => defs.some((x) => x.name === n),
+    get: (n) => {
+      const d = defs.find((x) => x.name === n);
+      if (!d) throw new Error(`No tool ${n}`);
+      return d;
+    },
     async execute(): Promise<ToolResult> {
       return { success: true, output: 'ok' };
     },

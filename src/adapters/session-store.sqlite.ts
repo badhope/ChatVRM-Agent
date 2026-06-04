@@ -24,7 +24,7 @@ import type {
   Session,
   SessionMessage,
   SessionQuery,
-} from '../../ports/session-store.port.js';
+} from '../ports/session-store.port.js';
 
 interface BetterSqliteSync {
   prepare(sql: string): BetterSqliteStatement;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { EventEmitter } from 'eventemitter3';
-import { Crew, type AgentDefinition } from '../../../agents/crew.agent.js';
+import { Crew, type AgentDefinition, type AgentEvents } from '../../../agents/crew.agent.js';
 import { attachInputSchema } from '../../../agents/react.agent.js';
 import type { ILLMPort, ChatResponse, ChatParams } from '../../../ports/llm.port.js';
 import type { IToolsPort, ToolDefinition, ToolResult } from '../../../ports/tools.port.js';
@@ -35,7 +35,7 @@ function makeTools(): IToolsPort & { executions: Array<{ name: string; args: unk
   return {
     executions,
     register: (d) => defs.push(d),
-    unregister: () => {},
+    unregister: (_n: string) => true,
     has: (n) => defs.some((d) => d.name === n),
     get: (n) => {
       const d = defs.find((x) => x.name === n);
@@ -123,7 +123,7 @@ describe('Crew', () => {
       { content: 'a2', model: 'm', usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } },
     ]);
     const crew = new Crew(llm, tools);
-    const events = new EventEmitter();
+    const events = new EventEmitter<AgentEvents>();
     const trace: string[] = [];
     events.on('crew:start', () => trace.push('crew:start'));
     events.on('crew:agent:start', (e) => trace.push(`agent:start:${e.agent}`));
@@ -131,10 +131,10 @@ describe('Crew', () => {
     events.on('crew:done', () => trace.push('crew:done'));
 
     // Re-emit to our tracer.
-    (crew.events as EventEmitter).on('crew:start', () => events.emit('crew:start'));
-    (crew.events as EventEmitter).on('crew:agent:start', (e: { agent: string }) => events.emit('crew:agent:start', e));
-    (crew.events as EventEmitter).on('crew:agent:done', (e: { agent: string }) => events.emit('crew:agent:done', e));
-    (crew.events as EventEmitter).on('crew:done', (e: unknown) => events.emit('crew:done', e));
+    (crew.events as unknown as EventEmitter).on('crew:start', () => events.emit('crew:start'));
+    (crew.events as unknown as EventEmitter).on('crew:agent:start', (e: { agent: string }) => events.emit('crew:agent:start', e));
+    (crew.events as unknown as EventEmitter).on('crew:agent:done', (e: { agent: string }) => events.emit('crew:agent:done', e));
+    (crew.events as unknown as EventEmitter).on('crew:done', (e: unknown) => events.emit('crew:done', e));
 
     await crew.run(
       { agents: [{ name: 'a1', role: 'r', goal: 'g' }, { name: 'a2', role: 'r', goal: 'g' }] },
@@ -177,7 +177,7 @@ describe('Crew', () => {
 
     // Track delegate events.
     const delegates: Array<{ from: string; to: string }> = [];
-    (crew.events as EventEmitter).on('agent:delegate', (e: { from: string; to: string }) => delegates.push({ from: e.from, to: e.to }));
+    (crew.events as unknown as EventEmitter).on('agent:delegate', (e: { from: string; to: string }) => delegates.push({ from: e.from, to: e.to }));
 
     const result = await crew.run(
       {

@@ -30,7 +30,7 @@ export class NoopObservation implements IObservation {
   private output: unknown;
   private readonly records: CapturedRecord[] = [];
   private readonly recordMode: boolean;
-  private readonly ringBuffer: CapturedRecord[] | null;
+  private readonly ringBuffer: CapturedRecord[];
   private readonly ringMax: number;
 
   constructor(
@@ -38,7 +38,7 @@ export class NoopObservation implements IObservation {
     kind: 'span' | 'generation' | 'event',
     parent: NoopObservation | null,
     opts: NoopObservationOptions = {},
-    ringBuffer?: CapturedRecord[],
+    ringBuffer: CapturedRecord[] = [],
   ) {
     this.name = name;
     this.kind = kind;
@@ -83,7 +83,7 @@ export class NoopObservation implements IObservation {
     return this;
   }
   async span(name: string, opts?: { input?: unknown; metadata?: Record<string, unknown> }) {
-    const child = new NoopObservation(name, 'span', this, this.opts(), this.ringBuffer ?? undefined);
+    const child = new NoopObservation(name, 'span', this, this.opts(), this.ringBuffer);
     if (opts?.input !== undefined) child.input = opts.input;
     if (opts?.metadata) child.metadata = { ...child.metadata, ...opts.metadata };
     return child;
@@ -92,7 +92,7 @@ export class NoopObservation implements IObservation {
     name: string,
     opts?: { model?: string; input?: unknown; metadata?: Record<string, unknown>; modelParameters?: Record<string, unknown> },
   ) {
-    const child = new NoopObservation(name, 'generation', this, this.opts(), this.ringBuffer ?? undefined);
+    const child = new NoopObservation(name, 'generation', this, this.opts(), this.ringBuffer);
     if (opts?.model) child.metadata.model = opts.model;
     if (opts?.input !== undefined) child.input = opts.input;
     if (opts?.modelParameters) child.metadata.modelParameters = opts.modelParameters;
@@ -103,7 +103,7 @@ export class NoopObservation implements IObservation {
     name: string,
     opts?: { input?: unknown; metadata?: Record<string, unknown>; level?: ObservationLevel },
   ): IObservation {
-    const child = new NoopObservation(name, 'event', this, this.opts(), this.ringBuffer ?? undefined);
+    const child = new NoopObservation(name, 'event', this, this.opts(), this.ringBuffer);
     if (opts?.input !== undefined) child.input = opts.input;
     if (opts?.metadata) child.metadata = { ...child.metadata, ...opts.metadata };
     if (this.recordMode) {

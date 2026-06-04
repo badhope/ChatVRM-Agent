@@ -265,12 +265,17 @@ export class ReActAgent {
 /**
  * Decorator: attach a zod/JSON-Schema to an existing tool definition so
  * the ReAct agent can pass it to the LLM as a native tool.
+ *
+ * If the input tool has no `handler`, a no-op default is added so the
+ * result satisfies the `ToolDefinition` shape (useful when wrapping an
+ * MCP server-side tool where the actual handler lives remotely).
  */
-export function attachInputSchema<T extends { name: string; description: string }>(
-  tool: T,
-  schema: unknown,
-): T & { inputSchema: unknown } {
-  return { ...tool, inputSchema: schema };
+export function attachInputSchema<
+  T extends { name: string; description: string; handler?: (args: Record<string, unknown>) => Promise<ToolResult | string> }
+>(tool: T, schema: unknown): T & { inputSchema: unknown; handler: (args: Record<string, unknown>) => Promise<ToolResult | string> } {
+  const handler = (tool.handler ??
+    (async () => ({ success: true, output: '' })));
+  return { ...tool, inputSchema: schema, handler };
 }
 
 function truncate(s: string, max: number): string {

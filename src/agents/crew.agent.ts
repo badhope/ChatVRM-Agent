@@ -300,7 +300,7 @@ class ScopedToolsPort implements IToolsPort {
   register(): void {
     throw new Error('ScopedToolsPort is read-only');
   }
-  unregister(): void {
+  unregister(): boolean {
     throw new Error('ScopedToolsPort is read-only');
   }
   has(name: string): boolean {

@@ -43,14 +43,15 @@ export class StdioTransport extends EventEmitter<StdioTransportEvents> implement
     this._spawn = options.spawnImpl ?? spawn;
   }
 
-  private _spawn: StdioTransportOptions['spawnImpl'];
+  private _spawn: NonNullable<StdioTransportOptions['spawnImpl']>;
 
   async start(): Promise<void> {
     if (this.child) return;
-    this.child = this._spawn(this.opts.command, this.opts.args, {
+    const child = this._spawn(this.opts.command, this.opts.args, {
       env: { ...process.env, ...this.opts.env },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
+    this.child = child;
     this.child.stdout?.setEncoding('utf8');
     this.child.stderr?.setEncoding('utf8');
     this.child.stdout?.on('data', (chunk: string) => this.onStdout(chunk));
@@ -85,12 +86,13 @@ export class StdioTransport extends EventEmitter<StdioTransportEvents> implement
   }
 
   async send(message: unknown): Promise<void> {
-    if (!this.child || !this.child.stdin || this.closed) {
+    const child = this.child;
+    if (!child || !child.stdin || this.closed) {
       throw new Error('StdioTransport: not started or closed');
     }
     const data = JSON.stringify(message) + '\n';
     return new Promise<void>((resolve, reject) => {
-      this.child!.stdin!.write(data, (err) => {
+      child.stdin!.write(data, (err) => {
         if (err) reject(err);
         else resolve();
       });

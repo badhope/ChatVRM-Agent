@@ -20,7 +20,7 @@
  *   }
  */
 
-import { Graph, START, END, type CompiledGraph } from './graph.agent.js';
+import { Graph, START, END, type CompiledGraph, type GraphState } from './graph.agent.js';
 
 export interface WorkflowNode {
   id: string;
@@ -57,23 +57,23 @@ export interface ValidationIssue {
   edgeId?: string;
 }
 
-export interface CompiledWorkflow<TState> {
+export interface CompiledWorkflow<TState extends GraphState> {
   spec: WorkflowSpec;
   graph: CompiledGraph<TState>;
   issues: ValidationIssue[];
 }
 
-export type NodeHandler<TState> = (
+export type NodeHandler<TState extends GraphState> = (
   state: TState,
   node: WorkflowNode,
 ) => Promise<Partial<TState>> | Partial<TState>;
 
-export type EdgeCondition<TState> = (
+export type EdgeCondition<TState extends GraphState> = (
   state: TState,
   edge: WorkflowEdge,
 ) => boolean;
 
-export interface CompileOptions<TState> {
+export interface CompileOptions<TState extends GraphState> {
   /** Map of node type -> handler. */
   handlers: Record<string, NodeHandler<TState>>;
   /** Map of condition name -> predicate. */
@@ -113,7 +113,7 @@ export function validateWorkflow(spec: WorkflowSpec): ValidationIssue[] {
   return issues;
 }
 
-export function workflowToGraph<TState>(
+export function workflowToGraph<TState extends GraphState>(
   spec: WorkflowSpec,
   opts: CompileOptions<TState>,
 ): CompiledWorkflow<TState> {

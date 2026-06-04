@@ -77,8 +77,8 @@ export interface IQueueEvents {
 
 export interface IQueue {
   readonly name: string;
-  on<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void;
-  off<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void;
+  on(event: string, listener: (...args: unknown[]) => void): this;
+  off(event: string, listener: (...args: unknown[]) => void): this;
   add<T = unknown>(name: string, data: T, opts?: JobOptions): Promise<Job<T>>;
   process<T = unknown, R = unknown>(name: string, processor: JobProcessor<T, R>): void;
   pause(): Promise<void>;

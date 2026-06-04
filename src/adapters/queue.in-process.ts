@@ -63,11 +63,13 @@ export class InProcessQueue implements IQueue {
     if (typeof this.delayedTimer.unref === 'function') this.delayedTimer.unref();
   }
 
-  on<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void {
-    this.emitter.on(event, listener);
+  on(event: string, listener: (...args: unknown[]) => void): this {
+    this.emitter.on(event as never, listener as never);
+    return this;
   }
-  off<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void {
-    this.emitter.off(event, listener);
+  off(event: string, listener: (...args: unknown[]) => void): this {
+    this.emitter.off(event as never, listener as never);
+    return this;
   }
 
   async add<T = unknown>(name: string, data: T, opts: JobOptions = {}): Promise<Job<T>> {
@@ -81,12 +83,12 @@ export class InProcessQueue implements IQueue {
     if (existing && (existing.state === 'waiting' || existing.state === 'delayed')) {
       existing.data = data;
       existing.opts = this.normaliseOpts(opts);
-      return this.cloneJob(existing);
+      return this.cloneJob<T>(existing);
     }
     const job: InternalJob = {
       id,
       name,
-      data,
+      data: data as unknown,
       state: opts.startAfter ? 'delayed' : 'waiting',
       attemptsMade: 0,
       progress: 0,
@@ -101,7 +103,7 @@ export class InProcessQueue implements IQueue {
     }
     this.schedulePump();
     this.emitter.emit('waiting', this.cloneJob(job));
-    return this.cloneJob(job);
+    return this.cloneJob<T>(job);
   }
 
   private normaliseOpts(opts: JobOptions): Required<Pick<JobOptions, 'attempts' | 'backoff' | 'priority'>> & JobOptions {
@@ -261,14 +263,14 @@ export class InProcessQueue implements IQueue {
     return j ? this.cloneJob(j) : null;
   }
 
-  private cloneJob(j: InternalJob): Job {
+  private cloneJob<T = unknown>(j: InternalJob): Job<T> {
     return {
       id: j.id,
       name: j.name,
-      data: j.data,
+      data: j.data as T,
       state: j.state,
       attemptsMade: j.attemptsMade,
-      returnvalue: j.returnvalue,
+      returnvalue: j.returnvalue as unknown,
       failedReason: j.failedReason,
       stacktrace: j.stacktrace,
       progress: j.progress,

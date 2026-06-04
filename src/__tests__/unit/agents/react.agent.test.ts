@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { EventEmitter } from 'eventemitter3';
-import { ReActAgent, attachInputSchema } from '../../../agents/react.agent.js';
+import { ReActAgent, attachInputSchema, type ReActEvents } from '../../../agents/react.agent.js';
 import type { ILLMPort, ChatResponse, ChatParams, Message } from '../../../ports/llm.port.js';
 import type { IToolsPort, ToolDefinition, ToolResult } from '../../../ports/tools.port.js';
 
@@ -34,10 +34,15 @@ function makeTools(defs: ToolDefinition[]): IToolsPort & { executions: Array<{ n
   return {
     executions,
     register: (d) => defs.push(d),
-    unregister: () => {},
+    unregister: (_n: string) => true,
     list: () => defs,
     listAll: () => defs,
-    get: (name) => defs.find((d) => d.name === name),
+    has: (n: string) => defs.some((x) => x.name === n),
+    get: (name) => {
+      const d = defs.find((x) => x.name === name);
+      if (!d) throw new Error(`No tool ${name}`);
+      return d;
+    },
     async execute(name: string, args: Record<string, unknown>): Promise<ToolResult> {
       executions.push({ name, args });
       return { success: true, output: `result for ${name}(${JSON.stringify(args)})` };
@@ -83,7 +88,7 @@ describe('ReActAgent', () => {
         z.object({ city: z.string() }),
       ),
     ]);
-    const events = new EventEmitter();
+    const events = new EventEmitter<ReActEvents>();
     const observed: string[] = [];
     events.on('react:thought', (e) => observed.push(`thought:${e.index}`));
     events.on('react:action', (e) => observed.push(`action:${e.call.name}`));
@@ -174,7 +179,7 @@ describe('ReActAgent', () => {
     ]);
     const tools = makeTools([attachInputSchema({ name: 'boom', description: 'd' }, z.object({}))]);
     tools.execute = async () => ({ success: false, error: 'kaboom' });
-    const events = new EventEmitter();
+    const events = new EventEmitter<ReActEvents>();
     const obs: Array<{ ok: boolean; obs: string }> = [];
     events.on('react:observation', (e) => obs.push({ ok: e.ok, obs: e.observation }));
 

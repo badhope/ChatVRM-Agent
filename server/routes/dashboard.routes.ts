@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { LLMAdapter } from '../src/adapters/llm.adapter.js';
-import type { MemoryAdapter } from '../src/adapters/memory.adapter.js';
-import type { ConfigAdapter } from '../src/adapters/config.adapter.js';
+import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
+import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
+import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
 import { PROVIDER_META, resolveApiKey } from '../providers.js';
 import { SessionStore } from '../session-store.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';

@@ -87,7 +87,7 @@ export class PlanStage implements Stage {
       // Honour the provider/model the agent route was called with so the
       // planner doesn't fall back to a misconfigured default (e.g. siliconflow
       // without a key) when the caller asked for aliyun/qwen-flash.
-      const provider = (ctx.metadata.requestProvider as string | undefined) ?? undefined;
+      const provider = (ctx.metadata.requestProvider as import('../ports/config.port.js').ProviderType | undefined) ?? undefined;
       const model = (ctx.metadata.requestModel as string | undefined) ?? chatConfig.model ?? undefined;
 
       const response = await this.llm.chat({

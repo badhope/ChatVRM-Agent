@@ -31,7 +31,7 @@ const DEFAULTS = {
 };
 
 export function renderWorkflowSVG(spec: WorkflowSpec, opts: RenderOptions = {}): string {
-  const cfg = { ...DEFAULTS, ...opts };
+  const cfg = { ...DEFAULTS, ...opts, style: opts.style ?? '', className: opts.className ?? '' };
   const positions = computeLayout(spec, cfg);
 
   const nodeBoxes = spec.nodes

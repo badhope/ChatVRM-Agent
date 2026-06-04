@@ -23,8 +23,14 @@ describe('InProcessQueue', () => {
   it('runs a job and emits completed', async () => {
     q.process<{ n: number }>('double', async (job) => job.data.n * 2);
     const events: Array<{ type: string; id: string; result?: unknown }> = [];
-    q.on('completed', (j, r) => events.push({ type: 'completed', id: j.id, result: r }));
-    q.on('active', (j) => events.push({ type: 'active', id: j.id }));
+    q.on('completed', (j: unknown, r: unknown) => {
+      const job = j as { id: string };
+      events.push({ type: 'completed', id: job.id, result: r });
+    });
+    q.on('active', (j: unknown) => {
+      const job = j as { id: string };
+      events.push({ type: 'active', id: job.id });
+    });
     const job = await q.add('double', { n: 21 });
     await new Promise<void>((resolve) => {
       q.on('completed', () => resolve());
@@ -43,7 +49,7 @@ describe('InProcessQueue', () => {
       throw new Error('boom');
     });
     const failures: Error[] = [];
-    q.on('failed', (_j, err) => failures.push(err));
+    q.on('failed', (_j: unknown, err: unknown) => failures.push(err as Error));
     await q.add('flaky', {}, { attempts: 3, backoff: 1 });
     await new Promise<void>((resolve) => {
       q.on('failed', () => {

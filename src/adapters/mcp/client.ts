@@ -130,6 +130,10 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
 
   private handleResponse(r: JsonRpcResponse): void {
     const id = r.id;
+    if (id === null) {
+      this.logger?.('MCPClient: response with null id (parse error?)');
+      return;
+    }
     const p = this.pending.get(id);
     if (!p) {
       this.logger?.(`MCPClient: response for unknown id ${String(id)}`);
@@ -147,6 +151,7 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
   private async request(method: string, params?: unknown): Promise<unknown> {
     const id = this.nextId++;
     const req: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
+    let onTimeout: (() => void) = () => {};
     const p: Pending = {
       resolve: () => {},
       reject: () => {},
@@ -156,11 +161,12 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
     const promise = new Promise<unknown>((resolve, reject) => {
       p.resolve = resolve;
       p.reject = reject;
+      onTimeout = () => {
+        this.pending.delete(id);
+        reject(new Error(`MCPClient: request ${method} timed out after ${this.requestTimeoutMs}ms`));
+      };
     });
-    p.timer = setTimeout(() => {
-      this.pending.delete(id);
-      reject(new Error(`MCPClient: request ${method} timed out after ${this.requestTimeoutMs}ms`));
-    }, this.requestTimeoutMs);
+    p.timer = setTimeout(onTimeout, this.requestTimeoutMs);
     this.pending.set(id, p);
     try {
       await this.transport.send(req);

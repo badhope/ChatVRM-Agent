@@ -3,7 +3,7 @@ import { Graph, START, END, humanRequest } from '../../../agents/graph.agent.js'
 
 describe('Graph', () => {
   it('runs a static linear graph', async () => {
-    const g = new Graph<{ count: number }>();
+    const g = new Graph<{ count: number; result?: number }>();
     g.addNode('init', () => ({ count: 0 }));
     g.addNode('inc', (s) => ({ count: s.count + 1 }));
     g.addNode('end', (s) => ({ result: s.count * 2 }));
@@ -13,13 +13,18 @@ describe('Graph', () => {
     g.addEdge('end', END);
 
     const compiled = g.compile();
-    const final = await compiled.run({ count: -1 } as { count: number });
+    const final = await compiled.run({ count: -1 });
     expect(final.count).toBe(1);
     expect(final.result).toBe(2);
   });
 
   it('routes conditionally based on state', async () => {
-    const g = new Graph<{ x: number; path?: string }>();
+    interface S extends Record<string, unknown> {
+      x: number;
+      path?: string;
+      y?: number;
+    }
+    const g = new Graph<S>();
     g.addNode('branch', (s) => ({ x: s.x }));
     g.addNode('big', (s) => ({ path: 'big', y: s.x * 2 }));
     g.addNode('small', (s) => ({ path: 'small', y: s.x / 2 }));

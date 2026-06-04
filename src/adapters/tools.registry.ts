@@ -13,8 +13,8 @@ export class ToolsRegistry implements IToolsPort {
     this.tools.set(tool.name, tool);
   }
 
-  unregister(name: string): void {
-    this.tools.delete(name);
+  unregister(name: string): boolean {
+    return this.tools.delete(name);
   }
 
   has(name: string): boolean {

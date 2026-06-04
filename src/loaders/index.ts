@@ -1,4 +1,4 @@
-export type { Document, Loader } from './loader.port.js';
+export type { Document, Loader } from '../ports/loader.port.js';
 export { TextLoader } from './text.loader.js';
 export { CsvLoader } from './csv.loader.js';
 export { JsonLoader } from './json.loader.js';

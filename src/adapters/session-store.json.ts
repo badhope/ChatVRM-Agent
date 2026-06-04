@@ -15,7 +15,7 @@ import type {
   Session,
   SessionMessage,
   SessionQuery,
-} from '../../ports/session-store.port.js';
+} from '../ports/session-store.port.js';
 
 interface Persisted {
   sessions: Record<string, Session>;

@@ -20,8 +20,23 @@ import type {
   JobState,
 } from '../ports/queue.port.js';
 
-interface BullQueueClass {
-  new (name: string, opts: Record<string, unknown>): unknown;
+// ---------- bullmq type scaffolding (loaded lazily) ----------
+
+interface BullJob {
+  id?: string;
+  name: string;
+  data: unknown;
+  attemptsMade: number;
+  returnvalue?: unknown;
+  failedReason?: string;
+  stacktrace?: string[];
+  progress?: number | object;
+  timestamp: number;
+  processedOn?: number;
+  finishedOn?: number;
+}
+
+interface BullQueueInstance {
   name: string;
   add(name: string, data: unknown, opts?: Record<string, unknown>): Promise<unknown>;
   pause(): Promise<void>;
@@ -34,26 +49,21 @@ interface BullQueueClass {
   off(event: string, listener: (...args: unknown[]) => void): unknown;
 }
 
-interface BullJob {
-  id?: string;
-  name: string;
-  data: unknown;
-  attemptsMade: number;
-  returnvalue?: unknown;
-  failedReason?: string;
-  stacktrace?: string[];
-  progress: number | object;
-  timestamp: number;
-  processedOn?: number;
-  finishedOn?: number;
-  updateProgress(p: number | object): Promise<void>;
+interface BullQueueClass {
+  new (name: string, opts: Record<string, unknown>): BullQueueInstance;
+}
+
+interface BullWorkerInstance {
+  on(event: string, listener: (...args: unknown[]) => void): unknown;
+  close(): Promise<void>;
 }
 
 interface BullWorkerClass {
-  new (name: string, fn: (job: BullJob) => Promise<unknown>, opts: Record<string, unknown>): {
-    on(event: string, listener: (...args: unknown[]) => void): unknown;
-    close(): Promise<void>;
-  };
+  new (
+    name: string,
+    fn: (job: BullJob) => Promise<unknown>,
+    opts: Record<string, unknown>,
+  ): BullWorkerInstance;
 }
 
 async function importBullmq(): Promise<{ Queue: BullQueueClass; Worker: BullWorkerClass }> {
@@ -64,6 +74,8 @@ async function importBullmq(): Promise<{ Queue: BullQueueClass; Worker: BullWork
   }
 }
 
+// ---------- adapter ----------
+
 export interface BullMqQueueOptions {
   connection: Record<string, unknown>;
   defaultJobOptions?: JobOptions;
@@ -71,10 +83,15 @@ export interface BullMqQueueOptions {
   concurrency?: number;
 }
 
+interface Internal {
+  _concurrency: number;
+  _conn: Record<string, unknown>;
+}
+
 export class BullMqQueue implements IQueue {
   readonly name: string;
-  private queue: BullQueueClass | null = null;
-  private worker: ReturnType<BullWorkerClass['prototype']['constructor']> | null = null;
+  private queue: BullQueueInstance | null = null;
+  private worker: BullWorkerInstance | null = null;
   private emitter = new EventEmitter<IQueueEvents>();
 
   private constructor(name: string) {
@@ -83,37 +100,49 @@ export class BullMqQueue implements IQueue {
 
   static async open(name: string, opts: BullMqQueueOptions): Promise<BullMqQueue> {
     const q = new BullMqQueue(name);
-    const { Queue, Worker } = await importBullmq();
-    q.queue = new Queue(name, { connection: opts.connection, defaultJobOptions: opts.defaultJobOptions as Record<string, unknown> });
-    if (opts.concurrency && opts.concurrency > 0) {
-      // Auto-attach a worker with a no-op processor; the user calls
-      // process() to register the real one. If they don't, the worker
-      // is created on demand below.
-    }
+    const { Queue } = await importBullmq();
+    const queue = new Queue(name, {
+      connection: opts.connection,
+      defaultJobOptions: opts.defaultJobOptions as Record<string, unknown>,
+    });
+    q.queue = queue;
     // Wire BullMQ events into our emitter.
-    q.queue.on('waiting', (job: unknown) => q.emitter.emit('waiting', toJob(job as BullJob)));
-    q.queue.on('active', (job: unknown) => q.emitter.emit('active', toJob(job as BullJob)));
-    q.queue.on('completed', (job: unknown) =>
-      q.emitter.emit('completed', toJob(job as BullJob), (job as BullJob).returnvalue),
+    queue.on('waiting', (job: unknown) =>
+      q.emitter.emit('waiting', toJob(job as BullJob)),
     );
-    q.queue.on('failed', (job: unknown, err: unknown) =>
-      q.emitter.emit('failed', toJob(job as BullJob), err instanceof Error ? err : new Error(String(err))),
+    queue.on('active', (job: unknown) =>
+      q.emitter.emit('active', toJob(job as BullJob)),
     );
-    q.queue.on('error', (err: unknown) => q.emitter.emit('error', err instanceof Error ? err : new Error(String(err))));
-    q.queue.on('paused', () => q.emitter.emit('paused'));
-    q.queue.on('resumed', () => q.emitter.emit('resumed'));
-    q.queue.on('drained', () => q.emitter.emit('drained'));
+    queue.on('completed', (job: unknown) => {
+      const bj = job as BullJob;
+      q.emitter.emit('completed', toJob(bj), bj.returnvalue);
+    });
+    queue.on('failed', (job: unknown, err: unknown) =>
+      q.emitter.emit(
+        'failed',
+        toJob(job as BullJob),
+        err instanceof Error ? err : new Error(String(err)),
+      ),
+    );
+    queue.on('error', (err: unknown) =>
+      q.emitter.emit('error', err instanceof Error ? err : new Error(String(err))),
+    );
+    queue.on('paused', () => q.emitter.emit('paused'));
+    queue.on('resumed', () => q.emitter.emit('resumed'));
+    queue.on('drained', () => q.emitter.emit('drained'));
     // Stash concurrency/connection for the worker.
-    (q as unknown as { _concurrency: number; _conn: Record<string, unknown> })._concurrency = opts.concurrency ?? 1;
-    (q as unknown as { _concurrency: number; _conn: Record<string, unknown> })._conn = opts.connection;
+    (q as unknown as Internal)._concurrency = opts.concurrency ?? 1;
+    (q as unknown as Internal)._conn = opts.connection;
     return q;
   }
 
-  on<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void {
-    this.emitter.on(event, listener);
+  on(event: string, listener: (...args: unknown[]) => void): this {
+    this.emitter.on(event as never, listener as never);
+    return this;
   }
-  off<K extends keyof IQueueEvents>(event: K, listener: IQueueEvents[K]): void {
-    this.emitter.off(event, listener);
+  off(event: string, listener: (...args: unknown[]) => void): this {
+    this.emitter.off(event as never, listener as never);
+    return this;
   }
 
   async add<T = unknown>(name: string, data: T, opts: JobOptions = {}): Promise<Job<T>> {
@@ -124,16 +153,20 @@ export class BullMqQueue implements IQueue {
   process<T = unknown, R = unknown>(name: string, processor: JobProcessor<T, R>): void {
     if (this.worker) return;
     const { Worker } = require('bullmq') as { Worker: BullWorkerClass };
-    const me = this as unknown as { _concurrency: number; _conn: Record<string, unknown> };
+    const me = this as unknown as Internal;
     this.worker = new Worker(
       this.name,
       async (job) => {
-        return await processor(toJob(job) as Job<T>);
+        return await processor(toJob(job) as unknown as Job<T, R>);
       },
       { connection: me._conn, concurrency: me._concurrency },
     );
     this.worker.on('failed', (job: unknown, err: unknown) =>
-      this.emitter.emit('failed', toJob(job as BullJob), err instanceof Error ? err : new Error(String(err))),
+      this.emitter.emit(
+        'failed',
+        toJob(job as BullJob),
+        err instanceof Error ? err : new Error(String(err)),
+      ),
     );
     this.worker.on('error', (err: unknown) =>
       this.emitter.emit('error', err instanceof Error ? err : new Error(String(err))),
@@ -168,7 +201,12 @@ export class BullMqQueue implements IQueue {
 }
 
 function toJob<T = unknown>(b: BullJob): Job<T> {
-  const progress = typeof b.progress === 'number' ? b.progress : 0;
+  const progress =
+    typeof b.progress === 'number'
+      ? b.progress
+      : typeof b.progress === 'object' && b.progress !== null
+        ? Number((b.progress as { value?: number }).value ?? 0)
+        : 0;
   return {
     id: b.id ?? '',
     name: b.name,
