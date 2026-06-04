@@ -10,7 +10,6 @@ export default defineConfig({
       'node_modules',
       'dist',
       '**/*.test.ts.skip',
-      '**/mcp/**',
       '**/sdk/**',
       '**/examples/**',
       '**/plugins/**',
