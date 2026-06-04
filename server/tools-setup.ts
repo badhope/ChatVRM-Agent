@@ -19,6 +19,90 @@ export function registerDefaultTools(opts: Tools): void {
   const { llm, storage, memory, shell, config, tools } = opts;
 
   tools.register({
+    name: 'wordProcess',
+    description:
+      'Process .docx files via the Python word_process.py engine. ' +
+      'Args: op (read|create|append|replace|info|search|to-text), path/output/find/replaceWith/query/heading/content/... — see the python script for the full schema.',
+    handler: async (args) => {
+      const { spawn } = await import('node:child_process');
+      const { existsSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { dirname, resolve: resolvePath } = await import('node:path');
+      const __dirname = dirname(fileURLToPath(import.meta.url));
+      const pyScript = resolvePath(__dirname, '..', 'scripts', 'word_process.py');
+      if (!existsSync(pyScript)) {
+        return { success: false, error: `Python script not found: ${pyScript}` };
+      }
+      const op = (args.op as string) ?? '';
+      if (!op) return { success: false, error: 'op is required (read|create|append|replace|info|search|to-text)' };
+      // Build CLI args from the tool call. Map camelCase → kebab-case for python.
+      const argMap: Record<string, string> = {
+        output: '--output',
+        find: '--find',
+        replaceWith: '--replace-with',
+        query: '--query',
+        regex: '--regex',
+        heading: '--heading',
+        headingLevel: '--heading-level',
+        content: '--content',
+        text: '--text',
+        body: '--body',
+        title: '--title',
+        table: '--table',
+        cell: '--cell',
+        paragraph: '--paragraph',
+        paragraphCount: '--paragraph-count',
+      };
+      const cliArgs: string[] = [pyScript, op];
+      // The execute stage automatically injects `input`, `message`, `context`,
+      // and `previousOutput` into every tool call. Those are bookkeeping fields
+      // and are not part of the wordProcess schema — skip them so we don't
+      // pass stray --input / --context [object Object] to the python script.
+      const STAGE_INJECTED = new Set(['input', 'message', 'context', 'previousOutput']);
+      for (const [k, v] of Object.entries(args)) {
+        if (k === 'op' || STAGE_INJECTED.has(k) || v === undefined || v === null) continue;
+        const flag = argMap[k] ?? `--${k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}`;
+        if (typeof v === 'boolean') {
+          if (v) cliArgs.push(flag);
+        } else {
+          cliArgs.push(flag, String(v));
+        }
+      }
+      // path/output positional for ops that need it
+      if (typeof args.path === 'string') cliArgs.push(args.path);
+      return await new Promise<{ success: boolean; output?: string; error?: string }>((res) => {
+        const proc = spawn('python3', cliArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        let stderr = '';
+        proc.stdout.on('data', (d) => (stdout += d.toString()));
+        proc.stderr.on('data', (d) => (stderr += d.toString()));
+        const timer = setTimeout(() => {
+          proc.kill('SIGKILL');
+          res({ success: false, error: `wordProcess timed out after 60s` });
+        }, 60_000);
+        proc.on('close', (code) => {
+          clearTimeout(timer);
+          if (code === 0) {
+            res({ success: true, output: stdout });
+          } else {
+            // Try to surface the JSON error from the python script
+            try {
+              const j = JSON.parse(stdout);
+              res({ success: false, error: j.error ?? `exit ${code}`, output: stdout });
+            } catch {
+              res({ success: false, error: stderr || stdout || `exit ${code}` });
+            }
+          }
+        });
+        proc.on('error', (err) => {
+          clearTimeout(timer);
+          res({ success: false, error: `spawn failed: ${err.message}` });
+        });
+      });
+    },
+  });
+
+  tools.register({
     name: 'writeFile',
     description: 'Write content to a file',
     handler: async (args) => {

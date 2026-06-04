@@ -5,7 +5,8 @@ import type { LLMAdapter } from '../adapters/llm.adapter.js';
 import { StorageAdapter } from '../adapters/storage.adapter.js';
 
 const INTENT_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
-  { pattern: /code|write|implement|program|function|class|refactor|bug|fix|test/i, intent: 'code' },
+  { pattern: /\bdocx|\.docx|wordProcess|word\s+document|word\s+doc\b/i, intent: 'word-op' },
+  { pattern: /\bcode\b|\bwrite\s+code|\bimplement\b|\bprogram\b|\bfunction\b|\bclass\b|\brefactor\b|\bbug\b|\bfix\s+a\s+bug|\brun\s+tests?\b/i, intent: 'code' },
   { pattern: /file|read|write|create|delete|edit|open|save/i, intent: 'file-op' },
   { pattern: /search|find|look|grep|locate/i, intent: 'search' },
   { pattern: /chat|hello|hi|help|explain|what|how|tell|ask/i, intent: 'chat' },
@@ -15,13 +16,17 @@ const INTENT_SYSTEM_PROMPT = `You are an intent classifier. Classify the user's 
 Return ONLY the category name, nothing else.
 Categories:
 - "code": writing, implementing, refactoring, debugging, or testing code
-- "file-op": reading, writing, creating, deleting, or editing files
+- "word-op": processing Word documents (.docx) — create, read, append, replace, search, info
+- "file-op": reading, writing, creating, deleting, or editing non-docx files
 - "search": searching, finding, locating, or looking up information
 - "chat": casual conversation, questions, explanations, greetings
 - "general": anything that doesn't fit the above categories
 
 Examples:
 "Write a function to sort an array" -> code
+"Create a new .docx with title and content" -> word-op
+"Read the document and tell me what's in it" -> word-op
+"Append a paragraph to the report" -> word-op
 "Create a new file called config.json" -> file-op
 "Find all TODO comments in the project" -> search
 "Hello, how are you?" -> chat
@@ -48,7 +53,7 @@ async function recognizeIntentLLM(llm: LLMAdapter, input: string): Promise<strin
       maxTokens: 10,
     });
     const result = response.content.trim().toLowerCase();
-    if (['code', 'file-op', 'search', 'chat', 'general'].includes(result)) {
+    if (['code', 'word-op', 'file-op', 'search', 'chat', 'general'].includes(result)) {
       return result;
     }
     return recognizeIntentRegex(input);
@@ -81,11 +86,19 @@ export class UnderstandStage implements Stage {
     let intent: string;
     let intentMethod: string;
 
-    if (this.llm) {
+    // Regex patterns are tried first. The docx/word patterns are highly
+    // specific and must not be overridden by the LLM mis-classifying
+    // "create a .docx" as a code task.
+    const regexIntent = recognizeIntentRegex(ctx.input);
+    const regexWasSpecific = regexIntent !== 'general';
+    if (regexWasSpecific && this.llm) {
+      intent = regexIntent;
+      intentMethod = 'regex-priority';
+    } else if (this.llm) {
       intent = await recognizeIntentLLM(this.llm, ctx.input);
       intentMethod = 'llm';
     } else {
-      intent = recognizeIntentRegex(ctx.input);
+      intent = regexIntent;
       intentMethod = 'regex';
     }
 

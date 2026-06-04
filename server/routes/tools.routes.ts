@@ -23,6 +23,21 @@ const TOOL_SCHEMAS: Record<string, Array<{ name: string; type: string; descripti
   remember: [{ name: 'input', type: 'string', description: '输入', required: true }, { name: 'output', type: 'string', description: '输出', required: true }, { name: 'tags', type: 'string[]', description: '标签', required: false }],
   analyze: [{ name: 'text', type: 'string', description: '待分析文本', required: true }, { name: 'instruction', type: 'string', description: '分析指令', required: false }],
   respond: [{ name: 'prompt', type: 'string', description: '用户提示', required: true }, { name: 'context', type: 'string', description: '上下文', required: false }],
+  wordProcess: [
+    { name: 'op', type: 'string', description: 'read | create | append | replace | info | search | to-text', required: true },
+    { name: 'path', type: 'string', description: '.docx 路径（read/append/replace/info/search/to-text）', required: false },
+    { name: 'output', type: 'string', description: '输出 .docx 路径（create）', required: false },
+    { name: 'title', type: 'string', description: '文档标题（create）', required: false },
+    { name: 'heading', type: 'string', description: '标题文字（create/append）', required: false },
+    { name: 'content', type: 'string', description: '段落内容（create）', required: false },
+    { name: 'text', type: 'string', description: '追加文本（append）', required: false },
+    { name: 'find', type: 'string', description: '查找（replace）', required: false },
+    { name: 'replaceWith', type: 'string', description: '替换为（replace）', required: false },
+    { name: 'query', type: 'string', description: '搜索关键词（search）', required: false },
+    { name: 'regex', type: 'boolean', description: '把 query 当正则（search）', required: false },
+    { name: 'table', type: 'string', description: 'rows,cols（create）', required: false },
+    { name: 'cell', type: 'string', description: 'r0c0=hi|r1c1=yo|...（create）', required: false },
+  ],
 };
 
 interface TemplateParam {

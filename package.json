@@ -15,6 +15,7 @@
     "server": "tsx watch server/index.ts",
     "web:dev": "npm --prefix frontend run dev",
     "web:build": "npm --prefix frontend run build",
+    "word": "node scripts/word-cli.mjs",
     "lint": "eslint -c eslint.config.js src/**/*.ts",
     "lint:fix": "eslint -c eslint.config.js src/**/*.ts --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,md}'",

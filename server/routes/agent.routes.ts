@@ -140,7 +140,7 @@ export function agentRoutes(deps: AgentDeps): Router {
       taskId: randomUUID(),
       input: task,
       errors: [],
-      metadata: { provider: useProvider, model: model ?? meta.defaultModel, cwd: workdir },
+      metadata: { requestProvider: useProvider, requestModel: model ?? meta.defaultModel, cwd: workdir },
       createdFiles: [],
       modifiedFiles: [],
       phaseHistory: [],
