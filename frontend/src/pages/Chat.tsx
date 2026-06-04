@@ -13,6 +13,7 @@ import {
   Settings2,
   Sparkles,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -33,6 +34,8 @@ export function Chat() {
   const defaultProvider = useConfigStore((s) => s.snapshot?.defaultProvider);
   const defaultModel = useConfigStore((s) => s.snapshot?.chat.model ?? '');
   const loadAll = useConfigStore((s) => s.loadAll);
+  const listModels = useConfigStore((s) => s.listModels);
+  const scanModels = useConfigStore((s) => s.scanModels);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
@@ -92,6 +95,40 @@ export function Chat() {
     if (!model && defaultModel) setModel(defaultModel);
   }, [defaultModel, model]);
 
+  // Pull live model list whenever the selected provider changes
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [scanningModels, setScanningModels] = useState(false);
+  const sendProvider = (provider || defaultProvider) as ProviderType | undefined;
+  useEffect(() => {
+    if (!sendProvider) {
+      setModelOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listModels(sendProvider);
+        if (!cancelled) setModelOptions(list);
+      } catch {
+        if (!cancelled) setModelOptions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sendProvider, listModels]);
+
+  const handleScanModels = async () => {
+    if (!sendProvider) return;
+    setScanningModels(true);
+    try {
+      const r = await scanModels(sendProvider);
+      setModelOptions(r.models);
+    } catch {
+      /* keep prior list */
+    } finally {
+      setScanningModels(false);
+    }
+  };
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -100,7 +137,6 @@ export function Chat() {
 
   async function handleSend() {
     if (!input.trim() || streaming) return;
-    const sendProvider = (provider || defaultProvider) as ProviderType | undefined;
     if (!sendProvider) {
       toast({ type: 'warning', title: t('chat.configureFirst') });
       return;
@@ -342,12 +378,38 @@ export function Chat() {
             </div>
             <div>
               <label className="block text-xs font-medium text-fg-soft mb-1.5">{t('chat.model')}</label>
-              <Input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder={defaultModel || 'Qwen/Qwen2.5-7B-Instruct'}
-                className="font-mono text-xs"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder={defaultModel || 'Qwen/Qwen2.5-7B-Instruct'}
+                  className="font-mono text-xs flex-1"
+                />
+                {modelOptions.length > 0 && (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) setModel(e.target.value);
+                    }}
+                    className="h-9 px-2 rounded-md text-xs bg-bg border border-border focus:outline-none focus:border-brand/60 max-w-[200px]"
+                  >
+                    <option value="">{t('chat.pickModel')}</option>
+                    {modelOptions.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleScanModels}
+                  disabled={!sendProvider || scanningModels}
+                  leftIcon={scanningModels ? <Spinner size="sm" /> : <RefreshCw size={12} />}
+                  title={t('config.chat.scan')}
+                >
+                  {t('config.chat.scan')}
+                </Button>
+              </div>
             </div>
           </div>
         )}
