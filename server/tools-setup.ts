@@ -118,8 +118,34 @@ export function registerDefaultTools(opts: Tools): void {
     name: 'respond',
     description: 'Generate a conversational response via the LLM',
     handler: async (args) => {
-      const prompt = (args.prompt as string) ?? (args.message as string) ?? '';
-      const context = (args.context as string) ?? '';
+      const prompt = typeof args.prompt === 'string'
+        ? args.prompt
+        : typeof args.message === 'string'
+        ? args.message
+        : '';
+      // The execute stage passes a structured context object; we need to
+      // flatten it to a string before sending to the LLM because aliyun
+      // (and the OpenAI-compatible API in general) require content to be
+      // a string or an array of typed parts — never a plain object.
+      const rawContext = args.context;
+      let context: string;
+      if (typeof rawContext === 'string') {
+        context = rawContext;
+      } else if (rawContext && typeof rawContext === 'object') {
+        const obj = rawContext as Record<string, unknown>;
+        const parts: string[] = [];
+        if (obj.taskInput) parts.push(`Task input: ${obj.taskInput}`);
+        if (obj.intent) parts.push(`Intent: ${obj.intent}`);
+        if (obj.stepDescription) parts.push(`Current step: ${obj.stepDescription}`);
+        if (obj.knowledgeContext) parts.push(`Knowledge context:\n${obj.knowledgeContext}`);
+        if (obj.previousOutput) parts.push(`Previous step output:\n${obj.previousOutput}`);
+        context = parts.join('\n\n');
+      } else {
+        context = '';
+      }
+      if (!context && typeof args.previousOutput === 'string') {
+        context = args.previousOutput as string;
+      }
       const provider = (args.provider as ProviderType) ?? (await config.getDefaultProvider());
       const model = (args.model as string) ?? (await config.getChatConfig())?.model ?? undefined;
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
