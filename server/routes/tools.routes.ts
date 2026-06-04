@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import type { ToolsRegistry } from '../../src/adapters/tools.registry.js';
 import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
 import type { StorageAdapter } from '../../src/adapters/storage.adapter.js';
@@ -23,6 +24,162 @@ const TOOL_SCHEMAS: Record<string, Array<{ name: string; type: string; descripti
   analyze: [{ name: 'text', type: 'string', description: '待分析文本', required: true }, { name: 'instruction', type: 'string', description: '分析指令', required: false }],
   respond: [{ name: 'prompt', type: 'string', description: '用户提示', required: true }, { name: 'context', type: 'string', description: '上下文', required: false }],
 };
+
+interface TemplateParam {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  description: string;
+  required: boolean;
+  default?: unknown;
+}
+
+interface ToolTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'productivity' | 'data' | 'dev' | 'web' | 'misc' | 'custom';
+  params: TemplateParam[];
+  instructions: string;
+  builtin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const BUILTIN_TEMPLATES: ToolTemplate[] = [
+  {
+    id: 'tpl-writeFile',
+    name: 'Write file',
+    description: 'Save content to a file path. Use when the user asks to create or overwrite a file.',
+    category: 'dev',
+    params: [
+      { name: 'filePath', type: 'string', description: 'Target file path', required: true },
+      { name: 'content', type: 'string', description: 'File content', required: false },
+    ],
+    instructions: 'Use absolute paths or paths relative to the working directory. Always check the parent directory exists for new files.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-readFile',
+    name: 'Read file',
+    description: 'Read a file from disk and return its contents.',
+    category: 'dev',
+    params: [{ name: 'filePath', type: 'string', description: 'Absolute or relative file path', required: true }],
+    instructions: 'For large files, prefer chunked reads. Never read binary files as text.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-shell',
+    name: 'Shell command',
+    description: 'Execute a shell command and return stdout/stderr/exit code.',
+    category: 'dev',
+    params: [
+      { name: 'command', type: 'string', description: 'Command to run', required: true },
+      { name: 'timeout', type: 'number', description: 'Timeout in ms (default 60000)', required: false, default: 60000 },
+    ],
+    instructions: 'Never run destructive commands without confirmation. Respect the sandbox allowedCommands list.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-search',
+    name: 'Search memories',
+    description: 'Full-text search across the long-term memory store.',
+    category: 'data',
+    params: [{ name: 'pattern', type: 'string', description: 'Search query', required: true }],
+    instructions: 'Prefer narrow queries to avoid noise. The store is indexed by MiniSearch.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-remember',
+    name: 'Save to memory',
+    description: 'Persist a new (input, output, tags) memory record for later retrieval.',
+    category: 'data',
+    params: [
+      { name: 'input', type: 'string', description: 'Original user input', required: true },
+      { name: 'output', type: 'string', description: 'Assistant response', required: true },
+      { name: 'tags', type: 'array', description: 'Lowercase tags', required: false },
+    ],
+    instructions: 'Avoid saving trivial or ephemeral info. Use tags to make retrieval easy later.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-analyze',
+    name: 'Analyze text',
+    description: 'LLM-driven analysis: sentiment, structure, classification, or summarization.',
+    category: 'data',
+    params: [
+      { name: 'text', type: 'string', description: 'Text to analyze', required: true },
+      { name: 'instruction', type: 'string', description: 'What to extract or decide', required: false },
+    ],
+    instructions: 'Default to one concise sentence. Cite quoted phrases when claiming a sentiment.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+  {
+    id: 'tpl-respond',
+    name: 'Freeform response',
+    description: 'LLM-driven natural language reply with optional context.',
+    category: 'productivity',
+    params: [
+      { name: 'prompt', type: 'string', description: 'User prompt', required: true },
+      { name: 'context', type: 'string', description: 'Supporting context', required: false },
+    ],
+    instructions: 'Default to clear, well-structured Markdown. Match the user\'s language.',
+    builtin: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  },
+];
+
+const TEMPLATE_STORE: { items: Map<string, ToolTemplate> } = {
+  items: new Map(BUILTIN_TEMPLATES.map((t) => [t.id, t])),
+};
+
+const SNAKE_CASE = /^[a-z][a-z0-9_]{0,40}$/;
+
+function isValidTemplateId(id: string): boolean {
+  return SNAKE_CASE.test(id);
+}
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+function validateTemplateParams(params: unknown): TemplateParam[] | string {
+  if (!Array.isArray(params)) return 'params must be an array';
+  const out: TemplateParam[] = [];
+  const seen = new Set<string>();
+  for (const raw of params as unknown[]) {
+    if (!raw || typeof raw !== 'object') return 'each param must be an object';
+    const p = raw as Record<string, unknown>;
+    if (typeof p.name !== 'string' || p.name.trim().length === 0) return 'param.name is required';
+    if (seen.has(p.name)) return `duplicate param name "${p.name}"`;
+    seen.add(p.name);
+    if (typeof p.type !== 'string') return 'param.type is required';
+    if (!['string', 'number', 'boolean', 'array', 'object'].includes(p.type)) {
+      return `param.type must be one of string|number|boolean|array|object (got "${p.type}")`;
+    }
+    out.push({
+      name: p.name.slice(0, 40),
+      type: p.type as TemplateParam['type'],
+      description: typeof p.description === 'string' ? p.description.slice(0, 200) : '',
+      required: p.required === true,
+      default: p.default,
+    });
+    if (out.length > 16) return 'max 16 parameters per template';
+  }
+  return out;
+}
 
 export function toolsRoutes(deps: ToolDeps): Router {
   const r = Router();
@@ -64,6 +221,194 @@ export function toolsRoutes(deps: ToolDeps): Router {
         durationMs: Date.now() - startedAt,
       });
     }
+  });
+
+  /**
+   * GET /api/tools/templates
+   * List all tool templates (built-in + custom).
+   */
+  r.get('/templates', (_req, res) => {
+    res.json({
+      total: TEMPLATE_STORE.items.size,
+      items: [...TEMPLATE_STORE.items.values()].sort((a, b) => {
+        if (a.builtin !== b.builtin) return a.builtin ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      }),
+    });
+  });
+
+  /**
+   * GET /api/tools/templates/:id
+   */
+  r.get('/templates/:id', (req, res) => {
+    const tpl = TEMPLATE_STORE.items.get(req.params.id);
+    if (!tpl) {
+      res.status(404).json({ error: `template "${req.params.id}" not found` });
+      return;
+    }
+    res.json(tpl);
+  });
+
+  /**
+   * POST /api/tools/templates
+   * Body: { id, name, description, category, params, instructions }
+   */
+  r.post('/templates', (req: Request, res: Response) => {
+    const body = req.body as {
+      id?: string;
+      name?: string;
+      description?: string;
+      category?: string;
+      params?: unknown;
+      instructions?: string;
+    };
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
+    if (!isValidTemplateId(id)) {
+      res.status(400).json({ error: 'id must be snake_case (≤40 chars, start with letter)' });
+      return;
+    }
+    if (TEMPLATE_STORE.items.has(id)) {
+      res.status(409).json({ error: `template "${id}" already exists` });
+      return;
+    }
+    if (typeof body.name !== 'string' || body.name.trim().length === 0) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const paramsResult = validateTemplateParams(body.params);
+    if (typeof paramsResult === 'string') {
+      res.status(400).json({ error: paramsResult });
+      return;
+    }
+    const category = (['productivity', 'data', 'dev', 'web', 'misc', 'custom'] as const).find(
+      (c) => c === body.category,
+    ) ?? 'custom';
+
+    const ts = now();
+    const tpl: ToolTemplate = {
+      id,
+      name: body.name.trim().slice(0, 80),
+      description: typeof body.description === 'string' ? body.description.slice(0, 200) : '',
+      category,
+      params: paramsResult,
+      instructions: typeof body.instructions === 'string' ? body.instructions.slice(0, 600) : '',
+      builtin: false,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    TEMPLATE_STORE.items.set(id, tpl);
+    res.status(201).json({ ok: true, ...tpl });
+  });
+
+  /**
+   * PATCH /api/tools/templates/:id
+   * Body: any subset of { name, description, category, params, instructions }
+   */
+  r.patch('/templates/:id', (req, res) => {
+    const tpl = TEMPLATE_STORE.items.get(req.params.id);
+    if (!tpl) {
+      res.status(404).json({ error: `template "${req.params.id}" not found` });
+      return;
+    }
+    if (tpl.builtin) {
+      // Built-in templates can only have description / instructions / category patched.
+      const body = req.body as { description?: string; instructions?: string; category?: string };
+      if (typeof body.description === 'string') tpl.description = body.description.slice(0, 200);
+      if (typeof body.instructions === 'string') tpl.instructions = body.instructions.slice(0, 600);
+      if (typeof body.category === 'string' && ['productivity', 'data', 'dev', 'web', 'misc', 'custom'].includes(body.category)) {
+        tpl.category = body.category as ToolTemplate['category'];
+      }
+      tpl.updatedAt = now();
+      res.json({ ok: true, ...tpl });
+      return;
+    }
+
+    const body = req.body as {
+      name?: string;
+      description?: string;
+      category?: string;
+      params?: unknown;
+      instructions?: string;
+    };
+    if (typeof body.name === 'string' && body.name.trim().length > 0) tpl.name = body.name.trim().slice(0, 80);
+    if (typeof body.description === 'string') tpl.description = body.description.slice(0, 200);
+    if (typeof body.category === 'string' && ['productivity', 'data', 'dev', 'web', 'misc', 'custom'].includes(body.category)) {
+      tpl.category = body.category as ToolTemplate['category'];
+    }
+    if (body.params !== undefined) {
+      const paramsResult = validateTemplateParams(body.params);
+      if (typeof paramsResult === 'string') {
+        res.status(400).json({ error: paramsResult });
+        return;
+      }
+      tpl.params = paramsResult;
+    }
+    if (typeof body.instructions === 'string') tpl.instructions = body.instructions.slice(0, 600);
+    tpl.updatedAt = now();
+    res.json({ ok: true, ...tpl });
+  });
+
+  /**
+   * DELETE /api/tools/templates/:id
+   */
+  r.delete('/templates/:id', (req, res) => {
+    const tpl = TEMPLATE_STORE.items.get(req.params.id);
+    if (!tpl) {
+      res.status(404).json({ error: `template "${req.params.id}" not found` });
+      return;
+    }
+    if (tpl.builtin) {
+      res.status(403).json({ error: 'built-in templates cannot be deleted; clone it instead' });
+      return;
+    }
+    TEMPLATE_STORE.items.delete(req.params.id);
+    res.json({ ok: true, removed: req.params.id });
+  });
+
+  /**
+   * POST /api/tools/templates/:id/duplicate
+   * Body: { newId, newName? }
+   */
+  r.post('/templates/:id/duplicate', (req, res) => {
+    const source = TEMPLATE_STORE.items.get(req.params.id);
+    if (!source) {
+      res.status(404).json({ error: `template "${req.params.id}" not found` });
+      return;
+    }
+    const { newId, newName } = req.body as { newId?: string; newName?: string };
+    if (typeof newId !== 'string' || !isValidTemplateId(newId)) {
+      res.status(400).json({ error: 'newId must be snake_case (≤40 chars, start with letter)' });
+      return;
+    }
+    if (TEMPLATE_STORE.items.has(newId)) {
+      res.status(409).json({ error: `template "${newId}" already exists` });
+      return;
+    }
+    const ts = now();
+    const cloned: ToolTemplate = {
+      ...source,
+      id: newId,
+      name: (typeof newName === 'string' && newName.trim().length > 0 ? newName : source.name + ' (Copy)').slice(0, 80),
+      builtin: false,
+      category: 'custom',
+      createdAt: ts,
+      updatedAt: ts,
+      // Deep clone params to avoid sharing references
+      params: source.params.map((p) => ({ ...p })),
+    };
+    TEMPLATE_STORE.items.set(newId, cloned);
+    res.status(201).json({ ok: true, ...cloned });
+  });
+
+  /**
+   * POST /api/tools/templates/seed-from-builtin
+   * Reset built-in templates to factory defaults (idempotent).
+   */
+  r.post('/templates/seed-from-builtin', (_req, res) => {
+    for (const t of BUILTIN_TEMPLATES) {
+      TEMPLATE_STORE.items.set(t.id, { ...t });
+    }
+    res.json({ ok: true, total: TEMPLATE_STORE.items.size });
   });
 
   return r;

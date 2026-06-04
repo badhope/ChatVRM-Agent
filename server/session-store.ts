@@ -106,6 +106,23 @@ export class SessionStore {
     return true;
   }
 
+  async removeMany(ids: string[]): Promise<{ removed: number; total: number; errors: string[] }> {
+    const data = await this.load();
+    let removed = 0;
+    const errors: string[] = [];
+    for (const id of ids) {
+      const idx = data.findIndex((x) => x.id === id);
+      if (idx < 0) {
+        errors.push(id);
+        continue;
+      }
+      data.splice(idx, 1);
+      removed++;
+    }
+    if (removed > 0) await this.persist();
+    return { removed, total: ids.length, errors };
+  }
+
   async clear(): Promise<void> {
     this.cache = [];
     await this.persist();

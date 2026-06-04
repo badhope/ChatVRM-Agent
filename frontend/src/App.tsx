@@ -4,7 +4,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Chat } from './pages/Chat';
 import { Agent } from './pages/Agent';
 import { Tools } from './pages/Tools';
+import { ToolTemplates } from './pages/ToolTemplates';
 import { Memory } from './pages/Memory';
+import { Personality } from './pages/Personality';
+import { Emotion } from './pages/Emotion';
 import { Config } from './pages/Config';
 import { Graph } from './pages/Graph';
 import { Settings } from './pages/Settings';
@@ -29,7 +32,10 @@ export function App() {
         <Route path="/chat/:sessionId" element={<Chat />} />
         <Route path="/agent" element={<Agent />} />
         <Route path="/tools" element={<Tools />} />
+        <Route path="/tools/templates" element={<ToolTemplates />} />
         <Route path="/memory" element={<Memory />} />
+        <Route path="/personality" element={<Personality />} />
+        <Route path="/emotion" element={<Emotion />} />
         <Route path="/config" element={<Config />} />
         <Route path="/graph" element={<Graph />} />
         <Route path="/settings" element={<Settings />} />

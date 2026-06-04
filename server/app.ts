@@ -11,6 +11,7 @@ import { personalityRoutes } from './routes/personality.routes.js';
 import { chatRoutes } from './routes/chat.routes.js';
 import { agentRoutes } from './routes/agent.routes.js';
 import { emotionRoutes } from './routes/emotion.routes.js';
+import { aiRoutes } from './routes/ai.routes.js';
 import { registerDefaultTools } from './tools-setup.js';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -52,6 +53,7 @@ export function createApp() {
     sessions,
   }));
   app.use('/api/agent', agentRoutes(adapters));
+  app.use('/api/ai', aiRoutes({ llm: adapters.llm, config: adapters.config }));
 
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   if (fs.existsSync(frontendDist)) {

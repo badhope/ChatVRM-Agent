@@ -162,6 +162,40 @@ describe('server end-to-end smoke', () => {
     return { status: res.status, body: json };
   }
 
+  async function patch(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+    const res = await testFetch(`${baseUrl}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    let json: unknown = text;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // not json
+    }
+    return { status: res.status, body: json };
+  }
+
+  async function delJson(path: string): Promise<{ status: number; body: unknown }> {
+    const res = await testFetch(`${baseUrl}${path}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+    });
+    const text = await res.text();
+    let json: unknown = text;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // not json
+    }
+    return { status: res.status, body: json };
+  }
+
   it('GET /api/health returns ok', async () => {
     const { status, body } = await get('/api/health');
     expect(status).toBe(200);
@@ -365,18 +399,19 @@ describe('server end-to-end smoke', () => {
   it('GET /api/personality returns presets and current', async () => {
     const { status, body } = await get('/api/personality');
     expect(status).toBe(200);
-    const data = body as { current: string; list: Array<{ id: string; systemPrompt: string }> };
+    const data = body as { current: string; kind: 'preset' | 'custom'; systemPrompt: string; presets: Array<{ id: string; systemPrompt: string }> };
     expect(data.current).toBeTruthy();
-    expect(data.list.length).toBeGreaterThan(0);
-    expect(data.list[0].systemPrompt.length).toBeGreaterThan(0);
+    expect(data.presets.length).toBeGreaterThan(0);
+    expect(data.presets[0].systemPrompt.length).toBeGreaterThan(0);
+    expect(typeof data.systemPrompt).toBe('string');
   });
 
   it('POST /api/personality/set rejects unknown preset', async () => {
     const r1 = await post('/api/personality/set', { id: '__proto__' });
-    expect(r1.status).toBe(400);
+    expect(r1.status).toBe(404);
 
     const r2 = await post('/api/personality/set', { id: 'not_a_real_preset' });
-    expect(r2.status).toBe(400);
+    expect(r2.status).toBe(404);
 
     const r3 = await post('/api/personality/set', { id: 'tech_expert' });
     expect(r3.status).toBe(200);
@@ -384,6 +419,149 @@ describe('server end-to-end smoke', () => {
 
     // restore default
     await post('/api/personality/set', { id: 'friendly_mentor' });
+  });
+
+  it('POST /api/personality/custom creates a new custom personality', async () => {
+    const id = `test_bot_${Date.now().toString(36)}`;
+    const r = await post('/api/personality/custom', {
+      id,
+      name: 'Test Bot',
+      traits: ['terse', 'factual'],
+      preferences: { verbosity: 20 },
+    });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ ok: true, id, kind: 'custom' });
+    const list = await get('/api/personality');
+    const d = list.body as { custom: Array<{ id: string }> };
+    expect(d.custom.some((c) => c.id === id)).toBe(true);
+    // PATCH
+    const patchR = await patch(`/api/personality/custom/${id}`, { name: 'Renamed Bot' });
+    expect(patchR.status).toBe(200);
+    expect(patchR.body).toMatchObject({ ok: true, name: 'Renamed Bot' });
+    // DELETE
+    const delR = await del(`/api/personality/custom/${id}`);
+    expect(delR.status).toBe(200);
+  });
+
+  it('POST /api/personality/duplicate clones a preset', async () => {
+    const newId = `tech_expert_clone_${Date.now().toString(36)}`.slice(0, 40);
+    const r = await post('/api/personality/duplicate', { sourceId: 'tech_expert', newId });
+    expect(r.status).toBe(201);
+    const list = await get('/api/personality');
+    const d = list.body as { custom: Array<{ id: string }> };
+    expect(d.custom.some((c) => c.id === newId)).toBe(true);
+    // cleanup
+    await del(`/api/personality/custom/${newId}`);
+  });
+
+  it('GET /api/emotion returns current state', async () => {
+    const r = await get('/api/emotion');
+    expect(r.status).toBe(200);
+    expect(typeof r.body).toBe('object');
+    expect((r.body as { name: string }).name).toBeTruthy();
+  });
+
+  it('GET /api/emotion/history returns an array', async () => {
+    const r = await get('/api/emotion/history');
+    expect(r.status).toBe(200);
+    const body = r.body as { total: number; count: number; items: unknown[] };
+    expect(typeof body.total).toBe('number');
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+
+  it('POST /api/emotion/update persists to history', async () => {
+    const r = await post('/api/emotion/update', { name: 'excited', intensity: 88, triggers: ['test'], note: 'unittest' });
+    expect(r.status).toBe(200);
+    const h = await get('/api/emotion/history');
+    const body = h.body as { items: Array<{ source: string; note?: string }> };
+    const last = body.items[0];
+    expect(last.source).toBe('manual');
+    expect(last.note).toBe('unittest');
+  });
+
+  it('GET /api/tools/templates lists built-in templates', async () => {
+    const r = await get('/api/tools/templates');
+    expect(r.status).toBe(200);
+    const body = r.body as { total: number; items: Array<{ id: string; builtin: boolean }> };
+    expect(body.total).toBeGreaterThan(0);
+    expect(body.items.every((i) => i.builtin)).toBe(true);
+  });
+
+  it('POST /api/tools/templates creates a custom template', async () => {
+    const id = `tpl_test_${Date.now().toString(36)}`;
+    const r = await post('/api/tools/templates', {
+      id,
+      name: 'Test Tool',
+      description: 'A test tool',
+      category: 'custom',
+      params: [{ name: 'query', type: 'string', description: 'q', required: true }],
+      instructions: 'Use carefully.',
+    });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ ok: true, id, builtin: false });
+    // Duplicate it
+    const dup = await post(`/api/tools/templates/${id}/duplicate`, {
+      newId: `${id}_clone`,
+      newName: 'Test Tool Clone',
+    });
+    expect(dup.status).toBe(201);
+    // Patch
+    const patchR = await patch(`/api/tools/templates/${id}`, { description: 'updated' });
+    expect(patchR.status).toBe(200);
+    // Delete
+    const delR = await del(`/api/tools/templates/${id}`);
+    expect(delR.status).toBe(200);
+    const delR2 = await del(`/api/tools/templates/${id}_clone`);
+    expect(delR2.status).toBe(200);
+  });
+
+  it('POST /api/memory creates a manual record', async () => {
+    const r = await post('/api/memory', {
+      input: 'manual test input',
+      output: 'manual test output',
+      tags: ['unittest', 'manual'],
+    });
+    expect(r.status).toBe(201);
+    // Search for it
+    const search = await get('/api/memory?q=unittest');
+    const body = search.body as { items: Array<{ input: string }> };
+    expect(body.items.some((i) => i.input === 'manual test input')).toBe(true);
+    // PATCH (need the id)
+    const list = await get('/api/memory?q=unittest');
+    const id = (list.body as { items: Array<{ id: string }> }).items[0].id;
+    const patchR = await patch(`/api/memory/${id}`, { input: 'patched input' });
+    expect(patchR.status).toBe(200);
+    // Bulk delete
+    const bulk = await post('/api/memory/bulk-delete', { ids: [id] });
+    expect(bulk.status).toBe(200);
+    expect((bulk.body as { removed: number }).removed).toBe(1);
+  });
+
+  it('POST /api/ai/generate validates input', async () => {
+    const r = await post('/api/ai/generate', { prompt: '' });
+    expect(r.status).toBe(400);
+    const r2 = await post('/api/ai/generate', { type: 'personality', prompt: '' });
+    expect(r2.status).toBe(400);
+  });
+
+  it('GET /api/ai/types returns the list of supported generator types', async () => {
+    const r = await get('/api/ai/types');
+    expect(r.status).toBe(200);
+    const body = r.body as Array<{ id: string; json: boolean }>;
+    expect(body.length).toBeGreaterThan(0);
+    const types = body.map((b) => b.id);
+    expect(types).toContain('personality');
+    expect(types).toContain('tool');
+    expect(types).toContain('skill');
+    expect(types).toContain('agent');
+    expect(types).toContain('memory');
+    expect(types).toContain('emotion');
+    expect(types).toContain('json');
+  });
+
+  it('POST /api/chat/sessions/bulk-delete rejects bad input', async () => {
+    const r = await post('/api/chat/sessions/bulk-delete', { ids: 'not-an-array' });
+    expect(r.status).toBe(400);
   });
 
   it('GET /api/tools lists default tools', async () => {

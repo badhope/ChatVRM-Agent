@@ -69,6 +69,24 @@ export function chatRoutes(deps: ChatDeps): Router {
     res.json({ ok });
   });
 
+  r.post('/sessions/bulk-delete', async (req: Request, res: Response) => {
+    const body = req.body as { ids?: unknown };
+    if (!Array.isArray(body.ids)) {
+      res.status(400).json({ error: 'ids must be an array of strings' });
+      return;
+    }
+    const ids = (body.ids as unknown[]).filter((x): x is string => typeof x === 'string');
+    const result = await deps.sessions.removeMany(ids);
+    res.json({ ok: true, ...result });
+  });
+
+  r.post('/sessions/clear', async (_req, res) => {
+    const list = await deps.sessions.list();
+    const ids = list.map((s) => s.id);
+    const result = await deps.sessions.removeMany(ids);
+    res.json({ ok: true, ...result });
+  });
+
   r.patch('/sessions/:id', async (req, res) => {
     const { title } = req.body as { title?: string };
     if (title) await deps.sessions.rename(req.params.id, title);

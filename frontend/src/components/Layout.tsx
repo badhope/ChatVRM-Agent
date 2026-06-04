@@ -16,6 +16,8 @@ import {
   Activity,
   Globe,
   SlidersHorizontal,
+  Smile,
+  Heart,
 } from 'lucide-react';
 import { cn } from '@/utils';
 import { ToastContainer } from './Toast';
@@ -168,6 +170,8 @@ function SidebarContent() {
     { to: '/agent', label: t('nav.agent'), icon: Wand2 },
     { to: '/tools', label: t('nav.tools'), icon: Wrench },
     { to: '/memory', label: t('nav.memory'), icon: Brain },
+    { to: '/personality', label: t('nav.personality'), icon: Smile },
+    { to: '/emotion', label: t('nav.emotion'), icon: Heart },
     { to: '/graph', label: t('nav.graph'), icon: Share2 },
     { to: '/config', label: t('nav.config'), icon: SlidersHorizontal },
   ];

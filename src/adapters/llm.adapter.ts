@@ -8,6 +8,7 @@ import type {
   ProviderType,
   IConfigPort,
   CircuitBreakerSnapshot,
+  ChatConfig,
 } from '../ports/config.port.js';
 import { CircuitBreaker } from '../infrastructure/circuit-breaker.js';
 
@@ -129,9 +130,11 @@ export class LLMAdapter implements ILLMPort {
     provider: ProviderType,
     params: ChatParams,
   ): Promise<ChatResponse> {
-    const rawCfg = this.configPort.getChatConfig();
-    const chatCfg = (typeof rawCfg?.then === 'function' ? await rawCfg : rawCfg) ?? {};
-    const fallbacks = (chatCfg.fallbackModels ?? []).filter((m) => m && m !== params.model);
+    const rawCfg: unknown = this.configPort.getChatConfig();
+    const chatCfg = (typeof (rawCfg as { then?: unknown })?.then === 'function'
+      ? await (rawCfg as Promise<ChatConfig>)
+      : (rawCfg as ChatConfig)) ?? {};
+    const fallbacks = (chatCfg.fallbackModels ?? []).filter((m): m is string => typeof m === 'string' && m !== params.model);
     const tried: Array<{ model: string; error: string }> = [];
 
     const tryModel = async (modelName: string | undefined) => {

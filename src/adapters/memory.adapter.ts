@@ -220,6 +220,52 @@ export class MemoryAdapter implements IMemoryPort {
     }
   }
 
+  async update(
+    id: string,
+    patch: Partial<Pick<MemoryRecord, 'input' | 'output' | 'tags' | 'provider' | 'model'>>,
+  ): Promise<MemoryRecord | null> {
+    await this.ensureInit();
+    const release = await this.mutex.acquire();
+    try {
+      const filePath = path.join(MEMORY_DIR, `${id}.json`);
+      let existing: MemoryRecord;
+      try {
+        const raw = await fs.readFile(filePath, 'utf-8');
+        existing = JSON.parse(raw) as MemoryRecord;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw err;
+      }
+      const next: MemoryRecord = {
+        ...existing,
+        input: typeof patch.input === 'string' ? patch.input : existing.input,
+        output: typeof patch.output === 'string' ? patch.output : existing.output,
+        tags: Array.isArray(patch.tags) ? patch.tags.filter((t) => typeof t === 'string') : existing.tags,
+        provider: typeof patch.provider === 'string' ? patch.provider : existing.provider,
+        model: typeof patch.model === 'string' ? patch.model : existing.model,
+      };
+      next.timestamp = Date.now();
+      await fs.writeFile(filePath, JSON.stringify(next, null, 2), 'utf-8');
+      if (this.searchEngine) {
+        try {
+          this.searchEngine.replace({
+            id: next.id,
+            input: next.input,
+            output: next.output,
+            provider: next.provider,
+            model: next.model,
+            timestamp: next.timestamp,
+            tags: next.tags.join(' '),
+          });
+        } catch {
+        }
+      }
+      return next;
+    } finally {
+      release();
+    }
+  }
+
   async consolidate(): Promise<ConsolidationResult> {
     await this.ensureInit();
     const release = await this.mutex.acquire();
