@@ -3,6 +3,10 @@ import type {
   ChatParams,
   ChatResponse,
   StreamChunk,
+  LLMToolSpec,
+  ToolCall,
+  Message as PortMessage,
+  ToolChoice,
 } from '../ports/llm.port.js';
 import type {
   ProviderType,
@@ -11,6 +15,7 @@ import type {
   ChatConfig,
 } from '../ports/config.port.js';
 import { CircuitBreaker } from '../infrastructure/circuit-breaker.js';
+import { toProviderTools, type ToolFormat } from '../agents/zod-schema.js';
 
 const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   openai: 'https://api.openai.com/v1',
@@ -75,6 +80,13 @@ function isRetryableModelError(msg: string): boolean {
   return /(?:^|\s)(403|404|429)\b/.test(msg) || /FreeTierOnly|rate.?limit|model not found|not supported/i.test(msg);
 }
 
+function toolFormatFor(provider: ProviderType): ToolFormat {
+  if (provider === 'anthropic') return 'anthropic';
+  if (provider === 'google') return 'google';
+  if (provider === 'baidu') return 'baidu';
+  return 'openai';
+}
+
 function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
   const defined = signals.filter((s): s is AbortSignal => s !== undefined);
   if (defined.length === 0) return undefined;
@@ -82,9 +94,14 @@ function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | 
   return AbortSignal.any(defined);
 }
 
+type AnthropicTextBlock = { type: 'text'; text: string };
+type AnthropicToolUseBlock = { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
+type AnthropicToolResultBlock = { type: 'tool_result'; tool_use_id: string; content: string };
+type AnthropicContentBlock = AnthropicTextBlock | AnthropicToolUseBlock | AnthropicToolResultBlock;
+
 interface AnthropicMessage {
   role: 'user' | 'assistant';
-  content: string | Array<{ type: 'text'; text: string }>;
+  content: string | AnthropicContentBlock[];
 }
 
 interface GooglePart {
@@ -303,18 +320,28 @@ export class LLMAdapter implements ILLMPort {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const body = JSON.stringify({
+    const body: Record<string, unknown> = {
       model,
-      messages: params.messages,
+      messages: openAIMessagesFromPort(params.messages),
       temperature: params.temperature,
       max_tokens: params.maxTokens,
       stream: false,
-    });
+    };
+
+    // Native function calling (OpenAI-compatible).
+    if (params.tools && params.tools.length > 0) {
+      const payload = toProviderTools(params.tools, 'openai', params.toolChoice);
+      body.tools = payload.tools;
+      if (payload.toolChoice) body.tool_choice = payload.toolChoice;
+      if (params.parallelToolCalls !== undefined) {
+        body.parallel_tool_calls = params.parallelToolCalls;
+      }
+    }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers,
-      body,
+      body: JSON.stringify(body),
       signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
     });
 
@@ -327,14 +354,19 @@ export class LLMAdapter implements ILLMPort {
     const choice = (json.choices as Array<Record<string, unknown>>)?.[0];
     const message = choice?.message as Record<string, unknown> | undefined;
 
+    const content = (message?.content as string) ?? '';
+    const toolCalls = parseOpenAIToolCalls(message?.tool_calls);
+
     return {
-      content: (message?.content as string) ?? '',
+      content,
       model: (json.model as string) ?? model,
       usage: {
         promptTokens: (json.usage as Record<string, number>)?.prompt_tokens ?? 0,
         completionTokens: (json.usage as Record<string, number>)?.completion_tokens ?? 0,
         totalTokens: (json.usage as Record<string, number>)?.total_tokens ?? 0,
       },
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      finishReason: (choice?.finish_reason as string) ?? undefined,
     };
   }
 
@@ -344,12 +376,7 @@ export class LLMAdapter implements ILLMPort {
     }
 
     const systemPrompt = params.messages.find((m) => m.role === 'system')?.content;
-    const conversationMessages = params.messages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m): AnthropicMessage => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }));
+    const conversationMessages = anthropicMessagesFromPort(params.messages);
 
     const body: Record<string, unknown> = {
       model,
@@ -358,6 +385,12 @@ export class LLMAdapter implements ILLMPort {
     };
     if (systemPrompt) body.system = systemPrompt;
     if (params.temperature !== undefined) body.temperature = params.temperature;
+
+    if (params.tools && params.tools.length > 0) {
+      const payload = toProviderTools(params.tools, 'anthropic', params.toolChoice);
+      body.tools = payload.tools;
+      if (payload.toolChoice) body.tool_choice = payload.toolChoice;
+    }
 
     const anthropicBase = await this.getBaseUrl('anthropic');
     const response = await fetch(`${anthropicBase}/v1/messages`, {
@@ -379,6 +412,8 @@ export class LLMAdapter implements ILLMPort {
     const json = (await response.json()) as Record<string, unknown>;
     const content = (json.content as Array<Record<string, unknown>>)?.[0];
     const text = (content?.text as string) ?? '';
+    const stopReason = (json.stop_reason as string) ?? undefined;
+    const toolCalls = parseAnthropicToolCalls(json.content as Array<Record<string, unknown>> | undefined);
 
     const inputTokens = (json.usage as Record<string, number>)?.input_tokens ?? 0;
     const outputTokens = (json.usage as Record<string, number>)?.output_tokens ?? 0;
@@ -391,6 +426,8 @@ export class LLMAdapter implements ILLMPort {
         completionTokens: outputTokens,
         totalTokens: inputTokens + outputTokens,
       },
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      finishReason: stopReason,
     };
   }
 
@@ -400,14 +437,7 @@ export class LLMAdapter implements ILLMPort {
     }
 
     const systemInstruction = params.messages.find((m) => m.role === 'system')?.content;
-    const contents: GoogleContent[] = [];
-    for (const m of params.messages) {
-      if (m.role === 'system') continue;
-      contents.push({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      });
-    }
+    const { contents, pendingToolResponses } = googleContentsFromPort(params.messages);
 
     const body: Record<string, unknown> = { contents };
     if (systemInstruction) {
@@ -417,6 +447,12 @@ export class LLMAdapter implements ILLMPort {
     if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
     if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
     if (Object.keys(generationConfig).length > 0) body.generationConfig = generationConfig;
+
+    if (params.tools && params.tools.length > 0) {
+      const payload = toProviderTools(params.tools, 'google', params.toolChoice);
+      body.tools = payload.tools;
+      if (payload.toolChoice) body.tool_config = { function_calling_config: payload.toolChoice };
+    }
 
     const googleBase = await this.getBaseUrl('google');
     const url = `${googleBase}/models/${model}:generateContent?key=${apiKey}`;
@@ -438,6 +474,8 @@ export class LLMAdapter implements ILLMPort {
     const content = firstCandidate?.content as Record<string, unknown> | undefined;
     const parts = (content?.parts as Array<Record<string, unknown>>) ?? [];
     const text = parts.map((p) => (p.text as string) ?? '').join('');
+    const toolCalls = parseGoogleToolCalls(parts);
+    const finishReason = (firstCandidate?.finishReason as string) ?? (firstCandidate?.finish_reason as string) ?? undefined;
 
     const usageMeta = (json.usageMetadata as Record<string, number>) ?? {};
     const promptTokens = usageMeta.promptTokenCount ?? 0;
@@ -451,6 +489,8 @@ export class LLMAdapter implements ILLMPort {
         completionTokens,
         totalTokens: usageMeta.totalTokenCount ?? promptTokens + completionTokens,
       },
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      finishReason,
     };
   }
 
@@ -472,6 +512,12 @@ export class LLMAdapter implements ILLMPort {
       ],
     };
 
+    if (params.tools && params.tools.length > 0) {
+      const payload = toProviderTools(params.tools, 'baidu', params.toolChoice);
+      body.tools = payload.tools;
+      if (payload.toolChoice) body.tool_choice = payload.toolChoice;
+    }
+
     const baiduBase = await this.getBaseUrl('baidu');
     const url = `${baiduBase}/wenxinworkshop/chat/${model}?access_token=${apiKey}`;
     const response = await fetch(url, {
@@ -488,6 +534,7 @@ export class LLMAdapter implements ILLMPort {
 
     const json = (await response.json()) as Record<string, unknown>;
     const result = (json.result as string) ?? '';
+    const toolCalls = parseBaiduToolCalls(json);
 
     const usage = (json.usage as Record<string, number>) ?? {};
     const promptTokens = usage.prompt_tokens ?? 0;
@@ -501,6 +548,8 @@ export class LLMAdapter implements ILLMPort {
         completionTokens,
         totalTokens: usage.total_tokens ?? promptTokens + completionTokens,
       },
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      finishReason: (json.finish_reason as string) ?? undefined,
     };
   }
 
@@ -801,4 +850,249 @@ export class LLMAdapter implements ILLMPort {
       throw new Error(`Provider unavailable: ${response.status}`);
     }
   }
+}
+
+/* ============================================================
+ * Tool-calling helpers — used by the chat methods above.
+ * These convert the port-level Message/ToolCall types to/from
+ * the wire format each provider expects.
+ * ============================================================ */
+
+function openAIMessagesFromPort(messages: PortMessage[]): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      out.push({
+        role: 'tool',
+        tool_call_id: m.toolCallId ?? '',
+        content: m.content,
+      });
+      continue;
+    }
+    if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+      const msg: Record<string, unknown> = {
+        role: 'assistant',
+        content: m.content ?? '',
+        tool_calls: m.toolCalls.map((c) => ({
+          id: c.id,
+          type: 'function',
+          function: {
+            name: c.name,
+            arguments: JSON.stringify(c.arguments ?? {}),
+          },
+        })),
+      };
+      out.push(msg);
+      continue;
+    }
+    out.push({ role: m.role, content: m.content });
+  }
+  return out;
+}
+
+function anthropicMessagesFromPort(messages: PortMessage[]): AnthropicMessage[] {
+  // Anthropic: tool messages must be attached to the prior assistant
+  // message as `tool_result` blocks. We accumulate content[] per turn.
+  const out: AnthropicMessage[] = [];
+  let pendingToolResults: AnthropicToolResultBlock[] = [];
+  let lastAssistantBlocks: AnthropicContentBlock[] | null = null;
+
+  const flushTurn = (userBlocks: AnthropicContentBlock[]) => {
+    if (lastAssistantBlocks) {
+      out.push({ role: 'assistant', content: lastAssistantBlocks });
+      lastAssistantBlocks = null;
+    }
+    if (userBlocks.length > 0) {
+      out.push({ role: 'user', content: userBlocks });
+    }
+  };
+
+  for (const m of messages) {
+    if (m.role === 'system') continue;
+
+    if (m.role === 'tool') {
+      // Attach to a synthetic user turn that follows the assistant call.
+      pendingToolResults.push({
+        type: 'tool_result',
+        tool_use_id: m.toolCallId ?? '',
+        content: m.content,
+      });
+      continue;
+    }
+
+    if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+      // Start an assistant turn with tool_use blocks.
+      const blocks: AnthropicContentBlock[] = [];
+      if (m.content) blocks.push({ type: 'text', text: m.content });
+      for (const c of m.toolCalls) {
+        blocks.push({
+          type: 'tool_use',
+          id: c.id,
+          name: c.name,
+          input: c.arguments,
+        });
+      }
+      lastAssistantBlocks = blocks;
+      continue;
+    }
+
+    if (m.role === 'assistant') {
+      const blocks: AnthropicContentBlock[] = m.content
+        ? [{ type: 'text', text: m.content }]
+        : [];
+      flushTurn(pendingToolResults.length > 0 ? pendingToolResults.slice() : []);
+      pendingToolResults = [];
+      lastAssistantBlocks = blocks;
+      continue;
+    }
+
+    if (m.role === 'user') {
+      const userBlocks: AnthropicContentBlock[] = pendingToolResults.length > 0
+        ? pendingToolResults.slice()
+        : [{ type: 'text', text: m.content }];
+      pendingToolResults = [];
+      flushTurn(userBlocks);
+      continue;
+    }
+  }
+
+  // Tail flush.
+  if (lastAssistantBlocks) {
+    out.push({ role: 'assistant', content: lastAssistantBlocks });
+  }
+  if (pendingToolResults.length > 0) {
+    out.push({ role: 'user', content: pendingToolResults });
+  }
+  return out;
+}
+
+function googleContentsFromPort(messages: PortMessage[]): {
+  contents: GoogleContent[];
+  pendingToolResponses: Array<{ id: string; name: string; response: Record<string, unknown> }>;
+} {
+  const contents: GoogleContent[] = [];
+  const pendingToolResponses: Array<{ id: string; name: string; response: Record<string, unknown> }> = [];
+  let current: GoogleContent | null = null;
+
+  const flush = () => {
+    if (current) contents.push(current);
+    current = null;
+  };
+
+  for (const m of messages) {
+    if (m.role === 'system') continue;
+
+    if (m.role === 'tool') {
+      // Gemini requires tool responses on the user side.
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(m.content) as Record<string, unknown>;
+      } catch {
+        parsed = { result: m.content };
+      }
+      pendingToolResponses.push({ id: m.toolCallId ?? '', name: m.name ?? '', response: parsed });
+      continue;
+    }
+
+    if (pendingToolResponses.length > 0) {
+      flush();
+      contents.push({
+        role: 'user',
+        parts: pendingToolResponses.map((r) => ({
+          functionResponse: { name: r.name, response: r.response },
+        })) as unknown as GooglePart[],
+      });
+      pendingToolResponses.length = 0;
+    }
+
+    const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user';
+    const parts: GooglePart[] = [];
+    if (m.content) parts.push({ text: m.content });
+    if (m.toolCalls) {
+      for (const c of m.toolCalls) {
+        parts.push({ functionCall: { name: c.name, args: c.arguments } } as unknown as GooglePart);
+      }
+    }
+
+    if (!current) {
+      current = { role, parts };
+    } else if (current.role === role) {
+      current.parts.push(...parts);
+    } else {
+      flush();
+      current = { role, parts };
+    }
+  }
+  flush();
+  return { contents, pendingToolResponses };
+}
+
+function parseOpenAIToolCalls(raw: unknown): ToolCall[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) => {
+    const e = entry as Record<string, unknown>;
+    const fn = (e.function as Record<string, unknown>) ?? {};
+    let args: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse((fn.arguments as string) ?? '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        args = parsed as Record<string, unknown>;
+      }
+    } catch {
+      args = {};
+    }
+    return { id: (e.id as string) ?? '', name: (fn.name as string) ?? '', arguments: args };
+  });
+}
+
+function parseAnthropicToolCalls(content: Array<Record<string, unknown>> | undefined): ToolCall[] {
+  if (!Array.isArray(content)) return [];
+  const calls: ToolCall[] = [];
+  for (const block of content) {
+    if (block.type === 'tool_use') {
+      calls.push({
+        id: (block.id as string) ?? '',
+        name: (block.name as string) ?? '',
+        arguments: (block.input as Record<string, unknown>) ?? {},
+      });
+    }
+  }
+  return calls;
+}
+
+function parseGoogleToolCalls(parts: Array<Record<string, unknown>>): ToolCall[] {
+  const calls: ToolCall[] = [];
+  for (const p of parts) {
+    const fc = p.functionCall as Record<string, unknown> | undefined;
+    if (fc) {
+      calls.push({
+        id: `${(fc.name as string) ?? 'call'}-${calls.length}`,
+        name: (fc.name as string) ?? '',
+        arguments: (fc.args as Record<string, unknown>) ?? {},
+      });
+    }
+  }
+  return calls;
+}
+
+function parseBaiduToolCalls(json: Record<string, unknown>): ToolCall[] {
+  // Baidu returns a `function_call` field when the model decides to call.
+  const fnCall = json.function_call as Record<string, unknown> | undefined;
+  if (!fnCall) return [];
+  let args: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse((fnCall.arguments as string) ?? '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      args = parsed as Record<string, unknown>;
+    }
+  } catch {
+    args = {};
+  }
+  return [
+    {
+      id: `baidu-${Date.now()}`,
+      name: (fnCall.name as string) ?? '',
+      arguments: args,
+    },
+  ];
 }
