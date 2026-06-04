@@ -470,6 +470,16 @@
     "clearConfirm": "Delete all memories? This cannot be undone.",
     "clearFailed": "Clear failed",
     "cleared": "Cleared",
+    "confirmClearTitle": "Clear all memories?",
+    "confirmClearMessage": "This will permanently delete every memory record. This action cannot be undone.",
+    "confirmOk": "Clear all",
+    "confirmCancel": "Cancel",
+    "loading": "Loading…",
+    "stale": "Stale — refresh",
+    "lastUpdatedAt": "Updated {time}",
+    "personalityLoadFailed": "Could not load personalities",
+    "statsLoadFailed": "Could not load memory statistics",
+    "exportEmpty": "Nothing to export",
     "about": "About",
     "aboutLine1": "Personal-Assistant Web · v2.0",
     "aboutLine2": "Pipeline-driven AI agent · Real LLM / Real tools / Real memory",
@@ -521,6 +531,22 @@
     "networkError": "Network error",
     "unauthorized": "Unauthorized (check your API key)",
     "rateLimit": "Rate limited (please wait)",
-    "configKeyFirst": "Please configure your API key in the Config page first"
+    "configKeyFirst": "Please configure your API key in the Config page first",
+    "kind": {
+      "network": "Network error — check your connection",
+      "timeout": "Request timed out",
+      "notFound": "Resource not found",
+      "unauthorized": "Unauthorized — check your API key",
+      "rateLimit": "Rate limited — please wait",
+      "client": "Request rejected by server",
+      "server": "Server error",
+      "parse": "Received an invalid response",
+      "validation": "Input validation failed",
+      "aborted": "Request cancelled",
+      "unknown": "Something went wrong"
+    },
+    "retry": "Retry",
+    "neverUpdated": "Never",
+    "dataStale": "Data may be stale"
   }
 }

@@ -471,6 +471,16 @@
     "clearConfirm": "确认清空所有记忆？此操作不可恢复。",
     "clearFailed": "清空失败",
     "cleared": "已清空",
+    "confirmClearTitle": "清空所有记忆？",
+    "confirmClearMessage": "将永久删除全部记忆记录，此操作不可恢复。",
+    "confirmOk": "确认清空",
+    "confirmCancel": "取消",
+    "loading": "加载中…",
+    "stale": "已过期 · 点击刷新",
+    "lastUpdatedAt": "更新于 {time}",
+    "personalityLoadFailed": "无法加载人格列表",
+    "statsLoadFailed": "无法加载记忆统计",
+    "exportEmpty": "没有可导出的数据",
     "about": "关于",
     "aboutLine1": "Personal-Assistant Web · v2.0",
     "aboutLine2": "Pipeline 驱动的 AI 智能体 · 真实 LLM / 真实工具 / 真实记忆",
@@ -522,6 +532,22 @@
     "networkError": "网络错误",
     "unauthorized": "未授权 (请检查 API key)",
     "rateLimit": "触发速率限制 (请稍候)",
-    "configKeyFirst": "请先在配置页设置 API key"
+    "configKeyFirst": "请先在配置页设置 API key",
+    "kind": {
+      "network": "网络错误 — 请检查连接",
+      "timeout": "请求超时",
+      "notFound": "资源未找到",
+      "unauthorized": "未授权 — 请检查 API key",
+      "rateLimit": "触发限流 — 请稍候",
+      "client": "请求被服务器拒绝",
+      "server": "服务器错误",
+      "parse": "返回数据格式错误",
+      "validation": "输入校验失败",
+      "aborted": "请求已取消",
+      "unknown": "未知错误"
+    },
+    "retry": "重试",
+    "neverUpdated": "从未",
+    "dataStale": "数据可能已过期"
   }
 }
