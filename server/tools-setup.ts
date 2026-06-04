@@ -102,6 +102,106 @@ export function registerDefaultTools(opts: Tools): void {
     },
   });
 
+  // ----------------------------- Data tools ----------------------------- //
+  // Each data tool = a small wrapper that spawns fin_data_tools.py with a
+  // specific subcommand, forwarding the rest of the args. We filter out
+  // bookkeeping fields the execute stage auto-injects.
+  const registerPySubTool = (toolName: string, subcommand: string, description: string) => {
+    tools.register({
+      name: toolName,
+      description,
+      handler: async (args) => {
+        const { spawn } = await import('node:child_process');
+        const { existsSync } = await import('node:fs');
+        const { fileURLToPath } = await import('node:url');
+        const { dirname, resolve: resolvePath } = await import('node:path');
+        const __dirname = dirname(fileURLToPath(import.meta.url));
+        const pyScript = resolvePath(__dirname, '..', 'scripts', 'fin_data_tools.py');
+        if (!existsSync(pyScript)) {
+          return { success: false, error: `Python script not found: ${pyScript}` };
+        }
+        const STAGE_INJECTED = new Set(['input', 'message', 'context', 'previousOutput']);
+        const argMap: Record<string, string> = {
+          path: '--path', sheet: '--sheet', uploads: '--uploads', out: '--out', charts: '--charts',
+          company: '--company', quarter: '--quarter',
+          x: '--x', y: '--y', series: '--series', output: '--output', title: '--title', ylabel: '--ylabel',
+        };
+        const cliArgs: string[] = [pyScript, subcommand];
+        for (const [k, v] of Object.entries(args)) {
+          if (STAGE_INJECTED.has(k) || v === undefined || v === null) continue;
+          const flag = argMap[k] ?? `--${k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}`;
+          if (typeof v === 'boolean') {
+            if (v) cliArgs.push(flag);
+          } else if (Array.isArray(v)) {
+            cliArgs.push(flag, v.join(','));
+          } else {
+            cliArgs.push(flag, String(v));
+          }
+        }
+        return await new Promise<{ success: boolean; output?: string; error?: string }>((res) => {
+          const proc = spawn('python3', cliArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+          let stdout = '';
+          let stderr = '';
+          proc.stdout.on('data', (d) => (stdout += d.toString()));
+          proc.stderr.on('data', (d) => (stderr += d.toString()));
+          const timer = setTimeout(() => {
+            proc.kill('SIGKILL');
+            res({ success: false, error: `${toolName} timed out` });
+          }, 120_000);
+          proc.on('close', (code) => {
+            clearTimeout(timer);
+            if (code === 0) {
+              res({ success: true, output: stdout });
+            } else {
+              try {
+                const j = JSON.parse(stdout);
+                res({ success: false, error: j.error ?? `exit ${code}`, output: stdout });
+              } catch {
+                res({ success: false, error: stderr || stdout || `exit ${code}` });
+              }
+            }
+          });
+          proc.on('error', (err) => {
+            clearTimeout(timer);
+            res({ success: false, error: `spawn failed: ${err.message}` });
+          });
+        });
+      },
+    });
+  };
+
+  registerPySubTool(
+    'excelRead',
+    'excel-read',
+    'Read an .xlsx file. Args: path (required), sheet (optional). Returns JSON {rows: [...]} with all non-empty rows as arrays of strings.',
+  );
+  registerPySubTool(
+    'excelList',
+    'excel-list',
+    'List sheet names of an .xlsx file. Args: path (required). Returns JSON {sheets: [...]}',
+  );
+  registerPySubTool(
+    'pdfRead',
+    'pdf-read',
+    'Extract text from a .pdf file. Args: path (required). Returns JSON {pages:[{page,text}], full_text}',
+  );
+  registerPySubTool(
+    'chartGenerate',
+    'chart-line',
+    'Generate a line chart PNG with matplotlib. Args: x (comma labels), series ("name=v1,v2|v2=v1,v2"), output (PNG path), title?, ylabel?',
+  );
+  registerPySubTool(
+    'chartBar',
+    'chart-bar',
+    'Generate a bar chart PNG. Args: x (comma labels), y (comma values), output (PNG path), title?, ylabel?',
+  );
+  registerPySubTool(
+    'reportBuild',
+    'report-build',
+    'Build a full financial report bundle (Markdown + Word + PDF + PPT) from a folder of source files. ' +
+    'Args: uploads (required folder), out (default e2e-output/fin-report/reports), charts (default e2e-output/fin-report/charts), company, quarter.',
+  );
+
   tools.register({
     name: 'writeFile',
     description: 'Write content to a file',

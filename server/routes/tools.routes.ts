@@ -38,6 +38,37 @@ const TOOL_SCHEMAS: Record<string, Array<{ name: string; type: string; descripti
     { name: 'table', type: 'string', description: 'rows,cols（create）', required: false },
     { name: 'cell', type: 'string', description: 'r0c0=hi|r1c1=yo|...（create）', required: false },
   ],
+  excelRead: [
+    { name: 'path', type: 'string', description: '.xlsx 文件路径', required: true },
+    { name: 'sheet', type: 'string', description: '工作表名（默认第一张）', required: false },
+  ],
+  excelList: [
+    { name: 'path', type: 'string', description: '.xlsx 文件路径', required: true },
+  ],
+  pdfRead: [
+    { name: 'path', type: 'string', description: '.pdf 文件路径', required: true },
+  ],
+  chartGenerate: [
+    { name: 'x', type: 'string', description: '逗号分隔的 X 轴标签', required: true },
+    { name: 'series', type: 'string', description: '"name=v1,v2,name2=v1,v2"（折线系列）', required: true },
+    { name: 'output', type: 'string', description: '输出 PNG 路径', required: true },
+    { name: 'title', type: 'string', description: '图表标题', required: false },
+    { name: 'ylabel', type: 'string', description: 'Y 轴标签', required: false },
+  ],
+  chartBar: [
+    { name: 'x', type: 'string', description: '逗号分隔的 X 轴标签', required: true },
+    { name: 'y', type: 'string', description: '逗号分隔的数值', required: true },
+    { name: 'output', type: 'string', description: '输出 PNG 路径', required: true },
+    { name: 'title', type: 'string', description: '图表标题', required: false },
+    { name: 'ylabel', type: 'string', description: 'Y 轴标签', required: false },
+  ],
+  reportBuild: [
+    { name: 'uploads', type: 'string', description: '源文件目录（含 PDF/Excel/Word/CSV）', required: true },
+    { name: 'out', type: 'string', description: '报告输出目录（默认 e2e-output/fin-report/reports）', required: false },
+    { name: 'charts', type: 'string', description: '图表输出目录（默认 e2e-output/fin-report/charts）', required: false },
+    { name: 'company', type: 'string', description: '公司名（默认 Globex Technologies Inc.）', required: false },
+    { name: 'quarter', type: 'string', description: 'as-of 季度（默认最后一个）', required: false },
+  ],
 };
 
 interface TemplateParam {

@@ -19,6 +19,10 @@ const PLAN_TEMPLATES: Record<string, Array<Omit<TaskStep, 'id'>>> = {
   'word-op': [
     { description: 'Run the requested wordProcess operation (create/read/append/replace/info/search/to-text)', tool: 'wordProcess', args: { op: 'create', output: 'output.docx', title: 'Generated', content: 'Hello from agent' }, dependencies: [], status: 'pending' },
   ],
+  'finance': [
+    { description: 'List available XLSX files in the uploads folder', tool: 'shell', args: { command: "ls e2e-output/fin-report/uploads/xlsx/", timeout: 10000 }, dependencies: [], status: 'pending' },
+    { description: 'Build the full financial report bundle (Markdown + Word + PDF + PPT) with charts from all uploaded source files', tool: 'reportBuild', args: { uploads: 'e2e-output/fin-report/uploads', out: 'e2e-output/fin-report/reports', charts: 'e2e-output/fin-report/charts', company: 'Globex Technologies Inc.', quarter: '2025Q2' }, dependencies: [], status: 'pending' },
+  ],
   chat: [
     { description: 'Generate conversational response', tool: 'respond', args: { style: 'conversational', maxLength: 2000 }, dependencies: [], status: 'pending' },
   ],
@@ -35,7 +39,7 @@ const PLAN_TEMPLATES: Record<string, Array<Omit<TaskStep, 'id'>>> = {
 const PLANNING_SYSTEM_PROMPT = `You are a planning agent. Given a user request and context, generate a step-by-step plan.
 Return ONLY a JSON array of objects. Each object must have:
 - "description" (string): what this step does
-- "tool" (string, optional): one of writeFile, shell, search, respond, analyze, wordProcess, readFile, design, implement, test, review, validate, execute, decide, understand, verify
+- "tool" (string, optional): one of writeFile, shell, search, respond, analyze, wordProcess, readFile, excelRead, excelList, pdfRead, chartGenerate, chartBar, reportBuild, design, implement, test, review, validate, execute, decide, understand, verify
 - "args" (object, optional): tool-specific arguments, e.g. {"filePath": "src/main.ts", "language": "typescript"} for writeFile, {"command": "npm install", "timeout": 30000} for shell, {"op": "create", "output": "out.docx", "title": "Hi", "content": "Hello"} for wordProcess
 Example: [{"description": "Create the main function in TypeScript", "tool": "writeFile", "args": {"filePath": "src/main.ts", "language": "typescript"}}, {"description": "Verify the implementation compiles", "tool": "shell", "args": {"command": "npx tsc --noEmit", "timeout": 30000}}]
 Do not include any other text, markdown formatting, or explanations.`;

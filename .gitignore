@@ -102,3 +102,8 @@ __pycache__/
 *.py[cod]
 venv/
 ENV/
+
+# E2E test artifacts (generated files for verification runs)
+e2e-output/
+output.docx
+*.e2e-out

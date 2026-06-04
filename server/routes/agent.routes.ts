@@ -162,13 +162,21 @@ export function agentRoutes(deps: AgentDeps): Router {
 
     let aborted = false;
     const abortController = new AbortController();
-    req.on('close', () => {
+    let closeFired = false;
+    const handleClose = () => {
+      if (closeFired) return;
+      closeFired = true;
       aborted = true;
       try {
         abortController.abort();
       } catch {
       }
-    });
+    };
+    // res.on('close') fires when the underlying socket closes (client disconnect).
+    // req.on('close') fires when the request body is fully consumed, which happens
+    // early in the request lifecycle — useless for streaming response abort detection.
+    res.on('close', handleClose);
+    req.on('aborted', handleClose);
 
     let currentCtx: PipelineContext = ctx;
     let failed: string | null = null;

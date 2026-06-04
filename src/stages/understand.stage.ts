@@ -6,6 +6,7 @@ import { StorageAdapter } from '../adapters/storage.adapter.js';
 
 const INTENT_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
   { pattern: /\bdocx|\.docx|wordProcess|word\s+document|word\s+doc\b/i, intent: 'word-op' },
+  { pattern: /financ|财报|财务报告|financial\s+report|annual\s+report|quarterly\s+report|board\s+minutes|board-ready|board\s+ready|investor\s+letter|auditor|合规报告|合规|revenue|profit|损益|营收|盈利|EBITDA|balance\s+sheet|income\s+statement|cash\s+flow|AR\s+aging|churn\s+rate|headcount|pipeline|funnel|forecast|budget/i, intent: 'finance' },
   { pattern: /\bcode\b|\bwrite\s+code|\bimplement\b|\bprogram\b|\bfunction\b|\bclass\b|\brefactor\b|\bbug\b|\bfix\s+a\s+bug|\brun\s+tests?\b/i, intent: 'code' },
   { pattern: /file|read|write|create|delete|edit|open|save/i, intent: 'file-op' },
   { pattern: /search|find|look|grep|locate/i, intent: 'search' },
@@ -17,6 +18,7 @@ Return ONLY the category name, nothing else.
 Categories:
 - "code": writing, implementing, refactoring, debugging, or testing code
 - "word-op": processing Word documents (.docx) — create, read, append, replace, search, info
+- "finance": financial reporting — read mixed PDF/Excel/Word/CSV company files, generate a report bundle (Markdown + Word + PDF + PPT) using the reportBuild tool. Triggered by requests about revenue, expense, profit, balance sheet, AR aging, churn, headcount, board minutes, investor letters, auditor reports, financial summaries, 财务报告, 财报, 整理报告.
 - "file-op": reading, writing, creating, deleting, or editing non-docx files
 - "search": searching, finding, locating, or looking up information
 - "chat": casual conversation, questions, explanations, greetings
@@ -27,6 +29,10 @@ Examples:
 "Create a new .docx with title and content" -> word-op
 "Read the document and tell me what's in it" -> word-op
 "Append a paragraph to the report" -> word-op
+"Here are 12 files I uploaded, please make me a financial report" -> finance
+"Read these PDFs and Excels and give me a board-ready summary" -> finance
+"整理这些文件,生成一份财务报告" -> finance
+"Generate a chart of revenue by quarter" -> finance
 "Create a new file called config.json" -> file-op
 "Find all TODO comments in the project" -> search
 "Hello, how are you?" -> chat
@@ -53,7 +59,7 @@ async function recognizeIntentLLM(llm: LLMAdapter, input: string): Promise<strin
       maxTokens: 10,
     });
     const result = response.content.trim().toLowerCase();
-    if (['code', 'word-op', 'file-op', 'search', 'chat', 'general'].includes(result)) {
+    if (['code', 'word-op', 'file-op', 'search', 'chat', 'general', 'finance'].includes(result)) {
       return result;
     }
     return recognizeIntentRegex(input);
