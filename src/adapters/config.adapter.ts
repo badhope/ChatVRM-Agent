@@ -10,6 +10,7 @@ import type {
   ChatConfig,
   SandboxConfig,
   CircuitBreakerConfig,
+  ConfigFileMeta,
 } from '../ports/config.port.js';
 
 const ApiKeysSchema = z.record(z.string());
@@ -18,6 +19,9 @@ const ChatConfigSchema = z.object({
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().min(1).optional(),
+  topP: z.number().min(0).max(1).optional(),
+  presencePenalty: z.number().min(-2).max(2).optional(),
+  frequencyPenalty: z.number().min(-2).max(2).optional(),
   systemPrompt: z.string().optional(),
 });
 const SandboxConfigSchema = z.object({
@@ -79,6 +83,9 @@ const JSON_SCHEMA_FOR_CONF = {
       model: { type: ['string', 'null'] },
       temperature: { type: ['number', 'null'], minimum: 0, maximum: 2 },
       maxTokens: { type: ['number', 'null'], minimum: 1 },
+      topP: { type: ['number', 'null'], minimum: 0, maximum: 1 },
+      presencePenalty: { type: ['number', 'null'], minimum: -2, maximum: 2 },
+      frequencyPenalty: { type: ['number', 'null'], minimum: -2, maximum: 2 },
       systemPrompt: { type: ['string', 'null'] },
     },
     additionalProperties: false,
@@ -216,6 +223,11 @@ export class ConfigAdapter implements IConfigPort {
     return config.circuitBreaker;
   }
 
+  async updateCircuitBreakerConfig(partial: Partial<CircuitBreakerConfig>): Promise<void> {
+    const current = this.store.get('circuitBreaker') ?? { enabled: true };
+    this.store.set('circuitBreaker', { ...current, ...partial });
+  }
+
   async getAllConfig(): Promise<Record<string, unknown>> {
     return this.store.store as Record<string, unknown>;
   }
@@ -226,6 +238,66 @@ export class ConfigAdapter implements IConfigPort {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async getFileMeta(): Promise<ConfigFileMeta> {
+    const filePath = this.store.path;
+    try {
+      const stat = await fs.stat(filePath);
+      return {
+        path: filePath,
+        exists: true,
+        size: stat.size,
+        modifiedAt: stat.mtime.toISOString(),
+      };
+    } catch {
+      return { path: filePath, exists: false, size: 0, modifiedAt: null };
+    }
+  }
+
+  async export(): Promise<Record<string, unknown>> {
+    await this.init();
+    return this.getAllConfig();
+  }
+
+  async import(data: Record<string, unknown>): Promise<void> {
+    await this.init();
+    const merged = { ...DEFAULT_CONFIG, ...data };
+    const parsed = FullConfigSchema.safeParse(merged);
+    if (!parsed.success) {
+      throw new Error(`invalid config: ${parsed.error.issues.map((i) => i.message).join('; ')}`);
+    }
+    // Backup current before replacing
+    await this.backupCurrent();
+    this.applyConfig(parsed.data);
+  }
+
+  async reset(): Promise<void> {
+    await this.init();
+    await this.backupCurrent();
+    this.applyConfig(DEFAULT_CONFIG);
+  }
+
+  private applyConfig(cfg: FullConfig): void {
+    this.store.clear();
+    for (const [k, v] of Object.entries(cfg)) {
+      if (v === undefined || v === null) {
+        this.store.delete(k);
+      } else {
+        this.store.set(k, v);
+      }
+    }
+  }
+
+  private async backupCurrent(): Promise<void> {
+    try {
+      await fs.mkdir(CONFIG_BACKUP_DIR, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(CONFIG_BACKUP_DIR, `config-${timestamp}.json`);
+      await fs.writeFile(backupPath, JSON.stringify(this.store.store, null, 2), 'utf-8');
+    } catch {
+      // best-effort
     }
   }
 
@@ -253,7 +325,6 @@ export class ConfigAdapter implements IConfigPort {
     } catch {
     }
 
-    this.store.clear();
-    this.store.set(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
+    this.applyConfig(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
   }
 }

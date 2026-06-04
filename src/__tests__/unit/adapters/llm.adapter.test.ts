@@ -31,8 +31,13 @@ const mockConfigPort: IConfigPort = {
   getSandboxConfig: vi.fn(),
   updateSandboxConfig: vi.fn(),
   getCircuitBreakerConfig: vi.fn(),
+  updateCircuitBreakerConfig: vi.fn(),
   getAllConfig: vi.fn(),
   exists: vi.fn(),
+  getFileMeta: vi.fn(),
+  export: vi.fn(),
+  import: vi.fn(),
+  reset: vi.fn(),
 };
 
 const originalFetch = globalThis.fetch;
@@ -443,6 +448,36 @@ describe('LLMAdapter', () => {
       const [url] = mockFetch.mock.calls[0] as [string];
       expect(url).toContain('custom.example.com');
       expect(url).not.toContain('api.openai.com');
+    });
+  });
+
+  describe('circuit breaker snapshots', () => {
+    it('should return one snapshot per known provider', () => {
+      const snapshots = adapter.getCircuitBreakerSnapshots();
+      expect(snapshots.length).toBeGreaterThanOrEqual(10);
+      for (const snap of snapshots) {
+        expect(['CLOSED', 'OPEN', 'HALF_OPEN']).toContain(snap.state);
+        expect(snap.provider).toBeTruthy();
+        expect(typeof snap.failures).toBe('number');
+        expect(typeof snap.successes).toBe('number');
+      }
+    });
+
+    it('should return CLOSED for never-used providers', () => {
+      const snapshots = adapter.getCircuitBreakerSnapshots();
+      const google = snapshots.find((s) => s.provider === 'google');
+      expect(google).toBeDefined();
+      expect(google!.state).toBe('CLOSED');
+      expect(google!.failures).toBe(0);
+      expect(google!.successes).toBe(0);
+    });
+
+    it('resetCircuitBreaker on unknown provider should be a no-op', () => {
+      expect(() => adapter.resetCircuitBreaker('openai')).not.toThrow();
+    });
+
+    it('resetAllCircuitBreakers should be safe when breakers are empty', () => {
+      expect(() => adapter.resetAllCircuitBreakers()).not.toThrow();
     });
   });
 });

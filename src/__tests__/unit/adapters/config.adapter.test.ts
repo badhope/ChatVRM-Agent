@@ -27,6 +27,9 @@ const { mockStorage, MockConf } = vi.hoisted(() => {
     set(key: string, value: unknown) {
       storage[key] = value;
     }
+    delete(key: string) {
+      delete storage[key];
+    }
     clear() {
       for (const k of Object.keys(storage)) {
         delete storage[k];
@@ -239,6 +242,26 @@ describe('ConfigAdapter', () => {
     });
   });
 
+  describe('updateCircuitBreakerConfig', () => {
+    it('should merge with existing config', async () => {
+      mockStorage.circuitBreaker = { enabled: true, failureThreshold: 3 };
+
+      await adapter.updateCircuitBreakerConfig({ resetTimeout: 60000 });
+
+      const config = await adapter.getCircuitBreakerConfig();
+      expect(config).toEqual({ enabled: true, failureThreshold: 3, resetTimeout: 60000 });
+    });
+
+    it('should be able to disable', async () => {
+      mockStorage.circuitBreaker = { enabled: true, failureThreshold: 3 };
+
+      await adapter.updateCircuitBreakerConfig({ enabled: false });
+
+      const config = await adapter.getCircuitBreakerConfig();
+      expect(config.enabled).toBe(false);
+    });
+  });
+
   describe('getAllConfig', () => {
     it('should return all config', async () => {
       const all = await adapter.getAllConfig();
@@ -247,6 +270,84 @@ describe('ConfigAdapter', () => {
       expect(all).toHaveProperty('chat');
       expect(all).toHaveProperty('sandbox');
       expect(all).toHaveProperty('circuitBreaker');
+    });
+  });
+
+  describe('getFileMeta', () => {
+    it('should return file meta with path and exists flag', async () => {
+      const meta = await adapter.getFileMeta();
+
+      expect(meta).toHaveProperty('path');
+      expect(typeof meta.path).toBe('string');
+      expect(typeof meta.exists).toBe('boolean');
+      expect(typeof meta.size).toBe('number');
+      expect('modifiedAt' in meta).toBe(true);
+    });
+
+    it('should report non-existent file when path cannot be stat-ed', async () => {
+      // path is a mock path that does not exist on disk
+      const meta = await adapter.getFileMeta();
+      expect(meta.exists).toBe(false);
+      expect(meta.size).toBe(0);
+      expect(meta.modifiedAt).toBeNull();
+    });
+  });
+
+  describe('export', () => {
+    it('should return full config object', async () => {
+      mockStorage.apiKeys = { openai: 'sk-x' };
+      mockStorage.chat = { model: 'gpt-4o', temperature: 0.7 };
+
+      const exported = await adapter.export();
+
+      expect(exported).toHaveProperty('apiKeys');
+      expect(exported).toHaveProperty('chat');
+      expect((exported.chat as { model?: string }).model).toBe('gpt-4o');
+    });
+  });
+
+  describe('import', () => {
+    it('should replace current config with provided data', async () => {
+      mockStorage.apiKeys = { openai: 'old-key' };
+
+      await adapter.import({
+        version: 1,
+        apiKeys: { anthropic: 'new-key' },
+        baseUrls: {},
+        chat: { model: 'claude-3-5-sonnet' },
+        sandbox: { enabled: false },
+        circuitBreaker: { enabled: true },
+      });
+
+      const all = await adapter.getAllConfig();
+      expect((all.apiKeys as Record<string, string>).anthropic).toBe('new-key');
+      expect((all.apiKeys as Record<string, string>).openai).toBeUndefined();
+      expect((all.chat as { model?: string }).model).toBe('claude-3-5-sonnet');
+    });
+
+    it('should reject invalid config', async () => {
+      await expect(
+        adapter.import({
+          version: 2,
+          apiKeys: 'not-an-object',
+        })
+      ).rejects.toThrow(/invalid config/);
+    });
+  });
+
+  describe('reset', () => {
+    it('should restore default config', async () => {
+      mockStorage.apiKeys = { openai: 'sk-x' };
+      mockStorage.chat = { model: 'gpt-4o', temperature: 0.9 };
+      mockStorage.sandbox = { enabled: true };
+
+      await adapter.reset();
+
+      const all = await adapter.getAllConfig();
+      expect((all.apiKeys as Record<string, string>).openai).toBeUndefined();
+      expect(Object.keys(all.chat as object).length).toBe(0);
+      expect((all.sandbox as { enabled: boolean }).enabled).toBe(false);
+      expect((all.circuitBreaker as { enabled: boolean }).enabled).toBe(true);
     });
   });
 

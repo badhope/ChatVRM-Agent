@@ -126,6 +126,27 @@ describe('server end-to-end smoke', () => {
     return { status: res.status, body: json };
   }
 
+  async function put(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+    const res = await testFetch(`${baseUrl}${path}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const setCookie = res.headers.get('set-cookie');
+    if (setCookie) cookie = setCookie.split(';')[0];
+    const text = await res.text();
+    let json: unknown = text;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // not json
+    }
+    return { status: res.status, body: json };
+  }
+
   async function del(path: string): Promise<{ status: number; body: unknown }> {
     const res = await testFetch(`${baseUrl}${path}`, {
       method: 'DELETE',
@@ -215,6 +236,130 @@ describe('server end-to-end smoke', () => {
     expect((snap.body as { defaultProvider: string }).defaultProvider).toBe('anthropic');
     // restore
     await post('/api/config/set-default', { provider: 'siliconflow' });
+  });
+
+  it('GET /api/config/chat returns and PUT updates the chat defaults', async () => {
+    const r1 = await get('/api/config/chat');
+    expect(r1.status).toBe(200);
+    expect(r1.body).toHaveProperty('defaultProvider');
+
+    const r2 = await put('/api/config/chat', {
+      model: 'gpt-4o',
+      temperature: 0.5,
+      maxTokens: 1024,
+      topP: 0.9,
+      systemPrompt: 'You are a test assistant.',
+    });
+    expect(r2.status).toBe(200);
+    expect(r2.body).toMatchObject({ ok: true });
+
+    const r3 = await get('/api/config/chat');
+    const chat = r3.body as { model: string; temperature: number; topP: number };
+    expect(chat.model).toBe('gpt-4o');
+    expect(chat.temperature).toBe(0.5);
+    expect(chat.topP).toBe(0.9);
+  });
+
+  it('GET /api/config/sandbox returns and PUT updates the sandbox config', async () => {
+    const r1 = await get('/api/config/sandbox');
+    expect(r1.status).toBe(200);
+    expect(r1.body).toHaveProperty('enabled');
+
+    const r2 = await put('/api/config/sandbox', {
+      enabled: true,
+      allowedCommands: ['ls', 'cat'],
+      timeout: 30000,
+    });
+    expect(r2.status).toBe(200);
+
+    const r3 = await get('/api/config/sandbox');
+    const sb = r3.body as { enabled: boolean; allowedCommands?: string[]; timeout?: number };
+    expect(sb.enabled).toBe(true);
+    expect(sb.allowedCommands).toEqual(['ls', 'cat']);
+    expect(sb.timeout).toBe(30000);
+  });
+
+  it('GET /api/config/circuit-breaker returns config and live snapshots', async () => {
+    const r = await get('/api/config/circuit-breaker');
+    expect(r.status).toBe(200);
+    const body = r.body as { config: { enabled: boolean }; live: Array<{ provider: string; state: string }> };
+    expect(body.config).toHaveProperty('enabled');
+    expect(Array.isArray(body.live)).toBe(true);
+    expect(body.live.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('PUT /api/config/circuit-breaker persists and POST /circuit-breaker/reset clears', async () => {
+    const r1 = await put('/api/config/circuit-breaker', {
+      enabled: true,
+      failureThreshold: 7,
+      resetTimeout: 45000,
+    });
+    expect(r1.status).toBe(200);
+
+    const r2 = await post('/api/config/circuit-breaker/reset', { provider: 'openai' });
+    expect(r2.status).toBe(200);
+    expect(r2.body).toMatchObject({ ok: true });
+
+    const r3 = await post('/api/config/circuit-breaker/reset', {});
+    expect(r3.status).toBe(200);
+  });
+
+  it('GET /api/config/file-path returns file metadata', async () => {
+    const r = await get('/api/config/file-path');
+    expect(r.status).toBe(200);
+    const meta = r.body as { path: string; exists: boolean; size: number };
+    expect(typeof meta.path).toBe('string');
+    expect(typeof meta.exists).toBe('boolean');
+    expect(typeof meta.size).toBe('number');
+  });
+
+  it('GET /api/config/export and POST /api/config/import round-trip', async () => {
+    const r1 = await get('/api/config/export');
+    expect(r1.status).toBe(200);
+    const data = r1.body as { version: number; chat: Record<string, unknown> };
+    expect(data.version).toBe(1);
+    expect(data.chat).toBeDefined();
+
+    // Now import the same data (no-op in effect)
+    const r2 = await post('/api/config/import', data);
+    expect(r2.status).toBe(200);
+    expect(r2.body).toMatchObject({ ok: true });
+
+    // Invalid import is rejected
+    const r3 = await post('/api/config/import', { version: 999 });
+    expect(r3.status).toBe(400);
+  });
+
+  it('POST /api/config/reset restores defaults', async () => {
+    const r = await post('/api/config/reset', {});
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ ok: true });
+  });
+
+  it('GET /api/config/env returns env-var snapshot per provider', async () => {
+    const r = await get('/api/config/env');
+    expect(r.status).toBe(200);
+    expect(Array.isArray(r.body)).toBe(true);
+    const list = r.body as Array<{ provider: string; apiKeyEnv: Array<{ name: string; set: boolean }> }>;
+    expect(list.length).toBeGreaterThanOrEqual(10);
+    for (const item of list) {
+      expect(item.apiKeyEnv.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('POST /api/config/test runs connection probe', async () => {
+    const r = await post('/api/config/test', { provider: 'openai' });
+    expect(r.status).toBe(200);
+    const body = r.body as { available: boolean; provider?: string };
+    expect(typeof body.available).toBe('boolean');
+  });
+
+  it('GET /api/config/providers/openai/models returns model list (may be empty on failure)', async () => {
+    const r = await get('/api/config/providers/openai/models');
+    expect(r.status).toBe(200);
+    const body = r.body as { provider: string; models: string[] };
+    expect(body.provider).toBe('openai');
+    expect(Array.isArray(body.models)).toBe(true);
   });
 
   it('GET /api/personality returns presets and current', async () => {

@@ -4,7 +4,11 @@ import type {
   ChatResponse,
   StreamChunk,
 } from '../ports/llm.port.js';
-import type { ProviderType, IConfigPort } from '../ports/config.port.js';
+import type {
+  ProviderType,
+  IConfigPort,
+  CircuitBreakerSnapshot,
+} from '../ports/config.port.js';
 import { CircuitBreaker } from '../infrastructure/circuit-breaker.js';
 
 const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
@@ -148,6 +152,42 @@ export class LLMAdapter implements ILLMPort {
       this.breakers.set(provider, CircuitBreaker.createPreset('llm'));
     }
     return this.breakers.get(provider)!;
+  }
+
+  /**
+   * Live circuit breaker state for every provider we've talked to. Used by
+   * the Config page "Reliability" panel to render state, failures, successes.
+   */
+  getCircuitBreakerSnapshots(): CircuitBreakerSnapshot[] {
+    const providers: ProviderType[] = Object.keys(DEFAULT_BASE_URLS) as ProviderType[];
+    return providers.map((p) => {
+      const breaker = this.breakers.get(p);
+      if (!breaker) {
+        return { provider: p, state: 'CLOSED', failures: 0, successes: 0 };
+      }
+      const stats = breaker.getStats();
+      return {
+        provider: p,
+        state: stats.state,
+        failures: stats.failures,
+        successes: stats.successes,
+      };
+    });
+  }
+
+  /**
+   * Force-close a provider's circuit breaker (e.g. after the user fixes a
+   * bad key). Also clears accumulated stats.
+   */
+  resetCircuitBreaker(provider: ProviderType): void {
+    const breaker = this.breakers.get(provider);
+    if (breaker) breaker.reset();
+  }
+
+  resetAllCircuitBreakers(): void {
+    for (const breaker of this.breakers.values()) {
+      breaker.reset();
+    }
   }
 
   private async getBaseUrl(provider: ProviderType): Promise<string> {

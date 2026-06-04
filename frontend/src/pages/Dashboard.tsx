@@ -25,7 +25,7 @@ export function Dashboard() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const refresh = useConfigStore((s) => s.refresh);
+  const refresh = useConfigStore((s) => s.loadAll);
 
   useEffect(() => {
     let cancelled = false;
@@ -252,9 +252,9 @@ export function Dashboard() {
 
 function Hero() {
   const { t } = useTranslation();
-  const defaultProvider = useConfigStore((s) => s.defaultProvider);
-  const configuredKeys = useConfigStore((s) => s.configuredKeys);
-  const ready = configuredKeys.size > 0;
+  const defaultProvider = useConfigStore((s) => s.snapshot?.defaultProvider);
+  const hasKey = useConfigStore((s) => s.snapshot?.hasKey);
+  const ready = hasKey ? Object.values(hasKey).some(Boolean) : false;
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-bg-elev via-bg-elev to-bg-soft p-5 lg:p-6">
       <div className="absolute inset-0 dot-bg opacity-30" aria-hidden />

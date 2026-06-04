@@ -2,11 +2,46 @@ import { Router, type Request, type Response } from 'express';
 import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
 import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
 import { PROVIDER_META, PROVIDER_BASE_URLS, resolveApiKey } from '../providers.js';
-import type { ProviderType } from '../../src/ports/config.port.js';
+import type { ProviderType, EnvVarSnapshot } from '../../src/ports/config.port.js';
+
+const ENV_BASE_URL_KEYS: Record<ProviderType, string> = {
+  openai: 'OPENAI_BASE_URL',
+  anthropic: 'ANTHROPIC_BASE_URL',
+  google: 'GOOGLE_BASE_URL',
+  deepseek: 'DEEPSEEK_BASE_URL',
+  siliconflow: 'SILICONFLOW_BASE_URL',
+  aliyun: 'ALIYUN_BASE_URL',
+  zhipu: 'ZHIPU_BASE_URL',
+  baidu: 'BAIDU_BASE_URL',
+  ollama: 'OLLAMA_BASE_URL',
+  lmstudio: 'LMSTUDIO_BASE_URL',
+};
+
+function envSnapshotFor(provider: ProviderType): EnvVarSnapshot {
+  const upper = provider.toUpperCase();
+  const apiKeyEnv = [
+    { name: `PERSONAL_ASSISTANT_${upper}`, set: false, length: 0 },
+    { name: `${upper}_API_KEY`, set: false, length: 0 },
+  ].map((e) => {
+    const v = process.env[e.name];
+    if (v && v.length > 0) return { name: e.name, set: true, length: v.length };
+    return e;
+  });
+  const baseName = ENV_BASE_URL_KEYS[provider];
+  const baseVal = process.env[baseName];
+  return {
+    provider,
+    apiKeyEnv,
+    baseUrlEnv: { name: baseName, set: !!baseVal && baseVal.length > 0, value: baseVal },
+  };
+}
 
 export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
   const r = Router();
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Providers
+  // ───────────────────────────────────────────────────────────────────────────
   r.get('/providers', async (_req, res) => {
     const enriched = await Promise.all(
       PROVIDER_META.map(async (p) => {
@@ -18,12 +53,38 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
           baseUrl: effectiveBaseUrl,
           defaultBaseUrl: PROVIDER_BASE_URLS[p.id],
           hasKey,
+          isCustomBaseUrl: !!configuredBaseUrl,
         };
       }),
     );
     res.json(enriched);
   });
 
+  /** Per-provider discovered model list, with graceful fallback to the default model. */
+  r.get('/providers/:id/models', async (req, res) => {
+    const id = req.params.id as ProviderType;
+    const meta = PROVIDER_META.find((p) => p.id === id);
+    if (!meta) {
+      res.status(404).json({ error: `unknown provider "${id}"` });
+      return;
+    }
+    try {
+      const models = await llm.listModels(id);
+      res.json({ provider: id, models });
+    } catch (err) {
+      // Return just the default so the UI can still render a non-empty dropdown
+      res.json({
+        provider: id,
+        models: [meta.defaultModel],
+        warning: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Full snapshot (kept for backwards compatibility; new code should call
+  // the specific /chat /sandbox /circuit-breaker endpoints below).
+  // ───────────────────────────────────────────────────────────────────────────
   r.get('/snapshot', async (_req, res) => {
     await cfg.init();
     const defaultProvider = await cfg.getDefaultProvider();
@@ -43,6 +104,26 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     });
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Default provider
+  // ───────────────────────────────────────────────────────────────────────────
+  r.post('/set-default', async (req: Request, res: Response) => {
+    const { provider } = req.body as { provider: ProviderType };
+    if (!provider) {
+      res.status(400).json({ error: 'provider is required' });
+      return;
+    }
+    if (!PROVIDER_META.find((p) => p.id === provider)) {
+      res.status(400).json({ error: `unknown provider "${provider}"` });
+      return;
+    }
+    await cfg.setDefaultProvider(provider);
+    res.json({ ok: true });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // API keys & base URLs
+  // ───────────────────────────────────────────────────────────────────────────
   r.post('/set-key', async (req: Request, res: Response) => {
     const { provider, key } = req.body as { provider: ProviderType; key: string };
     if (!provider || !key) {
@@ -100,27 +181,110 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     res.json({ ok: true });
   });
 
-  r.post('/set-default', async (req: Request, res: Response) => {
-    const { provider } = req.body as { provider: ProviderType };
-    if (!provider) {
-      res.status(400).json({ error: 'provider is required' });
-      return;
-    }
-    await cfg.setDefaultProvider(provider);
-    res.json({ ok: true });
+  // ───────────────────────────────────────────────────────────────────────────
+  // Chat defaults (model, temperature, top_p, system prompt, ...)
+  // ───────────────────────────────────────────────────────────────────────────
+  r.get('/chat', async (_req, res) => {
+    await cfg.init();
+    const chat = await cfg.getChatConfig();
+    const defaultProvider = await cfg.getDefaultProvider();
+    res.json({ ...chat, defaultProvider });
   });
 
+  r.put('/chat', async (req: Request, res: Response) => {
+    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt } =
+      req.body as Record<string, unknown>;
+    const update: Record<string, unknown> = {};
+    if (typeof model === 'string') update.model = model;
+    if (typeof temperature === 'number') update.temperature = temperature;
+    if (typeof maxTokens === 'number') update.maxTokens = maxTokens;
+    if (typeof topP === 'number') update.topP = topP;
+    if (typeof presencePenalty === 'number') update.presencePenalty = presencePenalty;
+    if (typeof frequencyPenalty === 'number') update.frequencyPenalty = frequencyPenalty;
+    if (typeof systemPrompt === 'string') update.systemPrompt = systemPrompt;
+    await cfg.updateChatConfig(update);
+    res.json({ ok: true, applied: update });
+  });
+
+  // Backwards-compatible alias for the old single endpoint shape
   r.post('/set-chat-config', async (req: Request, res: Response) => {
-    const { model, temperature, maxTokens, systemPrompt } = req.body as Record<string, unknown>;
-    await cfg.updateChatConfig({
-      model: typeof model === 'string' ? model : undefined,
-      temperature: typeof temperature === 'number' ? temperature : undefined,
-      maxTokens: typeof maxTokens === 'number' ? maxTokens : undefined,
-      systemPrompt: typeof systemPrompt === 'string' ? systemPrompt : undefined,
-    });
+    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt } =
+      req.body as Record<string, unknown>;
+    const update: Record<string, unknown> = {};
+    if (typeof model === 'string') update.model = model;
+    if (typeof temperature === 'number') update.temperature = temperature;
+    if (typeof maxTokens === 'number') update.maxTokens = maxTokens;
+    if (typeof topP === 'number') update.topP = topP;
+    if (typeof presencePenalty === 'number') update.presencePenalty = presencePenalty;
+    if (typeof frequencyPenalty === 'number') update.frequencyPenalty = frequencyPenalty;
+    if (typeof systemPrompt === 'string') update.systemPrompt = systemPrompt;
+    await cfg.updateChatConfig(update);
+    res.json({ ok: true, applied: update });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Sandbox (tool execution)
+  // ───────────────────────────────────────────────────────────────────────────
+  r.get('/sandbox', async (_req, res) => {
+    await cfg.init();
+    res.json(await cfg.getSandboxConfig());
+  });
+
+  r.put('/sandbox', async (req: Request, res: Response) => {
+    const { enabled, allowedCommands, timeout, workingDirectory } = req.body as Record<string, unknown>;
+    const update: Record<string, unknown> = {};
+    if (typeof enabled === 'boolean') update.enabled = enabled;
+    if (Array.isArray(allowedCommands)) update.allowedCommands = allowedCommands.filter((c) => typeof c === 'string');
+    if (typeof timeout === 'number') update.timeout = timeout;
+    if (typeof workingDirectory === 'string') update.workingDirectory = workingDirectory;
+    await cfg.updateSandboxConfig(update);
+    res.json({ ok: true, applied: update });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Circuit breaker (reliability)
+  // ───────────────────────────────────────────────────────────────────────────
+  r.get('/circuit-breaker', async (_req, res) => {
+    await cfg.init();
+    const config = await cfg.getCircuitBreakerConfig();
+    const live = (llm as unknown as {
+      getCircuitBreakerSnapshots?: () => unknown[];
+    }).getCircuitBreakerSnapshots?.() ?? [];
+    res.json({ config, live });
+  });
+
+  r.put('/circuit-breaker', async (req: Request, res: Response) => {
+    const { enabled, failureThreshold, resetTimeout, halfOpenMaxCalls } = req.body as Record<string, unknown>;
+    const update: Record<string, unknown> = {};
+    if (typeof enabled === 'boolean') update.enabled = enabled;
+    if (typeof failureThreshold === 'number') update.failureThreshold = failureThreshold;
+    if (typeof resetTimeout === 'number') update.resetTimeout = resetTimeout;
+    if (typeof halfOpenMaxCalls === 'number') update.halfOpenMaxCalls = halfOpenMaxCalls;
+    await cfg.updateCircuitBreakerConfig(update);
+    res.json({ ok: true, applied: update });
+  });
+
+  r.post('/circuit-breaker/reset', async (req: Request, res: Response) => {
+    const { provider } = req.body as { provider?: ProviderType };
+    const adapter = llm as unknown as {
+      resetCircuitBreaker: (p: ProviderType) => void;
+      resetAllCircuitBreakers: () => void;
+    };
+    if (provider) {
+      if (!PROVIDER_META.find((p) => p.id === provider)) {
+        res.status(400).json({ error: `unknown provider "${provider}"` });
+        return;
+      }
+      adapter.resetCircuitBreaker(provider);
+    } else {
+      adapter.resetAllCircuitBreakers();
+    }
     res.json({ ok: true });
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Connection tests
+  // ───────────────────────────────────────────────────────────────────────────
   r.post('/test', async (req: Request, res: Response) => {
     const { provider } = req.body as { provider: ProviderType };
     if (!provider) {
@@ -153,6 +317,50 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     } catch (err) {
       res.status(502).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
     }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Data management (export / import / reset / file path)
+  // ───────────────────────────────────────────────────────────────────────────
+  r.get('/file-path', async (_req, res) => {
+    const meta = await cfg.getFileMeta();
+    res.json(meta);
+  });
+
+  r.get('/export', async (_req, res) => {
+    const data = await cfg.export();
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    res.setHeader('content-disposition', `attachment; filename="personal-assistant-config.json"`);
+    res.send(JSON.stringify(data, null, 2));
+  });
+
+  r.post('/import', async (req: Request, res: Response) => {
+    if (!req.body || typeof req.body !== 'object') {
+      res.status(400).json({ error: 'body must be a JSON object' });
+      return;
+    }
+    try {
+      await cfg.import(req.body as Record<string, unknown>);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  r.post('/reset', async (_req, res: Response) => {
+    try {
+      await cfg.reset();
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Environment variables (for "what is overriding what" transparency)
+  // ───────────────────────────────────────────────────────────────────────────
+  r.get('/env', async (_req, res) => {
+    res.json(PROVIDER_META.map((p) => envSnapshotFor(p.id)));
   });
 
   return r;

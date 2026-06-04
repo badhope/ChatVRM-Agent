@@ -29,9 +29,9 @@ const ALL_STAGES: AgentStage[] = ['initialize', 'understand', 'plan', 'execute',
 
 export function Agent() {
   const { t } = useTranslation();
-  const defaultProvider = useConfigStore((s) => s.defaultProvider);
-  const defaultModel = useConfigStore((s) => s.defaultModel);
-  const refreshConfig = useConfigStore((s) => s.refresh);
+  const defaultProvider = useConfigStore((s) => s.snapshot?.defaultProvider);
+  const defaultModel = useConfigStore((s) => s.snapshot?.chat.model ?? '');
+  const loadAll = useConfigStore((s) => s.loadAll);
 
   const [task, setTask] = useState('');
   const [running, setRunning] = useState(false);
@@ -56,8 +56,8 @@ export function Agent() {
   const logRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    refreshConfig();
-  }, [refreshConfig]);
+    loadAll().catch(() => undefined);
+  }, [loadAll]);
 
   useEffect(() => {
     if (defaultProvider) setProvider(defaultProvider);

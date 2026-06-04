@@ -30,9 +30,9 @@ export function Chat() {
   const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const navigate = useNavigate();
-  const defaultProvider = useConfigStore((s) => s.defaultProvider);
-  const defaultModel = useConfigStore((s) => s.defaultModel);
-  const refreshConfig = useConfigStore((s) => s.refresh);
+  const defaultProvider = useConfigStore((s) => s.snapshot?.defaultProvider);
+  const defaultModel = useConfigStore((s) => s.snapshot?.chat.model ?? '');
+  const loadAll = useConfigStore((s) => s.loadAll);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
@@ -53,8 +53,8 @@ export function Chat() {
   const locallyCreatedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    refreshConfig();
-  }, [refreshConfig]);
+    loadAll().catch(() => undefined);
+  }, [loadAll]);
 
   useEffect(() => {
     api.get<ChatSession[]>('/chat/sessions').then(setSessions).catch(() => {});
@@ -354,7 +354,7 @@ export function Chat() {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {messages.length === 0 && !streaming && (
-            <EmptyChat onPrompt={(p) => setInput(p)} provider={provider || defaultProvider} />
+            <EmptyChat onPrompt={(p) => setInput(p)} provider={provider || defaultProvider || ''} />
           )}
           <div className="max-w-3xl mx-auto px-4 lg:px-6 py-6 space-y-5">
             {messages.map((m) => (

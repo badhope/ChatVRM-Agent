@@ -14,6 +14,9 @@ export interface ChatConfig {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  topP?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
   systemPrompt?: string;
 }
 
@@ -31,6 +34,28 @@ export interface CircuitBreakerConfig {
   halfOpenMaxCalls?: number;
 }
 
+export type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+
+export interface CircuitBreakerSnapshot {
+  provider: ProviderType;
+  state: CircuitBreakerState;
+  failures: number;
+  successes: number;
+}
+
+export interface ConfigFileMeta {
+  path: string;
+  exists: boolean;
+  size: number;
+  modifiedAt: string | null;
+}
+
+export interface EnvVarSnapshot {
+  provider: ProviderType;
+  apiKeyEnv: { name: string; set: boolean; length: number }[];
+  baseUrlEnv: { name: string; set: boolean; value?: string } | null;
+}
+
 export interface IConfigPort {
   init(): Promise<void>;
   getApiKey(provider: ProviderType): Promise<string | undefined>;
@@ -46,6 +71,11 @@ export interface IConfigPort {
   getSandboxConfig(): Promise<SandboxConfig>;
   updateSandboxConfig(config: Partial<SandboxConfig>): Promise<void>;
   getCircuitBreakerConfig(): Promise<CircuitBreakerConfig>;
+  updateCircuitBreakerConfig(config: Partial<CircuitBreakerConfig>): Promise<void>;
   getAllConfig(): Promise<Record<string, unknown>>;
   exists(): Promise<boolean>;
+  getFileMeta(): Promise<ConfigFileMeta>;
+  export(): Promise<Record<string, unknown>>;
+  import(data: Record<string, unknown>): Promise<void>;
+  reset(): Promise<void>;
 }

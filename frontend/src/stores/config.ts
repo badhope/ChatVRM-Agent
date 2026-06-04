@@ -1,75 +1,197 @@
 import { create } from 'zustand';
-import type { ProviderType } from '@/types';
+import { api } from '../api/client';
+import type { ProviderType } from '../types';
 
-interface ConfigState {
-  defaultProvider: ProviderType | null;
+export interface ProviderMeta {
+  id: ProviderType;
+  name: string;
+  protocol: 'openai' | 'anthropic' | 'ollama' | 'custom';
   defaultModel: string;
-  temperature: number;
-  maxTokens: number;
-  configuredKeys: Set<ProviderType>;
-  loaded: boolean;
-  loading: boolean;
-  error: string | null;
-  setDefaultProvider: (p: ProviderType) => void;
-  setDefaultModel: (m: string) => void;
-  setTemperature: (t: number) => void;
-  setMaxTokens: (n: number) => void;
-  setConfigured: (p: ProviderType, has: boolean) => void;
-  refresh: () => Promise<void>;
+  baseUrl: string;
+  defaultBaseUrl: string;
+  hasKey: boolean;
+  isCustomBaseUrl: boolean;
+  docsUrl?: string;
 }
 
-interface ConfigSnapshot {
-  defaultProvider: ProviderType;
+export interface CircuitBreakerLive {
+  provider: ProviderType;
+  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  failures: number;
+  successes: number;
+}
+
+export interface EnvVarInfo {
+  provider: ProviderType;
+  apiKeyEnv: { name: string; set: boolean; length: number }[];
+  baseUrlEnv: { name: string; set: boolean; value?: string } | null;
+}
+
+export interface SandboxState {
+  enabled: boolean;
+  allowedCommands?: string[];
+  timeout?: number;
+  workingDirectory?: string;
+}
+
+export interface CircuitBreakerState {
+  enabled: boolean;
+  failureThreshold?: number;
+  resetTimeout?: number;
+  halfOpenMaxCalls?: number;
+}
+
+export interface ChatDefaults {
+  defaultProvider?: ProviderType;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+  systemPrompt?: string;
+}
+
+export interface ConfigSnapshot {
+  defaultProvider?: ProviderType;
   apiKeys: Record<string, string>;
   hasKey: Record<string, boolean>;
-  chat: { model?: string; temperature?: number; maxTokens?: number };
-  sandbox: Record<string, unknown>;
-  circuitBreaker: Record<string, unknown>;
+  chat: ChatDefaults;
+  sandbox: SandboxState;
+  circuitBreaker: CircuitBreakerState;
 }
 
-export const useConfigStore = create<ConfigState>((set) => ({
-  defaultProvider: null,
-  defaultModel: '',
-  temperature: 0.7,
-  maxTokens: 2048,
-  configuredKeys: new Set(),
-  loaded: false,
-  loading: false,
-  error: null,
-  setDefaultProvider: (p) => set({ defaultProvider: p }),
-  setDefaultModel: (m) => set({ defaultModel: m }),
-  setTemperature: (t) => set({ temperature: t }),
-  setMaxTokens: (n) => set({ maxTokens: n }),
-  setConfigured: (p, has) =>
-    set((s) => {
-      const next = new Set(s.configuredKeys);
-      if (has) next.add(p);
-      else next.delete(p);
-      return { configuredKeys: next };
-    }),
-  refresh: async () => {
-    set({ loading: true, error: null });
-    try {
-      const r = await fetch('/api/config/snapshot', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`config snapshot HTTP ${r.status}`);
-      const data = (await r.json()) as ConfigSnapshot;
-      const configured = new Set<ProviderType>(
-        Object.entries(data.hasKey ?? {})
-          .filter(([, v]) => v === true)
-          .map(([k]) => k as ProviderType),
-      );
-      set({
-        defaultProvider: data.defaultProvider,
-        defaultModel: data.chat?.model ?? '',
-        temperature: typeof data.chat?.temperature === 'number' ? data.chat.temperature : 0.7,
-        maxTokens: typeof data.chat?.maxTokens === 'number' ? data.chat.maxTokens : 2048,
-        configuredKeys: configured,
-        loaded: true,
-        loading: false,
-        error: null,
-      });
-    } catch (e) {
-      set({ loaded: true, loading: false, error: String(e) });
-    }
+export interface ConfigFileMeta {
+  path: string;
+  exists: boolean;
+  size: number;
+  modifiedAt: string | null;
+}
+
+interface ConfigStore {
+  providers: ProviderMeta[];
+  snapshot: ConfigSnapshot | null;
+  live: CircuitBreakerLive[];
+  envVars: EnvVarInfo[];
+  fileMeta: ConfigFileMeta | null;
+
+  loadProviders: () => Promise<void>;
+  loadSnapshot: () => Promise<void>;
+  loadLive: () => Promise<void>;
+  loadEnvVars: () => Promise<void>;
+  loadFileMeta: () => Promise<void>;
+  loadAll: () => Promise<void>;
+
+  setKey: (provider: ProviderType, key: string) => Promise<void>;
+  removeKey: (provider: ProviderType) => Promise<void>;
+  setBaseUrl: (provider: ProviderType, baseUrl: string) => Promise<void>;
+  resetBaseUrl: (provider: ProviderType) => Promise<void>;
+  setDefault: (provider: ProviderType) => Promise<void>;
+  saveChatDefaults: (chat: Partial<ChatDefaults>) => Promise<void>;
+  saveSandbox: (sandbox: Partial<SandboxState>) => Promise<void>;
+  saveCircuitBreaker: (cb: Partial<CircuitBreakerState>) => Promise<void>;
+  resetCircuitBreaker: (provider?: ProviderType) => Promise<void>;
+  testConnection: (provider: ProviderType) => Promise<{ available: boolean }>;
+  listModels: (provider: ProviderType) => Promise<string[]>;
+  exportConfig: () => Promise<Record<string, unknown>>;
+  importConfig: (data: Record<string, unknown>) => Promise<void>;
+  resetConfig: () => Promise<void>;
+}
+
+export const useConfigStore = create<ConfigStore>((set, get) => ({
+  providers: [],
+  snapshot: null,
+  live: [],
+  envVars: [],
+  fileMeta: null,
+
+  loadProviders: async () => {
+    const data = await api.get<ProviderMeta[]>('/config/providers');
+    set({ providers: data });
+  },
+
+  loadSnapshot: async () => {
+    const data = await api.get<ConfigSnapshot>('/config/snapshot');
+    set({ snapshot: data });
+  },
+
+  loadLive: async () => {
+    const data = await api.get<{ live: CircuitBreakerLive[] }>('/config/circuit-breaker');
+    set({ live: data.live ?? [] });
+  },
+
+  loadEnvVars: async () => {
+    const data = await api.get<EnvVarInfo[]>('/config/env');
+    set({ envVars: data });
+  },
+
+  loadFileMeta: async () => {
+    const data = await api.get<ConfigFileMeta>('/config/file-path');
+    set({ fileMeta: data });
+  },
+
+  loadAll: async () => {
+    await Promise.all([
+      get().loadProviders(),
+      get().loadSnapshot(),
+      get().loadLive(),
+      get().loadEnvVars(),
+      get().loadFileMeta(),
+    ]);
+  },
+
+  setKey: async (provider, key) => {
+    await api.post('/config/set-key', { provider, key });
+    await get().loadSnapshot();
+  },
+  removeKey: async (provider) => {
+    await api.post('/config/remove-key', { provider });
+    await get().loadSnapshot();
+  },
+  setBaseUrl: async (provider, baseUrl) => {
+    await api.post('/config/set-base-url', { provider, baseUrl });
+    await get().loadProviders();
+  },
+  resetBaseUrl: async (provider) => {
+    await api.post('/config/reset-base-url', { provider });
+    await get().loadProviders();
+  },
+  setDefault: async (provider) => {
+    await api.post('/config/set-default', { provider });
+    await get().loadSnapshot();
+  },
+  saveChatDefaults: async (chat) => {
+    await api.put('/config/chat', chat);
+    await get().loadSnapshot();
+  },
+  saveSandbox: async (sandbox) => {
+    await api.put('/config/sandbox', sandbox);
+    await get().loadSnapshot();
+  },
+  saveCircuitBreaker: async (cb) => {
+    await api.put('/config/circuit-breaker', cb);
+    await get().loadSnapshot();
+  },
+  resetCircuitBreaker: async (provider) => {
+    await api.post('/config/circuit-breaker/reset', provider ? { provider } : {});
+    await get().loadLive();
+  },
+  testConnection: async (provider) => {
+    return api.post<{ available: boolean }>('/config/test', { provider });
+  },
+  listModels: async (provider) => {
+    const data = await api.get<{ models: string[] }>(`/config/providers/${provider}/models`);
+    return data.models;
+  },
+  exportConfig: async () => {
+    return api.get<Record<string, unknown>>('/config/export');
+  },
+  importConfig: async (data) => {
+    await api.post('/config/import', data);
+    await get().loadAll();
+  },
+  resetConfig: async () => {
+    await api.post('/config/reset', {});
+    await get().loadAll();
   },
 }));

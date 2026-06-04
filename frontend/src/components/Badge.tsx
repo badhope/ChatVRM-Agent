@@ -1,7 +1,7 @@
 import { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/utils';
 
-type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'brand';
+type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'brand' | 'muted';
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: Variant;
@@ -16,6 +16,7 @@ const variantClass: Record<Variant, string> = {
   danger: 'bg-danger/12 text-danger border-danger/25',
   info: 'bg-info/12 text-info border-info/25',
   brand: 'bg-brand/12 text-brand border-brand/25',
+  muted: 'bg-bg-soft text-fg-mute border-border',
 };
 
 export function Badge({ variant = 'default', size = 'sm', className, children, ...rest }: BadgeProps) {
@@ -42,6 +43,7 @@ export function Dot({ variant = 'default', pulse }: { variant?: Variant; pulse?:
     danger: 'bg-danger',
     info: 'bg-info',
     brand: 'bg-brand',
+    muted: 'bg-fg-mute/40',
   };
   return (
     <span className="relative inline-flex h-2 w-2">

@@ -31,22 +31,21 @@ export function Layout() {
   const { t } = useTranslation();
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
-  const defaultProvider = useConfigStore((s) => s.defaultProvider);
-  const configuredKeys = useConfigStore((s) => s.configuredKeys);
-  const refresh = useConfigStore((s) => s.refresh);
+  const snapshot = useConfigStore((s) => s.snapshot);
+  const loadAll = useConfigStore((s) => s.loadAll);
   const language = useLocaleStore((s) => s.language);
   const setLanguage = useLocaleStore((s) => s.setLanguage);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    loadAll().catch(() => undefined);
+  }, [loadAll]);
 
   useEffect(() => {
     setDrawerOpen(false);
     setLangMenuOpen(false);
   }, [location.pathname]);
 
-  const ready = configuredKeys.size > 0;
+  const ready = snapshot ? Object.values(snapshot.hasKey).some(Boolean) : false;
 
   return (
     <div className="min-h-screen bg-bg text-fg flex">
@@ -92,7 +91,7 @@ export function Layout() {
               <Dot variant={ready ? 'success' : 'warning'} pulse={ready} />
               <span className="truncate">
                 {ready
-                  ? `${defaultProvider ?? ''} · ${t('status.ready')}`
+                  ? `${snapshot?.defaultProvider ?? ''} · ${t('status.ready')}`
                   : t('status.noKey')}
               </span>
             </div>
