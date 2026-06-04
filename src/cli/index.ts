@@ -307,6 +307,47 @@ async function main(): Promise<void> {
       process.stdout.write(getProviderHelp() + '\n');
     });
 
+  program
+    .command('ingest <path>')
+    .description('Ingest documents into the local vector store (chunk + embed + store)')
+    .option('-o, --out <file>', 'Output vector store file', '~/.personal-assistant/vectors.json')
+    .option('-b, --batch <size>', 'Embedding batch size', '32')
+    .option('--tag <tag>', 'Source tag attached to every chunk')
+    .action(async (target, options) => {
+      const { IngestionPipeline } = await import('../integration/ingestion-pipeline.js');
+      const { HashingEmbedder } = await import('../adapters/embedder.hashing.js');
+      const { RecursiveTextChunker } = await import('../adapters/text-chunker.js');
+      const { AutoLoader } = await import('../loaders/auto.loader.js');
+      const { InMemoryVectorStore } = await import('../adapters/vector-store.memory.js');
+      const outPath = (options.out as string).replace(/^~/, process.env.HOME ?? '');
+      const vectorStore = new InMemoryVectorStore(384);
+      const embedder = new HashingEmbedder({ dim: 384 });
+      const chunker = new RecursiveTextChunker({ chunkSize: 500, chunkOverlap: 50 });
+      const loader = new AutoLoader();
+      const pipeline = new IngestionPipeline({ embedder, vectorStore, chunker, loader, sourceTag: options.tag });
+
+      // Show progress on stderr to keep stdout clean for piping.
+      const onProgress = (p: { stage: string; current?: number; total?: number; message?: string }) => {
+        const pct = p.total && p.total > 0 ? ` (${p.current ?? 0}/${p.total})` : '';
+        process.stderr.write(`[${p.stage}]${pct} ${p.message ?? ''}\n`);
+      };
+
+      try {
+        const r = await pipeline.ingestPath(target, onProgress);
+        // Persist to a JSON file so the user can pick it up later.
+        await vectorStore.saveToFile(outPath);
+        process.stdout.write(`${chalk.green('✓')} Ingested ${r.documents} document(s) → ${r.chunks} chunk(s) (${r.vectors} vector(s)). Saved to ${outPath}\n`);
+        if (r.errors.length > 0) {
+          process.stdout.write(`${chalk.yellow('!')} ${r.errors.length} error(s):\n`);
+          for (const e of r.errors) process.stdout.write(`  - ${e.document}: ${e.error}\n`);
+          exit(1);
+        }
+      } catch (err) {
+        process.stderr.write(`${chalk.red('✗')} Ingestion failed: ${err instanceof Error ? err.message : String(err)}\n`);
+        exit(1);
+      }
+    });
+
   await program.parseAsync(process.argv);
 }
 

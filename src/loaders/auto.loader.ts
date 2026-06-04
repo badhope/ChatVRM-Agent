@@ -17,7 +17,8 @@ import { DocxLoader } from './docx.loader.js';
 import { XlsxLoader } from './xlsx.loader.js';
 import { HtmlLoader } from './html.loader.js';
 
-export class AutoLoader {
+export class AutoLoader implements Loader {
+  readonly extensions: string[] = ['*'];
   private registry: Array<Loader> = [];
 
   constructor() {

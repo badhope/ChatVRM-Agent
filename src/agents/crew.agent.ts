@@ -1,8 +1,10 @@
 import { EventEmitter } from 'eventemitter3';
-import type { ILLMPort, LLMToolSpec, Message } from '../ports/llm.port.js';
+import type { ILLMPort, LLMToolSpec } from '../ports/llm.port.js';
 import type { IToolsPort, ToolDefinition, ToolResult } from '../ports/tools.port.js';
 import type { ProviderType } from '../ports/config.port.js';
-import { ReActAgent, type ReActConfig, type ReActResult, attachInputSchema } from './react.agent.js';
+import type { IObservability } from '../ports/observability.port.js';
+import type { ISessionStore } from '../ports/session-store.port.js';
+import { ReActAgent, type ReActResult, attachInputSchema } from './react.agent.js';
 import { z } from 'zod';
 
 /**
@@ -58,6 +60,12 @@ export interface AgentDeps {
   /** Optional shared scratchpad that any agent can write to. */
   sharedMemory?: SharedMemory;
   eventBus?: EventEmitter<AgentEvents>;
+  /** Optional observability backend — propagated to every child ReAct. */
+  observability?: IObservability;
+  /** Optional session store — propagated to every child ReAct. */
+  sessionStore?: ISessionStore;
+  /** Use streaming chat on every child ReAct. */
+  stream?: boolean;
 }
 
 const DELEGATE_TOOL_NAME = '__delegate__';
@@ -183,11 +191,27 @@ export class AgentInstance {
       // let the caller observe iterations. The ReAct bus is unused here
       // because the agent's own bus already emits 'agent:start'/'agent:done'.
       eventBus: undefined,
+      // Propagate cross-cutting concerns so every agent run shows up
+      // in the same trace / session.
+      observability: this.deps.observability,
+      sessionStore: this.deps.sessionStore,
+      stream: this.deps.stream,
     });
 
     let result: ReActResult;
     try {
-      result = await react.run(input);
+      // Open a span per agent so the trace shows the per-agent
+      // contribution (delegations become child spans).
+      const trace = this.deps.observability
+        ? await this.deps.observability.trace(`agent.${this.def.name}`, { input, metadata: { role: this.def.role } })
+        : null;
+      try {
+        result = await react.run(input);
+        if (trace) await trace.end({ output: { output: result.output } });
+      } catch (runErr) {
+        if (trace) await trace.end({ output: { error: runErr instanceof Error ? runErr.message : String(runErr) }, level: 'error' });
+        throw runErr;
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const fallback: AgentRunResult = {
@@ -370,16 +394,28 @@ export class Crew {
   private bus: EventEmitter<AgentEvents>;
   private deps: AgentDeps;
 
-  constructor(llm: ILLMPort, tools: IToolsPort) {
+  constructor(
+    llm: ILLMPort,
+    tools: IToolsPort,
+    options?: {
+      observability?: IObservability;
+      sessionStore?: ISessionStore;
+      stream?: boolean;
+      eventBus?: EventEmitter<AgentEvents>;
+    },
+  ) {
     this.registry = new AgentRegistry();
     this.shared = new SharedMemory();
-    this.bus = new EventEmitter<AgentEvents>();
+    this.bus = options?.eventBus ?? new EventEmitter<AgentEvents>();
     this.deps = {
       llm,
       tools,
       registry: this.registry,
       sharedMemory: this.shared,
       eventBus: this.bus,
+      observability: options?.observability,
+      sessionStore: options?.sessionStore,
+      stream: options?.stream,
     };
   }
 

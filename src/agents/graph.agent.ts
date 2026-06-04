@@ -1,4 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
+import type { IObservability } from '../ports/observability.port.js';
 
 /**
  * State passed between nodes. The graph executor holds a single
@@ -57,6 +58,9 @@ export interface GraphDefinition<T extends GraphState = GraphState> {
   entry?: string;
   /** Max steps before stopping. Default 50. */
   maxSteps?: number;
+  /** Optional observability backend; each run opens a `graph.run` trace and
+   *  spawns a `node.<id>` child span per node invocation. */
+  observability?: IObservability;
 }
 
 /**
@@ -115,11 +119,11 @@ export class Graph<T extends GraphState = GraphState> {
   }
 
   /** Compile the graph into a runnable. */
-  compile(opts?: { maxSteps?: number; entry?: string }): CompiledGraph<T> {
+  compile(opts?: { maxSteps?: number; entry?: string; observability?: IObservability }): CompiledGraph<T> {
     if (this.nodes.size === 0) throw new Error('Cannot compile empty graph');
     const nodeIds = [...this.nodes.keys()];
     const entry = opts?.entry ?? nodeIds[0]!;
-    return new CompiledGraph(this, entry, opts?.maxSteps ?? 50);
+    return new CompiledGraph(this, entry, opts?.maxSteps ?? 50, opts?.observability);
   }
 }
 
@@ -127,14 +131,16 @@ export class CompiledGraph<T extends GraphState = GraphState> {
   private graph: Graph<T>;
   private entry: string;
   private maxSteps: number;
+  private observability?: IObservability;
   private bus: EventEmitter<GraphEvents> = new EventEmitter<GraphEvents>();
   /** Pending human requests keyed by node id. */
   private pendingHuman = new Map<string, (payload: unknown) => void>();
 
-  constructor(graph: Graph<T>, entry: string, maxSteps: number) {
+  constructor(graph: Graph<T>, entry: string, maxSteps: number, observability?: IObservability) {
     this.graph = graph;
     this.entry = entry;
     this.maxSteps = maxSteps;
+    this.observability = observability;
   }
 
   get events(): EventEmitter<GraphEvents> {
@@ -150,57 +156,76 @@ export class CompiledGraph<T extends GraphState = GraphState> {
     let current = this.entry;
     let steps = 0;
 
+    // Observability: one trace per run; one span per node.
+    const trace = this.observability
+      ? await this.observability.trace('graph.run', { input: { state: initialState, entry: current } })
+      : null;
     this.bus.emit('graph:start', { entryNode: current });
 
-    while (current !== END) {
-      if (steps >= this.maxSteps) {
-        throw new Error(`Graph exceeded maxSteps=${this.maxSteps} (possible cycle without termination)`);
-      }
-      steps += 1;
+    try {
+      while (current !== END) {
+        if (steps >= this.maxSteps) {
+          throw new Error(`Graph exceeded maxSteps=${this.maxSteps} (possible cycle without termination)`);
+        }
+        steps += 1;
 
-      const node = this.graph['nodes'].get(current) as NodeRecord | undefined;
-      if (!node) throw new Error(`Unknown node "${current}" in graph`);
+        const node = this.graph['nodes'].get(current) as NodeRecord | undefined;
+        if (!node) throw new Error(`Unknown node "${current}" in graph`);
 
-      this.bus.emit('node:start', { nodeId: current, state });
+        this.bus.emit('node:start', { nodeId: current, state });
 
-      let patch: Partial<T> = {};
-      try {
-        const result = await node.fn(state);
-        patch = (result ?? {}) as Partial<T>;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        this.bus.emit('node:error', { nodeId: current, error });
-        throw error;
-      }
-      state = { ...state, ...patch };
+        // Open a child span for this node.
+        const nodeSpan = trace
+          ? await trace.span(`node.${current}`, { input: state, metadata: { step: steps } })
+          : null;
 
-      // Human-in-the-loop support: if patch.__human__ is a {prompt,...}
-      // object, block until resume() is called.
-      const humanReq = (patch as Record<string, unknown>)['__human__'] as HumanRequest | undefined;
-      if (humanReq) {
-        await new Promise<void>((resolve) => {
-          this.pendingHuman.set(current, (payload) => {
-            state = { ...state, __human_input__: payload } as T;
-            resolve();
+        let patch: Partial<T> = {};
+        try {
+          const result = await node.fn(state);
+          patch = (result ?? {}) as Partial<T>;
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          if (nodeSpan) await nodeSpan.end({ level: 'error', statusMessage: error.message });
+          this.bus.emit('node:error', { nodeId: current, error });
+          throw error;
+        }
+        state = { ...state, ...patch };
+        if (nodeSpan) await nodeSpan.end({ output: patch });
+
+        // Human-in-the-loop support: if patch.__human__ is a {prompt,...}
+        // object, block until resume() is called.
+        const humanReq = (patch as Record<string, unknown>)['__human__'] as HumanRequest | undefined;
+        if (humanReq) {
+          await new Promise<void>((resolve) => {
+            this.pendingHuman.set(current, (payload) => {
+              state = { ...state, __human_input__: payload } as T;
+              resolve();
+            });
+            this.bus.emit('human:request', humanReq);
           });
-          this.bus.emit('human:request', humanReq);
-        });
-        // After resume, drop the __human__ marker and continue from the
-        // same node (the human's input is now in state.__human_input__).
-        delete (state as Record<string, unknown>)['__human__'];
-        this.bus.emit('node:done', { nodeId: current, state, next: current });
-        continue;
+          // After resume, drop the __human__ marker and continue from the
+          // same node (the human's input is now in state.__human_input__).
+          delete (state as Record<string, unknown>)['__human__'];
+          this.bus.emit('node:done', { nodeId: current, state, next: current });
+          continue;
+        }
+
+        // Pick the next node.
+        const next = this.pickNext(current, state);
+        this.bus.emit('edge:taken', { from: current, to: next ?? END, reason: this.edgeReason(current) });
+        this.bus.emit('node:done', { nodeId: current, state, next });
+        current = next ?? END;
       }
 
-      // Pick the next node.
-      const next = this.pickNext(current, state);
-      this.bus.emit('edge:taken', { from: current, to: next ?? END, reason: this.edgeReason(current) });
-      this.bus.emit('node:done', { nodeId: current, state, next });
-      current = next ?? END;
+      this.bus.emit('graph:done', { finalState: state });
+      if (trace) await trace.end({ output: { finalState: state } });
+      return state;
+    } catch (err) {
+      if (trace) {
+        await trace.end({ output: { error: err instanceof Error ? err.message : String(err) }, level: 'error' });
+      }
+      throw err;
     }
-
-    this.bus.emit('graph:done', { finalState: state });
-    return state;
   }
 
   /**

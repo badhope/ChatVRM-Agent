@@ -1,8 +1,6 @@
 import { EventEmitter } from 'eventemitter3';
-import type { ILLMPort, Message } from '../ports/llm.port.js';
-import type { IToolsPort } from '../ports/tools.port.js';
-import type { ProviderType } from '../ports/config.port.js';
-import { ReActAgent, type ReActResult, type ReActConfig } from './react.agent.js';
+import type { Message } from '../ports/llm.port.js';
+import { ReActAgent, type ReActConfig, type ReActResult } from './react.agent.js';
 
 /**
  * A single critique round.
@@ -86,7 +84,7 @@ export class ReflectiveAgent {
       const agent = new ReActAgent(this.cfg.base);
       let react: ReActResult;
       try {
-        react = await agent.run(lastInput, systemPromptOverride);
+        react = await agent.run(lastInput, { systemPromptOverride });
       } catch (err) {
         if (this.cfg.failOpen && rounds.length > 0) {
           return {
