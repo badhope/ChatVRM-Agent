@@ -23,6 +23,7 @@ import {
   KeyRound,
   Plug,
   Power,
+  RefreshCw,
   Save,
   Settings2,
   ShieldAlert,
@@ -36,6 +37,8 @@ import {
   Info,
   X,
   Plus,
+  PlayCircle,
+  AlertCircle,
 } from 'lucide-react';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -67,6 +70,8 @@ export function Config() {
     resetCircuitBreaker,
     testConnection,
     listModels,
+    scanModels,
+    testModel,
     exportConfig,
     importConfig,
     resetConfig,
@@ -144,8 +149,10 @@ export function Config() {
           defaultProvider={snapshot?.defaultProvider}
           initial={snapshot?.chat}
           listModels={listModels}
+          scanModels={scanModels}
+          testModel={testModel}
           onSave={async (next) => {
-            await saveChatDefaults(next);
+            await saveChatDefaults(next as any);
             toast({ type: 'success', title: t('config.saved') });
           }}
           onSetDefault={async (provider) => {
@@ -416,13 +423,17 @@ function ChatDefaultsPanel({
   defaultProvider,
   initial,
   listModels,
+  scanModels,
+  testModel,
   onSave,
   onSetDefault,
 }: {
   providers: ProviderMeta[];
   defaultProvider: ProviderType | undefined;
-  initial: { model?: string; temperature?: number; maxTokens?: number; topP?: number; presencePenalty?: number; frequencyPenalty?: number; systemPrompt?: string } | undefined;
+  initial: { model?: string; temperature?: number; maxTokens?: number; topP?: number; presencePenalty?: number; frequencyPenalty?: number; systemPrompt?: string; fallbackModels?: string[] } | undefined;
   listModels: (p: ProviderType) => Promise<string[]>;
+  scanModels: (p: ProviderType) => Promise<{ models: string[]; scannedAt: string; count: number }>;
+  testModel: (p: ProviderType, model: string) => Promise<{ ok: boolean; content?: string; error?: string; latencyMs: number }>;
   onSave: (next: {
     model?: string;
     temperature?: number;
@@ -431,11 +442,14 @@ function ChatDefaultsPanel({
     presencePenalty?: number;
     frequencyPenalty?: number;
     systemPrompt?: string;
+    fallbackModels?: string[];
   }) => Promise<void>;
   onSetDefault: (p: ProviderType) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [model, setModel] = useState(initial?.model ?? '');
+  const [fallbacks, setFallbacks] = useState<string[]>(initial?.fallbackModels ?? []);
+  const [fallbackDraft, setFallbackDraft] = useState('');
   const [temperature, setTemperature] = useState(initial?.temperature ?? 0.7);
   const [maxTokens, setMaxTokens] = useState(initial?.maxTokens ?? 2048);
   const [topP, setTopP] = useState(initial?.topP ?? 1);
@@ -453,6 +467,7 @@ function ChatDefaultsPanel({
     if (!initial) return;
     if (dirtyRef.current) return;
     setModel(initial.model ?? '');
+    setFallbacks(initial.fallbackModels ?? []);
     setTemperature(initial.temperature ?? 0.7);
     setMaxTokens(initial.maxTokens ?? 2048);
     setTopP(initial.topP ?? 1);
@@ -465,6 +480,11 @@ function ChatDefaultsPanel({
     if (defaultProvider) setProvider(defaultProvider);
   }, [defaultProvider]);
 
+  const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'scanned'>('idle');
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing'>('idle');
+  const [testResult, setTestResult] = useState<{ ok: boolean; content?: string; error?: string; latencyMs: number } | null>(null);
+
   const refreshModels = useCallback(
     async (p: ProviderType | '') => {
       if (!p) return;
@@ -472,16 +492,13 @@ function ChatDefaultsPanel({
       try {
         const m = await listModels(p);
         setModels(m);
-        if (m.length > 0 && !m.includes(model)) {
-          // leave current model intact, just populate the list
-        }
       } catch {
         setModels(providers.find((x) => x.id === p)?.defaultModel ? [providers.find((x) => x.id === p)!.defaultModel] : []);
       } finally {
         setLoadingModels(false);
       }
     },
-    [listModels, model, providers],
+    [listModels, providers],
   );
 
   useEffect(() => {
@@ -489,8 +506,35 @@ function ChatDefaultsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
+  const handleScan = useCallback(async (p: ProviderType) => {
+    setScanStatus('scanning');
+    try {
+      const r = await scanModels(p);
+      setModels(r.models);
+      setScannedAt(r.scannedAt);
+      setScanStatus('scanned');
+    } catch {
+      setScanStatus('idle');
+    }
+  }, [scanModels]);
+
+  const handleTest = useCallback(async () => {
+    if (!provider || !model) return;
+    setTestStatus('testing');
+    setTestResult(null);
+    try {
+      const r = await testModel(provider as ProviderType, model);
+      setTestResult(r);
+    } catch (err) {
+      setTestResult({ ok: false, error: String(err), latencyMs: 0 });
+    } finally {
+      setTestStatus('idle');
+    }
+  }, [provider, model, testModel]);
+
   const isDirty = useMemo(() => {
     if (!initial) return false;
+    const initialFallbacks = initial.fallbackModels ?? [];
     return (
       (model || '') !== (initial.model || '') ||
       temperature !== (initial.temperature ?? 0.7) ||
@@ -498,14 +542,16 @@ function ChatDefaultsPanel({
       topP !== (initial.topP ?? 1) ||
       presence !== (initial.presencePenalty ?? 0) ||
       frequency !== (initial.frequencyPenalty ?? 0) ||
-      (systemPrompt || '') !== (initial.systemPrompt || '')
+      (systemPrompt || '') !== (initial.systemPrompt || '') ||
+      fallbacks.length !== initialFallbacks.length ||
+      fallbacks.some((f, i) => f !== initialFallbacks[i])
     );
-  }, [initial, model, temperature, maxTokens, topP, presence, frequency, systemPrompt]);
+  }, [initial, model, temperature, maxTokens, topP, presence, frequency, systemPrompt, fallbacks]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ model: model || undefined, temperature, maxTokens, topP, presencePenalty: presence, frequencyPenalty: frequency, systemPrompt: systemPrompt || undefined });
+      await onSave({ model: model || undefined, temperature, maxTokens, topP, presencePenalty: presence, frequencyPenalty: frequency, systemPrompt: systemPrompt || undefined, fallbackModels: fallbacks });
       dirtyRef.current = false;
     } finally {
       setSaving(false);
@@ -542,37 +588,140 @@ function ChatDefaultsPanel({
           </Field>
 
           <Field label={t('chat.model')}>
-            <div className="flex gap-2">
-              <Input
-                value={model}
-                onChange={(e) => {
-                  setModel(e.target.value);
-                  dirtyRef.current = true;
-                }}
-                placeholder="gpt-4o-mini, claude-3-5-sonnet, ..."
-                className="flex-1 font-mono text-xs"
-              />
-              {models.length > 0 && (
-                <Select
-                  value=""
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={model}
                   onChange={(e) => {
-                    if (e.target.value) {
-                      setModel(e.target.value);
-                      dirtyRef.current = true;
-                    }
+                    setModel(e.target.value);
+                    dirtyRef.current = true;
+                    setTestResult(null);
                   }}
-                  className="w-48"
+                  placeholder="gpt-4o-mini, claude-3-5-sonnet, ..."
+                  className="flex-1 font-mono text-xs"
+                />
+                {models.length > 0 && (
+                  <Select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setModel(e.target.value);
+                        dirtyRef.current = true;
+                        setTestResult(null);
+                      }
+                    }}
+                    className="w-44"
+                  >
+                    <option value="">{loadingModels ? t('config.chat.loadingModels') : t('config.chat.pickModel')}</option>
+                    {models.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => provider && handleScan(provider as ProviderType)}
+                  disabled={!provider || scanStatus === 'scanning'}
+                  leftIcon={scanStatus === 'scanning' ? <Spinner size="sm" /> : <RefreshCw size={12} />}
                 >
-                  <option value="">{loadingModels ? t('config.chat.loadingModels') : t('config.chat.pickModel')}</option>
-                  {models.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </Select>
-              )}
+                  {t('config.chat.scan')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTest}
+                  disabled={!provider || !model || testStatus === 'testing'}
+                  leftIcon={testStatus === 'testing' ? <Spinner size="sm" /> : <PlayCircle size={12} />}
+                >
+                  {t('config.chat.test')}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between text-[10.5px] text-fg-mute px-1">
+                <span>
+                  {t('config.chat.modelCount', { count: models.length })}
+                  {scannedAt ? ' · ' + t('config.chat.scannedAt', { time: new Date(scannedAt).toLocaleTimeString() }) : ''}
+                </span>
+                {testResult && (
+                  <span className={cn('flex items-center gap-1', testResult.ok ? 'text-success' : 'text-danger')}>
+                    {testResult.ok ? <Check size={10} /> : <AlertCircle size={10} />}
+                    {testResult.ok
+                      ? t('config.chat.testOk', { ms: testResult.latencyMs })
+                      : t('config.chat.testFail', { error: (testResult.error || '').slice(0, 80) })}
+                  </span>
+                )}
+              </div>
             </div>
             <p className="text-[10.5px] text-fg-mute mt-1">{t('config.chat.modelHint')}</p>
+          </Field>
+
+          <Field label={t('config.chat.fallbackModels')}>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                {fallbacks.length === 0 && (
+                  <span className="text-[10.5px] text-fg-mute px-1 py-1">{t('config.chat.fallbackEmpty')}</span>
+                )}
+                {fallbacks.map((f, idx) => (
+                  <Badge key={`${f}-${idx}`} variant="info" size="sm" className="gap-1 pr-1">
+                    <span className="font-mono text-[10.5px]">{f}</span>
+                    <button
+                      onClick={() => {
+                        setFallbacks((prev) => prev.filter((_, i) => i !== idx));
+                        dirtyRef.current = true;
+                      }}
+                      className="hover:text-danger"
+                      aria-label="remove fallback"
+                    >
+                      <X size={10} />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={fallbackDraft}
+                  onChange={(e) => setFallbackDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && fallbackDraft.trim()) {
+                      e.preventDefault();
+                      const v = fallbackDraft.trim();
+                      if (v && v !== model && !fallbacks.includes(v) && fallbacks.length < 10) {
+                        setFallbacks((prev) => [...prev, v]);
+                        dirtyRef.current = true;
+                      }
+                      setFallbackDraft('');
+                    }
+                  }}
+                  placeholder={t('config.chat.fallbackPlaceholder')}
+                  className="flex-1 font-mono text-xs"
+                />
+                {models.length > 0 && (
+                  <Select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const v = e.target.value;
+                        if (v !== model && !fallbacks.includes(v) && fallbacks.length < 10) {
+                          setFallbacks((prev) => [...prev, v]);
+                          dirtyRef.current = true;
+                        }
+                      }
+                    }}
+                    className="w-40"
+                  >
+                    <option value="">{t('config.chat.pickFromList')}</option>
+                    {models.filter((m) => m !== model && !fallbacks.includes(m)).map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
+            </div>
+            <p className="text-[10.5px] text-fg-mute mt-1">{t('config.chat.fallbackHint')}</p>
           </Field>
 
           <Field label={t('config.chat.systemPrompt')}>

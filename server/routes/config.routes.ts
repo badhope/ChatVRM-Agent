@@ -81,6 +81,82 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     }
   });
 
+  /**
+   * Force a fresh model scan for a provider. Same response shape as GET, but
+   * always re-fetches from the upstream API and updates the in-memory cache
+   * so subsequent GETs return the latest list.
+   */
+  r.post('/providers/:id/models/scan', async (req, res) => {
+    const id = req.params.id as ProviderType;
+    const meta = PROVIDER_META.find((p) => p.id === id);
+    if (!meta) {
+      res.status(404).json({ error: `unknown provider "${id}"` });
+      return;
+    }
+    try {
+      const models = await llm.listModels(id);
+      res.json({
+        provider: id,
+        models,
+        scannedAt: new Date().toISOString(),
+        count: models.length,
+      });
+    } catch (err) {
+      res.status(502).json({
+        provider: id,
+        models: [meta.defaultModel],
+        scannedAt: new Date().toISOString(),
+        count: 1,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  /**
+   * Test a single model with a tiny prompt. Used by the UI to show per-model
+   * availability and to support the "scan + pick" workflow.
+   */
+  r.post('/providers/:id/test-model', async (req, res) => {
+    const id = req.params.id as ProviderType;
+    const { model, message } = req.body as { model?: string; message?: string };
+    const meta = PROVIDER_META.find((p) => p.id === id);
+    if (!meta) {
+      res.status(404).json({ error: `unknown provider "${id}"` });
+      return;
+    }
+    if (!model) {
+      res.status(400).json({ error: 'model is required' });
+      return;
+    }
+    const startedAt = Date.now();
+    try {
+      const r = await llm.chatExact({
+        provider: id,
+        model,
+        messages: [{ role: 'user', content: message ?? 'Reply with one word: ready' }],
+        maxTokens: 16,
+        temperature: 0,
+      });
+      res.json({
+        ok: true,
+        provider: id,
+        model: r.model,
+        content: r.content,
+        latencyMs: Date.now() - startedAt,
+        testedAt: new Date(startedAt).toISOString(),
+      });
+    } catch (err) {
+      res.json({
+        ok: false,
+        provider: id,
+        model,
+        error: err instanceof Error ? err.message : String(err),
+        latencyMs: Date.now() - startedAt,
+        testedAt: new Date(startedAt).toISOString(),
+      });
+    }
+  });
+
   // ───────────────────────────────────────────────────────────────────────────
   // Full snapshot (kept for backwards compatibility; new code should call
   // the specific /chat /sandbox /circuit-breaker endpoints below).
@@ -192,7 +268,7 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
   });
 
   r.put('/chat', async (req: Request, res: Response) => {
-    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt } =
+    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt, fallbackModels } =
       req.body as Record<string, unknown>;
     const update: Record<string, unknown> = {};
     if (typeof model === 'string') update.model = model;
@@ -202,13 +278,18 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     if (typeof presencePenalty === 'number') update.presencePenalty = presencePenalty;
     if (typeof frequencyPenalty === 'number') update.frequencyPenalty = frequencyPenalty;
     if (typeof systemPrompt === 'string') update.systemPrompt = systemPrompt;
+    if (Array.isArray(fallbackModels)) {
+      update.fallbackModels = (fallbackModels as unknown[])
+        .filter((m): m is string => typeof m === 'string' && m.length > 0)
+        .slice(0, 10);
+    }
     await cfg.updateChatConfig(update);
     res.json({ ok: true, applied: update });
   });
 
   // Backwards-compatible alias for the old single endpoint shape
   r.post('/set-chat-config', async (req: Request, res: Response) => {
-    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt } =
+    const { model, temperature, maxTokens, topP, presencePenalty, frequencyPenalty, systemPrompt, fallbackModels } =
       req.body as Record<string, unknown>;
     const update: Record<string, unknown> = {};
     if (typeof model === 'string') update.model = model;

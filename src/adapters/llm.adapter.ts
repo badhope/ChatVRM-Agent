@@ -65,6 +65,15 @@ const STREAM_DONE_MARKER = '[DONE]';
 
 const NO_API_KEY_REQUIRED = new Set<ProviderType>(['ollama', 'lmstudio']);
 
+/**
+ * Heuristic: can the failure be explained by THIS model being unavailable,
+ * and is it worth trying the next model in the fallback chain?
+ * True for HTTP 403 (quota / free-tier), 404 (model not in plan), 429 (rate-limited).
+ */
+function isRetryableModelError(msg: string): boolean {
+  return /(?:^|\s)(403|404|429)\b/.test(msg) || /FreeTierOnly|rate.?limit|model not found|not supported/i.test(msg);
+}
+
 function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
   const defined = signals.filter((s): s is AbortSignal => s !== undefined);
   if (defined.length === 0) return undefined;
@@ -97,7 +106,58 @@ export class LLMAdapter implements ILLMPort {
   async chat(params: ChatParams): Promise<ChatResponse> {
     const provider = params.provider ?? (await this.configPort.getDefaultProvider());
     const breaker = this.getBreaker(provider);
+    return breaker.fire(() => this.chatWithFallbacks(provider, params));
+  }
+
+  /**
+   * Direct, no-fallback chat. Used by /test-model so the user sees the
+   * "true" status of a specific model instead of having a fallback silently
+   * save the call.
+   */
+  async chatExact(params: ChatParams): Promise<ChatResponse> {
+    const provider = params.provider ?? (await this.configPort.getDefaultProvider());
+    const breaker = this.getBreaker(provider);
     return breaker.fire(() => this.dispatchChat(provider, params));
+  }
+
+  /**
+   * Try the requested model first, then walk the user's configured fallback list.
+   * Only retries on transient / quota / not-found errors (403, 404, 429).
+   * Returns the first model that produces a usable response.
+   */
+  private async chatWithFallbacks(
+    provider: ProviderType,
+    params: ChatParams,
+  ): Promise<ChatResponse> {
+    const rawCfg = this.configPort.getChatConfig();
+    const chatCfg = (typeof rawCfg?.then === 'function' ? await rawCfg : rawCfg) ?? {};
+    const fallbacks = (chatCfg.fallbackModels ?? []).filter((m) => m && m !== params.model);
+    const tried: Array<{ model: string; error: string }> = [];
+
+    const tryModel = async (modelName: string | undefined) => {
+      try {
+        const r = await this.dispatchChat(provider, { ...params, model: modelName });
+        return { ok: true as const, response: r, tried };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        tried.push({ model: modelName ?? '(default)', error: msg });
+        if (isRetryableModelError(msg)) {
+          return { ok: false as const, retry: true };
+        }
+        return { ok: false as const, retry: false };
+      }
+    };
+
+    const first = await tryModel(params.model);
+    if (first.ok) return first.response;
+    if (!first.retry) throw new Error(first.response ? '' : tried.at(-1)!.error);
+
+    for (const fallback of fallbacks) {
+      const r = await tryModel(fallback);
+      if (r.ok) return r.response;
+      if (!r.retry) throw new Error(tried.at(-1)!.error);
+    }
+    throw new Error(tried.at(-1)!.error);
   }
 
   async *stream(params: ChatParams): AsyncGenerator<StreamChunk> {

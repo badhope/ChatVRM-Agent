@@ -18,6 +18,12 @@ export interface ChatConfig {
   presencePenalty?: number;
   frequencyPenalty?: number;
   systemPrompt?: string;
+  /**
+   * Backup models to try in order when the primary model is unavailable
+   * (HTTP 403 FreeTierOnly / 429 rate-limited / 404 not found).
+   * Models are tried sequentially; first non-retryable success wins.
+   */
+  fallbackModels?: string[];
 }
 
 export interface SandboxConfig {

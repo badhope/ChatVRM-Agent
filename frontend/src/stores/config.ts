@@ -50,6 +50,7 @@ export interface ChatDefaults {
   presencePenalty?: number;
   frequencyPenalty?: number;
   systemPrompt?: string;
+  fallbackModels?: string[];
 }
 
 export interface ConfigSnapshot {
@@ -93,6 +94,8 @@ interface ConfigStore {
   resetCircuitBreaker: (provider?: ProviderType) => Promise<void>;
   testConnection: (provider: ProviderType) => Promise<{ available: boolean }>;
   listModels: (provider: ProviderType) => Promise<string[]>;
+  scanModels: (provider: ProviderType) => Promise<{ models: string[]; scannedAt: string; count: number }>;
+  testModel: (provider: ProviderType, model: string) => Promise<{ ok: boolean; model: string; content?: string; error?: string; latencyMs: number }>;
   exportConfig: () => Promise<Record<string, unknown>>;
   importConfig: (data: Record<string, unknown>) => Promise<void>;
   resetConfig: () => Promise<void>;
@@ -182,6 +185,18 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   listModels: async (provider) => {
     const data = await api.get<{ models: string[] }>(`/config/providers/${provider}/models`);
     return data.models;
+  },
+  scanModels: async (provider) => {
+    const data = await api.post<{ models: string[]; scannedAt: string; count: number }>(
+      `/config/providers/${provider}/models/scan`,
+    );
+    return data;
+  },
+  testModel: async (provider, model) => {
+    return api.post<{ ok: boolean; model: string; content?: string; error?: string; latencyMs: number }>(
+      '/config/providers/' + provider + '/test-model',
+      { model },
+    );
   },
   exportConfig: async () => {
     return api.get<Record<string, unknown>>('/config/export');

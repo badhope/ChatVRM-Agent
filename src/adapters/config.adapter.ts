@@ -23,6 +23,7 @@ const ChatConfigSchema = z.object({
   presencePenalty: z.number().min(-2).max(2).optional(),
   frequencyPenalty: z.number().min(-2).max(2).optional(),
   systemPrompt: z.string().optional(),
+  fallbackModels: z.array(z.string()).max(10).optional(),
 });
 const SandboxConfigSchema = z.object({
   enabled: z.boolean(),
@@ -87,6 +88,7 @@ const JSON_SCHEMA_FOR_CONF = {
       presencePenalty: { type: ['number', 'null'], minimum: -2, maximum: 2 },
       frequencyPenalty: { type: ['number', 'null'], minimum: -2, maximum: 2 },
       systemPrompt: { type: ['string', 'null'] },
+      fallbackModels: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     },
     additionalProperties: false,
   },

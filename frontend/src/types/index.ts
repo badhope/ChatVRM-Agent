@@ -170,6 +170,7 @@ export interface ConfigSnapshot {
     temperature?: number;
     maxTokens?: number;
     systemPrompt?: string;
+    fallbackModels?: string[];
   };
   sandbox: {
     enabled: boolean;
