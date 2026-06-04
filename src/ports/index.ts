@@ -50,3 +50,12 @@ export type {
   TrustVerdict,
   ITrustPort,
 } from './trust.port.js';
+
+export type { Embedder } from './embeddings.port.js';
+export type {
+  VectorRecord,
+  VectorQuery,
+  VectorHit,
+  VectorStore,
+} from './vector-store.port.js';
+export type { Document, Loader } from './loader.port.js';
