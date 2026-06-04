@@ -99,8 +99,10 @@ export function registerDefaultTools(opts: Tools): void {
       const text = (args.text as string) ?? '';
       const instruction = (args.instruction as string) ?? 'Summarize the following text:';
       const provider = (args.provider as ProviderType) ?? (await config.getDefaultProvider());
+      const model = (args.model as string) ?? (await config.getChatConfig())?.model ?? undefined;
       const response = await llm.chat({
         provider,
+        model,
         messages: [
           { role: 'system', content: 'You are a precise text analyzer.' },
           { role: 'user', content: `${instruction}\n\n${text}` },
@@ -119,10 +121,11 @@ export function registerDefaultTools(opts: Tools): void {
       const prompt = (args.prompt as string) ?? (args.message as string) ?? '';
       const context = (args.context as string) ?? '';
       const provider = (args.provider as ProviderType) ?? (await config.getDefaultProvider());
+      const model = (args.model as string) ?? (await config.getChatConfig())?.model ?? undefined;
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
       if (context) messages.push({ role: 'system', content: context });
       messages.push({ role: 'user', content: prompt });
-      const response = await llm.chat({ provider, messages, temperature: 0.7, maxTokens: 1024 });
+      const response = await llm.chat({ provider, model, messages, temperature: 0.7, maxTokens: 1024 });
       return { success: true, output: response.content };
     },
   });
