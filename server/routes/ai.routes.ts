@@ -79,12 +79,12 @@ tags should be 1-5 short lowercase words.`,
   emotion: `You are an expert at reading the emotional tone of a short text.
 Return STRICT JSON (no markdown, no commentary, no code fences) with this exact shape:
 {
-  "name": "neutral|excited|confident|cautious|frustrated|tired|curious|happy|thoughtful",
+  "name": "neutral|excited|confident|cautious|frustrated|tired|curious|happy|thoughtful|exhausted|inspired|focused",
   "intensity": 0,
   "triggers": ["phrase or word that triggered this emotion"],
   "reasoning": "One sentence explaining why."
 }
-intensity is an integer in [0,100]. triggers should reference specific words/phrases from the input.`,
+Pick exactly ONE name from the list above. intensity is an integer in [0,100]. triggers should reference specific words/phrases from the input.`,
 
   json: `You are a precise JSON generator. Return STRICT JSON only (no markdown, no commentary, no code fences). Match the shape the user requests exactly. Use null for missing optional values, [] for missing arrays, {} for missing objects.`,
 };

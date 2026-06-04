@@ -305,7 +305,7 @@ async function main() {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ type: 'emotion', prompt: 'I just finished a 10 hour coding session, my eyes hurt, but I shipped it', temperature: 0.2, maxTokens: 256 }),
   })).json();
-  record(aiEm.ok === true && ['neutral','excited','confident','cautious','frustrated','tired','happy','thoughtful','curious'].includes(aiEm.parsed?.name), 'AI /generate emotion produced valid emotion name');
+  record(aiEm.ok === true && ['neutral','excited','confident','cautious','frustrated','tired','happy','thoughtful','curious','exhausted','sad','melancholic','energetic','focused','relaxed','tense','inspired'].includes(aiEm.parsed?.name), 'AI /generate emotion produced valid emotion name');
   log('   → AI emotion:', aiEm.parsed?.name, aiEm.parsed?.intensity);
 
   // AI /generate with type=tool
@@ -316,6 +316,77 @@ async function main() {
   })).json();
   record(aiTool.ok === true && typeof aiTool.parsed?.name === 'string' && Array.isArray(aiTool.parsed?.schema), 'AI /generate tool produced name + schema array');
   log('   → AI tool:', aiTool.parsed?.name);
+
+  // AI /generate with type=skill
+  const aiSkill = await (await fetch(`${BACKEND}/api/ai/generate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'skill', prompt: 'When the user shares a long article, summarize the top 5 ideas in bullet points.', temperature: 0.4, maxTokens: 512 }),
+  })).json();
+  record(aiSkill.ok === true && typeof aiSkill.parsed?.name === 'string' && Array.isArray(aiSkill.parsed?.steps), 'AI /generate skill produced name + steps');
+  log('   → AI skill:', aiSkill.parsed?.name);
+
+  // AI /generate with type=agent
+  const aiAgent = await (await fetch(`${BACKEND}/api/ai/generate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'agent', prompt: 'A senior Rust engineer with a dry sense of humor, focused on safe systems code', temperature: 0.4, maxTokens: 512 }),
+  })).json();
+  record(aiAgent.ok === true && typeof aiAgent.parsed?.name === 'string' && Array.isArray(aiAgent.parsed?.capabilities), 'AI /generate agent produced name + capabilities');
+  log('   → AI agent:', aiAgent.parsed?.name);
+
+  // Skills CRUD
+  const skillsList = await (await fetch(`${BACKEND}/api/skills`)).json();
+  record(skillsList.total >= 3 && skillsList.items.some((s) => s.builtin), 'GET /api/skills lists built-ins');
+  const sklId = `skl_e2e_${Date.now().toString(36)}`.slice(0, 40);
+  const sklCreate = await (await fetch(`${BACKEND}/api/skills`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      id: sklId,
+      name: 'E2E Test Skill',
+      summary: 'A test skill',
+      trigger: 'When E2E',
+      steps: ['Step 1: do this', 'Step 2: do that'],
+      tools: ['readFile'],
+      guardrails: 'no harm',
+    }),
+  })).json();
+  record(sklCreate.ok === true && sklCreate.id === sklId, 'POST /api/skills created');
+  const sklDup = await (await fetch(`${BACKEND}/api/skills/${sklId}/duplicate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ newId: `${sklId}_2`, newName: 'E2E Test Skill 2' }),
+  })).json();
+  record(sklDup.ok === true && sklDup.id === `${sklId}_2`, 'POST /api/skills/:id/duplicate');
+  await fetch(`${BACKEND}/api/skills/${sklId}`, { method: 'DELETE' });
+  await fetch(`${BACKEND}/api/skills/${sklId}_2`, { method: 'DELETE' });
+
+  // Agents CRUD
+  const agtList = await (await fetch(`${BACKEND}/api/agents`)).json();
+  record(agtList.total >= 3 && agtList.items.some((a) => a.builtin), 'GET /api/agents lists built-ins');
+  const agtId = `agt_e2e_${Date.now().toString(36)}`.slice(0, 40);
+  const agtCreate = await (await fetch(`${BACKEND}/api/agents`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      id: agtId,
+      name: 'E2E Test Agent',
+      role: 'test role',
+      systemPrompt: 'test system prompt',
+      capabilities: ['cap1', 'cap2'],
+      limitations: ['lim1'],
+    }),
+  })).json();
+  record(agtCreate.ok === true && agtCreate.id === agtId, 'POST /api/agents created');
+  const agtDup = await (await fetch(`${BACKEND}/api/agents/${agtId}/duplicate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ newId: `${agtId}_2`, newName: 'E2E Test Agent 2' }),
+  })).json();
+  record(agtDup.ok === true && agtDup.id === `${agtId}_2`, 'POST /api/agents/:id/duplicate');
+  await fetch(`${BACKEND}/api/agents/${agtId}`, { method: 'DELETE' });
+  await fetch(`${BACKEND}/api/agents/${agtId}_2`, { method: 'DELETE' });
 
   // Tool templates CRUD
   const tplList = await (await fetch(`${BACKEND}/api/tools/templates`)).json();
@@ -402,13 +473,17 @@ async function main() {
   for (const [path, name] of [
     ['/', '01-dashboard'],
     ['/chat', '02-chat'],
-    ['/memory', '03-memory'],
-    ['/tools', '04-tools'],
-    ['/tools/templates', '04b-tools-templates'],
-    ['/personality', '04c-personality'],
-    ['/emotion', '04d-emotion'],
-    ['/config', '05-config'],
-    ['/settings', '06-settings'],
+    ['/agent', '03-agent'],
+    ['/agents', '03b-agents'],
+    ['/skills', '03c-skills'],
+    ['/memory', '04-memory'],
+    ['/tools', '05-tools'],
+    ['/tools/templates', '05b-tools-templates'],
+    ['/personality', '06-personality'],
+    ['/emotion', '07-emotion'],
+    ['/config', '08-config'],
+    ['/graph', '09-graph'],
+    ['/settings', '10-settings'],
   ]) {
     await page.goto(`${FRONTEND}${path}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2200);

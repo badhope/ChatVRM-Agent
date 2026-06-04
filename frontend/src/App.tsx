@@ -5,6 +5,8 @@ import { Chat } from './pages/Chat';
 import { Agent } from './pages/Agent';
 import { Tools } from './pages/Tools';
 import { ToolTemplates } from './pages/ToolTemplates';
+import { Skills } from './pages/Skills';
+import { Agents } from './pages/Agents';
 import { Memory } from './pages/Memory';
 import { Personality } from './pages/Personality';
 import { Emotion } from './pages/Emotion';
@@ -31,8 +33,10 @@ export function App() {
         <Route path="/chat" element={<Chat />} />
         <Route path="/chat/:sessionId" element={<Chat />} />
         <Route path="/agent" element={<Agent />} />
+        <Route path="/agents" element={<Agents />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/tools/templates" element={<ToolTemplates />} />
+        <Route path="/skills" element={<Skills />} />
         <Route path="/memory" element={<Memory />} />
         <Route path="/personality" element={<Personality />} />
         <Route path="/emotion" element={<Emotion />} />
