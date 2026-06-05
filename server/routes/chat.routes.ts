@@ -1,20 +1,20 @@
 import { Router, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
-import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
+import type { ILLMPort } from '../../src/ports/llm.port.js';
+import type { IConfigPort } from '../../src/ports/config.port.js';
+import type { IMemoryPort } from '../../src/ports/memory.port.js';
 import { SessionStore } from '../session-store.js';
 import { resolveApiKey } from '../providers.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';
 import { incrementToolCall } from './dashboard.routes.js';
 import type { ProviderType } from '../../src/ports/config.port.js';
-import type { ChatMessage } from './types.js';
+import type { ChatMessage } from '../types.js';
 import { PROVIDER_META } from '../providers.js';
 
 interface ChatDeps {
-  llm: LLMAdapter;
-  config: ConfigAdapter;
-  memory: MemoryAdapter;
+  llm: ILLMPort;
+  config: IConfigPort;
+  memory: IMemoryPort;
   sessions: SessionStore;
 }
 

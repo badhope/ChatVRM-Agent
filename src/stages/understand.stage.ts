@@ -1,7 +1,8 @@
 import type { Stage, PipelineContext, PipelineEvents } from '../core/types.js';
 import { EventEmitter } from 'eventemitter3';
 import type { RAGService } from '../domain/memory/rag.service.js';
-import type { LLMAdapter } from '../adapters/llm.adapter.js';
+import type { ILLMPort } from '../ports/llm.port.js';
+import type { IStoragePort } from '../ports/storage.port.js';
 import { StorageAdapter } from '../adapters/storage.adapter.js';
 
 const INTENT_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
@@ -48,7 +49,7 @@ function recognizeIntentRegex(input: string): string {
   return 'general';
 }
 
-async function recognizeIntentLLM(llm: LLMAdapter, input: string): Promise<string> {
+async function recognizeIntentLLM(llm: ILLMPort, input: string): Promise<string> {
   try {
     const response = await llm.chat({
       messages: [
@@ -71,15 +72,15 @@ async function recognizeIntentLLM(llm: LLMAdapter, input: string): Promise<strin
 export class UnderstandStage implements Stage {
   readonly name = 'understand';
   readonly required = true;
-  private storage: StorageAdapter;
+  private storage: IStoragePort;
   private rag?: RAGService;
-  private llm?: LLMAdapter;
+  private llm?: ILLMPort;
   private emitter: EventEmitter<PipelineEvents>;
 
   constructor(
-    storage: StorageAdapter | null,
+    storage: IStoragePort | null,
     rag?: RAGService | null,
-    llm?: LLMAdapter | null,
+    llm?: ILLMPort | null,
     emitter?: EventEmitter<PipelineEvents>,
   ) {
     this.storage = storage ?? new StorageAdapter();

@@ -1,23 +1,23 @@
 import { EventEmitter } from 'eventemitter3';
 import type { Stage, PipelineContext, PipelineEvents } from '../core/types.js';
 import { getEventBus } from '../core/event-bus.js';
-import type { LLMAdapter } from '../adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../adapters/config.adapter.js';
-import type { MemoryAdapter } from '../adapters/memory.adapter.js';
+import type { ILLMPort } from '../ports/llm.port.js';
+import type { IConfigPort } from '../ports/config.port.js';
+import type { IMemoryPort } from '../ports/memory.port.js';
 
 export class ReflectStage implements Stage {
   readonly name = 'reflect';
   readonly required = false;
   private emitter: EventEmitter<PipelineEvents>;
-  private llm?: LLMAdapter;
-  private config?: ConfigAdapter;
-  private memory?: MemoryAdapter;
+  private llm?: ILLMPort;
+  private config?: IConfigPort;
+  private memory?: IMemoryPort;
 
   constructor(
     emitter?: EventEmitter<PipelineEvents>,
-    llm?: LLMAdapter,
-    config?: ConfigAdapter,
-    memory?: MemoryAdapter,
+    llm?: ILLMPort,
+    config?: IConfigPort,
+    memory?: IMemoryPort,
   ) {
     this.emitter = emitter ?? getEventBus();
     this.llm = llm;

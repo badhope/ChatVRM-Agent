@@ -69,6 +69,19 @@ export class InMemoryVectorStore implements VectorStore {
     return this.records.size;
   }
 
+  /**
+   * Return every record in the store. Used by the admin/RAG
+   * routes to surface the corpus and to back up to disk. For
+   * larger corpora prefer paginated `query` calls.
+   */
+  async all(): Promise<Array<{ id: string; text: string; metadata?: Record<string, unknown> }>> {
+    return Array.from(this.records.values()).map((r) => ({
+      id: r.id,
+      text: r.text,
+      metadata: r.metadata,
+    }));
+  }
+
   clear(): void {
     this.records.clear();
   }

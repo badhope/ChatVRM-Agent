@@ -1,12 +1,12 @@
 import type { Stage, PipelineContext, TaskStep, StepResult, PipelineEvents } from '../core/types.js';
 import { MAX_STEPS } from '../core/types.js';
 import { EventEmitter } from 'eventemitter3';
-import type { LLMAdapter } from '../adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../adapters/config.adapter.js';
-import type { StorageAdapter } from '../adapters/storage.adapter.js';
-import type { MemoryAdapter } from '../adapters/memory.adapter.js';
-import type { ShellExecutor } from '../adapters/shell.adapter.js';
-import type { ToolsRegistry } from '../adapters/tools.registry.js';
+import type { ILLMPort } from '../ports/llm.port.js';
+import type { IConfigPort } from '../ports/config.port.js';
+import type { IStoragePort } from '../ports/storage.port.js';
+import type { IMemoryPort } from '../ports/memory.port.js';
+import type { IShellPort } from '../ports/shell.port.js';
+import type { IToolsPort } from '../ports/tools.port.js';
 import type { ToolResult } from '../ports/tools.port.js';
 import { PersonalityService } from '../domain/personality/personality.service.js';
 import { EmotionService } from '../domain/personality/emotion.service.js';
@@ -32,19 +32,19 @@ export class ExecuteStage implements Stage {
   readonly name = 'execute';
   readonly required = true;
   readonly canRollback = true;
-  private llm: LLMAdapter;
-  private config: ConfigAdapter;
+  private llm: ILLMPort;
+  private config: IConfigPort;
   private emitter: EventEmitter<PipelineEvents>;
-  private storage?: StorageAdapter;
-  private memory?: MemoryAdapter;
-  private shell?: ShellExecutor;
-  private tools?: ToolsRegistry;
+  private storage?: IStoragePort;
+  private memory?: IMemoryPort;
+  private shell?: IShellPort;
+  private tools?: IToolsPort;
 
   constructor(
-    llm: LLMAdapter,
-    config: ConfigAdapter,
+    llm: ILLMPort,
+    config: IConfigPort,
     emitter?: EventEmitter<PipelineEvents>,
-    options?: { storage?: StorageAdapter; memory?: MemoryAdapter; shell?: ShellExecutor; tools?: ToolsRegistry },
+    options?: { storage?: IStoragePort; memory?: IMemoryPort; shell?: IShellPort; tools?: IToolsPort },
   ) {
     this.llm = llm;
     this.config = config;

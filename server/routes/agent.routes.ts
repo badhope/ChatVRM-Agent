@@ -1,12 +1,12 @@
 import { Router, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'eventemitter3';
-import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
-import type { StorageAdapter } from '../../src/adapters/storage.adapter.js';
-import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
-import type { ShellExecutor } from '../../src/adapters/shell.adapter.js';
-import type { ToolsRegistry } from '../../src/adapters/tools.registry.js';
+import type { ILLMPort } from '../../src/ports/llm.port.js';
+import type { IConfigPort } from '../../src/ports/config.port.js';
+import type { IStoragePort } from '../../src/ports/storage.port.js';
+import type { IMemoryPort } from '../../src/ports/memory.port.js';
+import type { IShellPort } from '../../src/ports/shell.port.js';
+import type { IToolsPort } from '../../src/ports/tools.port.js';
 import { createDefaultStages } from '../../src/stages/index.js';
 import { resolveApiKey, PROVIDER_META } from '../providers.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';
@@ -19,12 +19,12 @@ import path from 'node:path';
 import os from 'node:os';
 
 interface AgentDeps {
-  llm: LLMAdapter;
-  config: ConfigAdapter;
-  storage: StorageAdapter;
-  memory: MemoryAdapter;
-  shell: ShellExecutor;
-  tools: ToolsRegistry;
+  llm: ILLMPort;
+  config: IConfigPort;
+  storage: IStoragePort;
+  memory: IMemoryPort;
+  shell: IShellPort;
+  tools: IToolsPort;
 }
 
 function sseHeaders(res: Response) {

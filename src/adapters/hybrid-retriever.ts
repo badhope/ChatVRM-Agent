@@ -100,29 +100,60 @@ export class HybridRetriever {
     await this.vectorStore.remove(ids);
   }
 
-  async retrieve(query: string, topK: number = 5): Promise<HybridResult[]> {
+  async retrieve(query: string, topK?: number): Promise<HybridResult[]>;
+  async retrieve(opts: { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number }): Promise<HybridResult[]>;
+  async retrieve(
+    arg: string | { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number },
+    legacyTopK: number = 5,
+  ): Promise<HybridResult[]> {
+    const opts = typeof arg === 'string' ? { query: arg, topK: legacyTopK } : arg;
+    const topK = opts.topK ?? 5;
+    const source = opts.source ?? 'hybrid';
+    const vectorWeight = opts.vectorWeight ?? 0.6;
     const oversample = topK * this.oversample;
 
     // BM25 results.
-    const bm25Hits = this.bm25.search(query, { combineWith: 'AND' }).slice(0, oversample);
+    const bm25Hits = this.bm25.search(opts.query, { combineWith: 'AND' }).slice(0, oversample);
     const bm25Rank = new Map<string, number>();
     bm25Hits.forEach((h, idx) => bm25Rank.set(String(h.id), idx + 1));
 
-    // Vector results.
+    // Vector results (only if the source allows).
     let vectorHits: VectorHit[] = [];
-    if (this.vectorIds.size > 0) {
-      const qv = await this.embedder.embed(query);
+    if ((source === 'vector' || source === 'hybrid') && this.vectorIds.size > 0) {
+      const qv = await this.embedder.embed(opts.query);
       vectorHits = await this.vectorStore.query({ vector: qv, topK: oversample });
     }
     const vectorRank = new Map<string, number>();
     vectorHits.forEach((h, idx) => vectorRank.set(h.id, idx + 1));
 
-    // RRF fusion.
+    // For pure vector mode, return directly (no RRF needed).
+    if (source === 'vector') {
+      return vectorHits.slice(0, topK).map((h) => ({
+        id: h.id,
+        text: h.text,
+        metadata: h.metadata,
+        score: h.score,
+        sources: { vector: h.score },
+      }));
+    }
+    // For pure keyword mode, return BM25 hits (normalised).
+    if (source === 'keyword') {
+      return bm25Hits.slice(0, topK).map((h) => ({
+        id: String(h.id),
+        text: (h as unknown as { text: string }).text ?? '',
+        metadata: (h as unknown as { metadata?: Record<string, unknown> }).metadata,
+        score: h.score,
+        sources: { bm25: h.score },
+      }));
+    }
+
+    // RRF fusion (hybrid mode).
+    const bm25Weight = 1 - vectorWeight; // keep legacy symmetric weighting
     const allIds = new Set<string>([...bm25Rank.keys(), ...vectorRank.keys()]);
     const fused: HybridResult[] = [];
     for (const id of allIds) {
-      const rrfBm = bm25Rank.has(id) ? this.bm25Weight / (this.rrfK + (bm25Rank.get(id) ?? 0)) : 0;
-      const rrfVe = vectorRank.has(id) ? this.vectorWeight / (this.rrfK + (vectorRank.get(id) ?? 0)) : 0;
+      const rrfBm = bm25Rank.has(id) ? bm25Weight / (this.rrfK + (bm25Rank.get(id) ?? 0)) : 0;
+      const rrfVe = vectorRank.has(id) ? vectorWeight / (this.rrfK + (vectorRank.get(id) ?? 0)) : 0;
       const score = rrfBm + rrfVe;
       const doc = this.docs.get(id);
       if (!doc) continue;

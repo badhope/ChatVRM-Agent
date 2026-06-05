@@ -14,6 +14,12 @@ import { emotionRoutes } from './routes/emotion.routes.js';
 import { aiRoutes } from './routes/ai.routes.js';
 import { skillsRoutes } from './routes/skills.routes.js';
 import { agentsRoutes } from './routes/agents.routes.js';
+import { ragRoutes } from './routes/rag.routes.js';
+import { webhooksRoutes } from './routes/webhooks.routes.js';
+import { queueRoutes } from './routes/queue.routes.js';
+import { observabilityRoutes } from './routes/observability.routes.js';
+import { agentsRuntimeRoutes } from './routes/agents-runtime.routes.js';
+import { getRuntime } from './runtime.js';
 import { registerDefaultTools } from './tools-setup.js';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -24,7 +30,14 @@ const __dirname = path.dirname(__filename);
 
 export function createApp() {
   const adapters = createAdapters();
-  registerDefaultTools(adapters);
+  registerDefaultTools({
+    llm: adapters.llm,
+    storage: adapters.storage,
+    memory: adapters.memory,
+    shell: adapters.shell,
+    config: adapters.config,
+    tools: adapters.tools,
+  });
   const sessions = new SessionStore();
 
   const app = express();
@@ -41,9 +54,25 @@ export function createApp() {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  // Hydrate the shared runtime from disk (best-effort, non-blocking).
+  const runtime = getRuntime();
+  runtime.hydrateFromDisk().then((r) => {
+    if (r.loaded > 0) {
+      process.stdout.write(`[runtime] hydrated ${r.loaded} vectors from ${r.path}\n`);
+    }
+  }).catch(() => {
+    /* ignore — Runtime.hydrateFromDisk is best-effort */
+  });
+
   app.use('/api/config', configRoutes(adapters.config, adapters.llm));
   app.use('/api/memory', memoryRoutes(adapters.memory));
-  app.use('/api/tools', toolsRoutes(adapters));
+  app.use('/api/tools', toolsRoutes({
+    tools: adapters.tools,
+    llm: adapters.llm,
+    storage: adapters.storage,
+    memory: adapters.memory,
+    shell: adapters.shell,
+  }));
   app.use('/api/dashboard', dashboardRoutes(adapters.llm, adapters.memory, adapters.config, sessions));
   app.use('/api/graph', graphRoutes(adapters.memory));
   app.use('/api/personality', personalityRoutes());
@@ -54,10 +83,31 @@ export function createApp() {
     memory: adapters.memory,
     sessions,
   }));
-  app.use('/api/agent', agentRoutes(adapters));
+  app.use('/api/agent', agentRoutes({
+    llm: adapters.llm,
+    config: adapters.config,
+    storage: adapters.storage,
+    memory: adapters.memory,
+    shell: adapters.shell,
+    tools: adapters.tools,
+  }));
   app.use('/api/ai', aiRoutes({ llm: adapters.llm, config: adapters.config }));
   app.use('/api/skills', skillsRoutes());
   app.use('/api/agents', agentsRoutes());
+
+  // W12: expose the W11 integration layer.
+  app.use('/api/rag', ragRoutes());
+  app.use('/api/webhooks', webhooksRoutes());
+  app.use('/api/queue', queueRoutes());
+  app.use('/api/observability', observabilityRoutes());
+  app.use('/api/runtime/agents', agentsRuntimeRoutes({
+    llm: adapters.llm,
+    config: adapters.config,
+    memory: adapters.memory,
+    storage: adapters.storage,
+    tools: adapters.tools,
+    shell: adapters.shell,
+  }));
 
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   if (fs.existsSync(frontendDist)) {

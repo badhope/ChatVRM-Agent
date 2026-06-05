@@ -1,12 +1,12 @@
 import { Router, type Request, type Response } from 'express';
-import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
+import type { ILLMPort } from '../../src/ports/llm.port.js';
+import type { IConfigPort } from '../../src/ports/config.port.js';
 import type { ProviderType } from '../../src/ports/config.port.js';
 import { PROVIDER_META, resolveApiKey } from '../providers.js';
 
 interface AIDeps {
-  llm: LLMAdapter;
-  config: ConfigAdapter;
+  llm: ILLMPort;
+  config: IConfigPort;
 }
 
 /**
@@ -196,7 +196,8 @@ export function aiRoutes(deps: AIDeps): Router {
 
     const startedAt = Date.now();
     try {
-      const response = await deps.llm.chatExact({
+      const chatFn = deps.llm.chatExact ?? deps.llm.chat;
+      const response = await chatFn({
         provider: resolvedProvider,
         model: resolvedModel,
         messages: [

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
-import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
+import type { IMemoryPort } from '../../src/ports/memory.port.js';
 
-export function memoryRoutes(memory: MemoryAdapter): Router {
+export function memoryRoutes(memory: IMemoryPort): Router {
   const r = Router();
 
   r.get('/', async (req, res) => {
@@ -136,7 +136,12 @@ export function memoryRoutes(memory: MemoryAdapter): Router {
       return;
     }
     try {
-      const updated = await memory.update(id, patch);
+      const updateFn = memory.update;
+      if (!updateFn) {
+        res.status(501).json({ error: 'memory adapter does not support update' });
+        return;
+      }
+      const updated = await updateFn.call(memory, id, patch);
       if (!updated) {
         res.status(404).json({ error: 'not found' });
         return;

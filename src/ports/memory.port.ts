@@ -26,4 +26,14 @@ export interface IMemoryPort {
   forget(id: string): Promise<boolean>;
   consolidate(): Promise<ConsolidationResult>;
   stats(): Promise<MemoryStats>;
+  /**
+   * Update an existing record by id. Returns the updated record, or
+   * `null` if not found. Only the listed fields are mutable.
+   * Optional — adapters that don't support in-place updates should
+   * implement it as a forget() + remember() round-trip.
+   */
+  update?(
+    id: string,
+    patch: Partial<Pick<MemoryRecord, 'input' | 'output' | 'tags' | 'provider' | 'model'>>,
+  ): Promise<MemoryRecord | null>;
 }

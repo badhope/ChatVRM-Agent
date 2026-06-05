@@ -1,8 +1,7 @@
 import { Router, type Request, type Response } from 'express';
-import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
-import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
+import type { IConfigPort, ProviderType, EnvVarSnapshot } from '../../src/ports/config.port.js';
+import type { ILLMPort } from '../../src/ports/llm.port.js';
 import { PROVIDER_META, PROVIDER_BASE_URLS, resolveApiKey } from '../providers.js';
-import type { ProviderType, EnvVarSnapshot } from '../../src/ports/config.port.js';
 
 const ENV_BASE_URL_KEYS: Record<ProviderType, string> = {
   openai: 'OPENAI_BASE_URL',
@@ -36,7 +35,7 @@ function envSnapshotFor(provider: ProviderType): EnvVarSnapshot {
   };
 }
 
-export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
+export function configRoutes(cfg: IConfigPort, llm: ILLMPort): Router {
   const r = Router();
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -130,7 +129,8 @@ export function configRoutes(cfg: ConfigAdapter, llm: LLMAdapter): Router {
     }
     const startedAt = Date.now();
     try {
-      const r = await llm.chatExact({
+      const chatFn = llm.chatExact ?? llm.chat;
+      const r = await chatFn({
         provider: id,
         model,
         messages: [{ role: 'user', content: message ?? 'Reply with one word: ready' }],

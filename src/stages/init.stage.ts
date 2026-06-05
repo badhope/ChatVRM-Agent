@@ -1,7 +1,7 @@
 import type { Stage, PipelineContext, PipelineEvents } from '../core/types.js';
 import { EventEmitter } from 'eventemitter3';
 import { getEventBus } from '../core/event-bus.js';
-import type { ConfigAdapter } from '../adapters/config.adapter.js';
+import type { IConfigPort } from '../ports/config.port.js';
 import { PersonalityService } from '../domain/personality/personality.service.js';
 import { EmotionService } from '../domain/personality/emotion.service.js';
 import { homedir } from 'os';
@@ -12,9 +12,9 @@ export class InitStage implements Stage {
   readonly name = 'initialize';
   readonly required = true;
   private emitter: EventEmitter<PipelineEvents>;
-  private config?: ConfigAdapter;
+  private config?: IConfigPort;
 
-  constructor(emitter?: EventEmitter<PipelineEvents>, config?: ConfigAdapter) {
+  constructor(emitter?: EventEmitter<PipelineEvents>, config?: IConfigPort) {
     this.emitter = emitter ?? getEventBus();
     this.config = config;
   }

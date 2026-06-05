@@ -1,8 +1,8 @@
 import type { Stage, PipelineContext, TaskStep, PipelineEvents } from '../core/types.js';
 import { EventEmitter } from 'eventemitter3';
 import { v4 as uuidv4 } from 'uuid';
-import type { LLMAdapter } from '../adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../adapters/config.adapter.js';
+import type { ILLMPort } from '../ports/llm.port.js';
+import type { IConfigPort } from '../ports/config.port.js';
 
 const PLAN_TEMPLATES: Record<string, Array<Omit<TaskStep, 'id'>>> = {
   code: [
@@ -60,11 +60,11 @@ function parseLLMPlan(content: string): Array<{ description: string; tool?: stri
 export class PlanStage implements Stage {
   readonly name = 'plan';
   readonly required = true;
-  private llm: LLMAdapter;
-  private config: ConfigAdapter;
+  private llm: ILLMPort;
+  private config: IConfigPort;
   private emitter: EventEmitter<PipelineEvents>;
 
-  constructor(llm: LLMAdapter, config: ConfigAdapter, emitter?: EventEmitter<PipelineEvents>) {
+  constructor(llm: ILLMPort, config: IConfigPort, emitter?: EventEmitter<PipelineEvents>) {
     this.llm = llm;
     this.config = config;
     this.emitter = emitter ?? new EventEmitter<PipelineEvents>();

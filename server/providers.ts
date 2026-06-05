@@ -1,4 +1,4 @@
-import type { ConfigAdapter } from '../src/adapters/config.adapter.js';
+import type { IConfigPort } from '../src/ports/config.port.js';
 import type { ProviderType } from '../src/ports/config.port.js';
 
 export interface ProviderMeta {
@@ -41,7 +41,7 @@ export async function listProviders(): Promise<ProviderMeta[]> {
   return PROVIDER_META;
 }
 
-export async function resolveApiKey(cfg: ConfigAdapter, provider: ProviderType): Promise<string | undefined> {
+export async function resolveApiKey(cfg: IConfigPort, provider: ProviderType): Promise<string | undefined> {
   const stored = await cfg.getApiKey(provider);
   if (stored && stored.length > 0) return stored.trim();
   const envCandidates = [

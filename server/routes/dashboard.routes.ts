@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { LLMAdapter } from '../../src/adapters/llm.adapter.js';
-import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
-import type { ConfigAdapter } from '../../src/adapters/config.adapter.js';
+import type { ILLMPort } from '../../src/ports/llm.port.js';
+import type { IMemoryPort } from '../../src/ports/memory.port.js';
+import type { IConfigPort } from '../../src/ports/config.port.js';
 import { PROVIDER_META, resolveApiKey } from '../providers.js';
 import { SessionStore } from '../session-store.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';
@@ -28,9 +28,9 @@ export function incrementToolCall(): void {
 }
 
 export function dashboardRoutes(
-  llm: LLMAdapter,
-  memory: MemoryAdapter,
-  config: ConfigAdapter,
+  llm: ILLMPort,
+  memory: IMemoryPort,
+  config: IConfigPort,
   sessions: SessionStore,
 ): Router {
   const r = Router();

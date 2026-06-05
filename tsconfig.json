@@ -6,7 +6,7 @@
     "lib": ["ES2022"],
     "types": ["node"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -24,11 +24,13 @@
     "allowUnreachableCode": false
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "server/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
+    "dist-server",
     "packages",
     "skills",
     "mcp",
@@ -36,6 +38,8 @@
     "examples",
     "plugins",
     "scripts",
-    "docs"
+    "docs",
+    "frontend",
+    "coverage"
   ]
 }

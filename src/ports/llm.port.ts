@@ -81,6 +81,15 @@ export interface StreamChunk {
 
 export interface ILLMPort {
   chat(params: ChatParams): Promise<ChatResponse>;
+  /**
+   * Like `chat`, but routes the call through the **breaker for the
+   * requested provider only** — no automatic fallback to a different
+   * provider on failure. Useful for health checks and admin probes
+   * that need the "true" status of a specific model instead of
+   * silently succeeding via a fallback. Optional; ports that don't
+   * implement it should fall back to `chat`.
+   */
+  chatExact?(params: ChatParams): Promise<ChatResponse>;
   stream(params: ChatParams): AsyncGenerator<StreamChunk>;
   listModels(provider: ProviderType): Promise<string[]>;
   isAvailable(provider: ProviderType): Promise<boolean>;

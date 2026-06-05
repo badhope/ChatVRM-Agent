@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { MemoryAdapter } from '../../src/adapters/memory.adapter.js';
+import type { IMemoryPort } from '../../src/ports/memory.port.js';
 
-export function graphRoutes(memory: MemoryAdapter): Router {
+export function graphRoutes(memory: IMemoryPort): Router {
   const r = Router();
 
   r.get('/', async (_req, res) => {

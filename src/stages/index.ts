@@ -5,22 +5,22 @@ import { ExecuteStage } from './execute.stage.js';
 import { ValidateStage } from './validate.stage.js';
 import { ReflectStage } from './reflect.stage.js';
 import type { Stage, PipelineEvents } from '../core/types.js';
-import type { LLMAdapter } from '../adapters/llm.adapter.js';
-import type { ConfigAdapter } from '../adapters/config.adapter.js';
-import type { StorageAdapter } from '../adapters/storage.adapter.js';
-import type { MemoryAdapter } from '../adapters/memory.adapter.js';
-import type { ShellExecutor } from '../adapters/shell.adapter.js';
-import type { ToolsRegistry } from '../adapters/tools.registry.js';
+import type { ILLMPort } from '../ports/llm.port.js';
+import type { IConfigPort } from '../ports/config.port.js';
+import type { IStoragePort } from '../ports/storage.port.js';
+import type { IMemoryPort } from '../ports/memory.port.js';
+import type { IShellPort } from '../ports/shell.port.js';
+import type { IToolsPort } from '../ports/tools.port.js';
 import type { RAGService } from '../domain/memory/rag.service.js';
 import { EventEmitter } from 'eventemitter3';
 
 export interface StageDependencies {
-  llm: LLMAdapter;
-  config: ConfigAdapter;
-  storage?: StorageAdapter;
-  memory?: MemoryAdapter;
-  shell?: ShellExecutor;
-  tools?: ToolsRegistry;
+  llm: ILLMPort;
+  config: IConfigPort;
+  storage?: IStoragePort;
+  memory?: IMemoryPort;
+  shell?: IShellPort;
+  tools?: IToolsPort;
   rag?: RAGService;
   eventBus?: EventEmitter<PipelineEvents>;
 }
