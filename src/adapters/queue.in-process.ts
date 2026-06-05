@@ -74,10 +74,9 @@ export class InProcessQueue implements IQueue {
 
   async add<T = unknown>(name: string, data: T, opts: JobOptions = {}): Promise<Job<T>> {
     if (this.closed) throw new Error('InProcessQueue: closed');
-    if (this.processors.has(name) === false && opts.jobId === undefined) {
-      // No processor registered yet, but we still allow adding — common
-      // for "produce now, register consumer later" patterns.
-    }
+    // Allow producing before consuming: jobs sit in `waiting` and
+    // are picked up the next time `process()` registers a matching
+    // processor (which calls `schedulePump()`).
     const id = opts.jobId ?? randomUUID();
     const existing = this.jobs.get(id);
     if (existing && (existing.state === 'waiting' || existing.state === 'delayed')) {
@@ -285,6 +284,17 @@ export class InProcessQueue implements IQueue {
     if (this.delayedTimer) {
       clearInterval(this.delayedTimer);
       this.delayedTimer = null;
+    }
+    // Surface pending jobs so consumers waiting on events can unwind
+    // instead of hanging forever after the queue is gone.
+    const closedErr = new Error('InProcessQueue: closed');
+    for (const job of [...this.waiting, ...this.delayed.map((d) => d.job)]) {
+      if (job.state === 'waiting' || job.state === 'delayed') {
+        job.state = 'failed';
+        job.failedReason = closedErr.message;
+        job.finishedOn = Date.now();
+        this.emitter.emit('failed', this.cloneJob(job), closedErr);
+      }
     }
     this.processors.clear();
     this.waiting.length = 0;

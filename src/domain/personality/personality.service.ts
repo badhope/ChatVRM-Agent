@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 export interface PersonalityProfile {
   id: string;
   name: string;
@@ -61,9 +63,10 @@ export const PRESET_TRAITS: Record<
 };
 
 function generateId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 10);
-  return `${timestamp}-${random}`;
+  // crypto.randomUUID is collision-free under concurrent bursts and is
+  // already used elsewhere in the project (e.g. chat routes, plan
+  // stage). Avoid Math.random which is biased and seedable.
+  return randomUUID();
 }
 
 function now(): string {

@@ -225,11 +225,24 @@ export class AgentInstance {
       return fallback;
     }
 
+    // Aggregate real per-step usage — ReActSteps carry the full usage
+    // record for each LLM call, so we can sum prompt + completion
+    // instead of reporting zeros and breaking observability dashboards.
+    const aggregated = result.steps.reduce(
+      (acc, s) => {
+        acc.promptTokens += s.tokens.promptTokens;
+        acc.completionTokens += s.tokens.completionTokens;
+        acc.totalTokens += s.tokens.totalTokens;
+        return acc;
+      },
+      { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    );
+
     const ar: AgentRunResult = {
       agentName: this.def.name,
       output: result.output,
       steps: result.steps,
-      tokens: { promptTokens: 0, completionTokens: 0, totalTokens: result.totalTokens },
+      tokens: aggregated,
       finishReason: result.finishReason,
     };
     // Persist a summary in shared memory if there's a shared memory slot.

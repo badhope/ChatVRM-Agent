@@ -78,9 +78,12 @@ export class PipelineEngine {
       }, this.timeoutMs);
     });
 
+    let latestContext: PipelineContext = context;
     try {
       const result = await Promise.race([
-        this.executeStages(context),
+        this.executeStages(context, (c) => {
+          latestContext = c;
+        }),
         timeoutPromise,
       ]);
 
@@ -93,7 +96,11 @@ export class PipelineEngine {
       return result;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.emitter.emit('pipeline:error', { error: err, context });
+      // Surface the *live* context (with whatever partial work
+      // succeeded) to observability consumers, not the empty initial
+      // snapshot. `executeStages` mutates the local `context` indirectly
+      // through the per-stage context references it threads.
+      this.emitter.emit('pipeline:error', { error: err, context: latestContext });
       throw err;
     } finally {
       if (pipelineTimeout) {
@@ -102,32 +109,81 @@ export class PipelineEngine {
     }
   }
 
-  private async executeStages(context: PipelineContext): Promise<PipelineContext> {
+  private async executeStages(
+    context: PipelineContext,
+    onContextChange?: (c: PipelineContext) => void,
+  ): Promise<PipelineContext> {
     let currentContext = { ...context };
+    const track = (c: PipelineContext) => {
+      currentContext = c;
+      onContextChange?.(c);
+    };
 
     for (const stage of this.stages) {
       let stageSuccess = false;
       let lastError: Error | null = null;
+      let postFailContext: PipelineContext | null = null;
 
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
         try {
-          currentContext = await this.executeStage(stage, currentContext, attempt);
+          track(await this.executeStage(stage, currentContext, attempt));
           stageSuccess = true;
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
+          // Capture the most recent context seen by the stage so a
+          // later rollback() can act on partial-work state, not the
+          // pre-execute snapshot.
+          postFailContext = currentContext;
 
           this.emitter.emit('stage:error', {
             stage: stage.name,
             error: lastError,
             context: currentContext,
+            attempt,
+            terminal: attempt === this.maxRetries,
           });
 
-          if (attempt < this.maxRetries) {
+          // Roll back between retries so a partial write doesn't
+          // survive a follow-up attempt. We also fall through to a
+          // terminal rollback below if all retries are exhausted.
+          if (attempt < this.maxRetries && stage.rollback) {
+            try {
+              const rolled = await stage.rollback(currentContext);
+              if (rolled) track(rolled);
+            } catch (rollbackError) {
+              const rbErr =
+                rollbackError instanceof Error
+                  ? rollbackError
+                  : new Error(String(rollbackError));
+              this.emitter.emit('output', {
+                text: `  ⚠ Rollback failed for stage "${stage.name}": ${rbErr.message}`,
+              });
+            }
+          } else if (attempt < this.maxRetries) {
             this.emitter.emit('output', {
               text: `  ⚠ Retrying stage "${stage.name}" (attempt ${attempt + 1}/${this.maxRetries})...`,
             });
           }
+        }
+      }
+
+      // Terminal-failure rollback: if we have no retries left and the
+      // stage declared rollback, run it once on the post-fail context.
+      // This guarantees that `maxRetries: 0` doesn't silently leave
+      // partial work in place.
+      if (!stageSuccess && postFailContext && stage.rollback && this.maxRetries === 0) {
+        try {
+          const rolled = await stage.rollback(postFailContext);
+          if (rolled) track(rolled);
+        } catch (rollbackError) {
+          const rbErr =
+            rollbackError instanceof Error
+              ? rollbackError
+              : new Error(String(rollbackError));
+          this.emitter.emit('output', {
+            text: `  ⚠ Terminal rollback failed for stage "${stage.name}": ${rbErr.message}`,
+          });
         }
       }
 
@@ -208,23 +264,11 @@ export class PipelineEngine {
       phaseRecord.endTime = Date.now();
       phaseRecord.status = 'failed';
 
-      const err = error instanceof Error ? error : new Error(String(error));
-
-      if (attempt < this.maxRetries && stage.rollback) {
-        try {
-          await stage.rollback(context);
-        } catch (rollbackError) {
-          const rbErr =
-            rollbackError instanceof Error
-              ? rollbackError
-              : new Error(String(rollbackError));
-          this.emitter.emit('output', {
-            text: `  ⚠ Rollback failed for stage "${stage.name}": ${rbErr.message}`,
-          });
-        }
-      }
-
-      throw err;
+      // Note: rollback is handled by the caller (executeStages) so it
+      // can pass the post-execute context. The executeStages loop
+      // also runs rollback on the final-failure path, not just
+      // between retries.
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 

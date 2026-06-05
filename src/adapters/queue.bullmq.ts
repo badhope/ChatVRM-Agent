@@ -86,12 +86,16 @@ export interface BullMqQueueOptions {
 interface Internal {
   _concurrency: number;
   _conn: Record<string, unknown>;
+  emitter: EventEmitter<IQueueEvents>;
+  worker: BullWorkerInstance | null;
+  workerClass: BullWorkerClass | null;
 }
 
 export class BullMqQueue implements IQueue {
   readonly name: string;
   private queue: BullQueueInstance | null = null;
   private worker: BullWorkerInstance | null = null;
+  private workerClass: BullWorkerClass | null = null;
   private emitter = new EventEmitter<IQueueEvents>();
 
   private constructor(name: string) {
@@ -100,12 +104,14 @@ export class BullMqQueue implements IQueue {
 
   static async open(name: string, opts: BullMqQueueOptions): Promise<BullMqQueue> {
     const q = new BullMqQueue(name);
-    const { Queue } = await importBullmq();
+    const bull = await importBullmq();
+    const { Queue, Worker } = bull;
     const queue = new Queue(name, {
       connection: opts.connection,
       defaultJobOptions: opts.defaultJobOptions as Record<string, unknown>,
     });
     q.queue = queue;
+    q.workerClass = Worker;
     // Wire BullMQ events into our emitter.
     queue.on('waiting', (job: unknown) =>
       q.emitter.emit('waiting', toJob(job as BullJob)),
@@ -152,7 +158,11 @@ export class BullMqQueue implements IQueue {
 
   process<T = unknown, R = unknown>(name: string, processor: JobProcessor<T, R>): void {
     if (this.worker) return;
-    const { Worker } = require('bullmq') as { Worker: BullWorkerClass };
+    // Pre-load `Worker` in `open()` so the per-process hot path stays
+    // sync. Falling back to `require` here would break under strict
+    // ESM, which is what the rest of the project uses.
+    if (!this.workerClass) throw new Error('BullMqQueue: process() called before open()');
+    const Worker = this.workerClass;
     const me = this as unknown as Internal;
     this.worker = new Worker(
       this.name,
@@ -179,15 +189,27 @@ export class BullMqQueue implements IQueue {
   async resume(): Promise<void> {
     await this.queue!.resume();
   }
-  isPaused(): boolean {
-    // BullMQ returns Promise<boolean>; we expose a sync view that
-    // optimistically returns false. The async variant is .pause-resume.
-    return false;
+  async isPaused(): Promise<boolean> {
+    if (!this.queue) return false;
+    try {
+      return await this.queue.isPaused();
+    } catch {
+      return false;
+    }
   }
   async count(state?: JobState): Promise<number> {
-    if (!state) return this.queue!.count();
-    // BullMQ doesn't expose a count-by-state helper; return total.
-    return this.queue!.count();
+    if (!this.queue) return 0;
+    if (!state) return this.queue.count();
+    // BullMQ does not ship a per-state count helper; the cheapest
+    // correct answer is to fetch the jobs in the requested state.
+    // The job set can be very large, so we cap at a high-but-bounded
+    // page to avoid pathological latency for callers.
+    const jobs = await (this.queue as unknown as { getJobs: (states: string[], start?: number, end?: number) => Promise<unknown[]> }).getJobs(
+      [state],
+      0,
+      1000,
+    );
+    return jobs.length;
   }
   async getJob(id: string): Promise<Job | null> {
     const j = (await this.queue!.getJob(id)) as BullJob | null;

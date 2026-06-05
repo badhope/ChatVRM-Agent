@@ -75,6 +75,7 @@ export class ExecuteStage implements Stage {
     const results: StepResult[] = [];
     const executedSteps: TaskStep[] = [];
     const modifiedFiles: string[] = [];
+    const createdFiles: string[] = [];
     let combinedOutput = '';
 
     for (const step of plan) {
@@ -128,7 +129,14 @@ export class ExecuteStage implements Stage {
           stepOutput = toolResult.output ?? '';
           if (step.tool === 'writeFile') {
             const explicitFilePath = (step.args?.filePath as string) ?? (step.args?.path as string);
-            if (explicitFilePath) stepChangedFiles.push(explicitFilePath);
+            if (explicitFilePath) {
+              // First write to a previously-missing path counts as a
+              // creation; later writes are modifications.
+              if (this.storage && !(await this.storage.exists(explicitFilePath))) {
+                createdFiles.push(explicitFilePath);
+              }
+              stepChangedFiles.push(explicitFilePath);
+            }
           }
         } else {
           const chatConfig = await this.config.getChatConfig();
@@ -164,6 +172,9 @@ export class ExecuteStage implements Stage {
             const explicitFilePath = (step.args?.filePath as string) ?? (step.args?.path as string);
             if (explicitFilePath) {
               const content = codeBlocks.length > 0 ? codeBlocks.join('\n\n') : response.content;
+              if (this.storage && !(await this.storage.exists(explicitFilePath))) {
+                createdFiles.push(explicitFilePath);
+              }
               await this.storage.write(explicitFilePath, content);
               stepChangedFiles.push(explicitFilePath);
               modifiedFiles.push(explicitFilePath);
@@ -171,6 +182,9 @@ export class ExecuteStage implements Stage {
             } else if (codeBlocks.length > 0) {
               const filePath = 'output.txt';
               const content = codeBlocks.join('\n\n');
+              if (this.storage && !(await this.storage.exists(filePath))) {
+                createdFiles.push(filePath);
+              }
               await this.storage.write(filePath, content);
               stepChangedFiles.push(filePath);
               modifiedFiles.push(filePath);
@@ -234,8 +248,18 @@ export class ExecuteStage implements Stage {
               plan: executedSteps,
               results: [...(ctx.results ?? []), ...results],
               modifiedFiles: [...ctx.modifiedFiles, ...modifiedFiles],
+              createdFiles: [...(ctx.createdFiles ?? []), ...createdFiles],
               shouldConfirm: true,
               confirmPrompt: trustVerdict.summary,
+              errors: [
+                ...(ctx.errors ?? []),
+                {
+                  phase: `execute:${step.id}`,
+                  message: `Trust level: ${trustVerdict.level}. ${trustVerdict.summary}`,
+                  recoverable: true,
+                  timestamp: Date.now(),
+                },
+              ],
               metadata: {
                 ...ctx.metadata,
                 emotion: emotion,
@@ -321,6 +345,7 @@ export class ExecuteStage implements Stage {
       plan: executedSteps,
       results: [...(ctx.results ?? []), ...results],
       modifiedFiles: [...ctx.modifiedFiles, ...modifiedFiles],
+      createdFiles: [...(ctx.createdFiles ?? []), ...createdFiles],
       metadata: {
         ...ctx.metadata,
         emotion: emotion,
@@ -331,7 +356,7 @@ export class ExecuteStage implements Stage {
     const completedCount = results.filter((r) => r.success).length;
     const failedCount = results.filter((r) => !r.success).length;
     this.emitter.emit('output', {
-      text: `Execution complete: ${completedCount} succeeded, ${failedCount} failed, ${modifiedFiles.length} file(s) modified`,
+      text: `Execution complete: ${completedCount} succeeded, ${failedCount} failed, ${createdFiles.length} file(s) created, ${modifiedFiles.length} file(s) modified`,
     });
 
     return updatedCtx;

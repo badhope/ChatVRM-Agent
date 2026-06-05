@@ -4,6 +4,7 @@ import { homedir } from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { Mutex } from 'async-mutex';
 import Minisearch from 'minisearch';
+import { logger } from '../infrastructure/logger.js';
 import type {
   IMemoryPort,
   MemoryRecord,
@@ -211,7 +212,10 @@ export class MemoryAdapter implements IMemoryPort {
       if (this.searchEngine) {
         try {
           this.searchEngine.remove({ id } as { id: string });
-        } catch {
+        } catch (err) {
+          // Indexing is best-effort; surface a warning so an operator
+          // can spot a corrupted search index.
+          logger.warn({ err, id }, 'memory.adapter: search index remove failed');
         }
       }
       return true;
@@ -257,7 +261,8 @@ export class MemoryAdapter implements IMemoryPort {
             timestamp: next.timestamp,
             tags: next.tags.join(' '),
           });
-        } catch {
+        } catch (err) {
+          logger.warn({ err, id: next.id }, 'memory.adapter: search index replace failed');
         }
       }
       return next;
@@ -270,7 +275,7 @@ export class MemoryAdapter implements IMemoryPort {
     await this.ensureInit();
     const release = await this.mutex.acquire();
 
-    let consolidated = 0;
+    let kept = 0;
     let removed = 0;
 
     try {
@@ -280,8 +285,11 @@ export class MemoryAdapter implements IMemoryPort {
       const toRemove: MemoryRecord[] = [];
 
       for (const record of records) {
+        // A record is *kept* (previously mislabelled "consolidated")
+        // when it is still within the retention window AND the store
+        // is under the cap. Otherwise it is queued for removal.
         if (record.timestamp >= cutoff && records.length - toRemove.length <= MAX_RECORDS) {
-          consolidated++;
+          kept++;
         } else {
           toRemove.push(record);
         }
@@ -299,7 +307,8 @@ export class MemoryAdapter implements IMemoryPort {
       if (this.searchEngine && toRemove.length > 0) {
         try {
           this.searchEngine.removeAll(toRemove.map((r) => r.id));
-        } catch {
+        } catch (err) {
+          logger.warn({ err, count: toRemove.length }, 'memory.adapter: search index removeAll failed');
         }
       }
 
@@ -308,7 +317,7 @@ export class MemoryAdapter implements IMemoryPort {
       release();
     }
 
-    return { consolidated, removed };
+    return { consolidated: kept, removed };
   }
 
   async stats(): Promise<MemoryStats> {

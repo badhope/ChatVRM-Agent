@@ -97,8 +97,9 @@ export class PlanStage implements Stage {
         temperature: 0.3,
       });
 
-      this.emitter.emit('llm:call', { provider: 'default', model: response.model, tokens: response.usage.totalTokens });
-      this.emitter.emit('output', { text: `LLM plan response received (${response.usage.totalTokens} tokens)` });
+      const usage = response.usage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+      this.emitter.emit('llm:call', { provider: provider ?? 'default', model: response.model, tokens: usage.totalTokens });
+      this.emitter.emit('output', { text: `LLM plan response received (${usage.totalTokens} tokens)` });
 
       const parsed = parseLLMPlan(response.content);
       if (parsed && parsed.length > 0) {

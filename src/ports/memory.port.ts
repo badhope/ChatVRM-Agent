@@ -9,7 +9,14 @@ export interface MemoryRecord {
 }
 
 export interface ConsolidationResult {
+  /**
+   * Number of records that were *kept* — i.e. survived this pass
+   * because they are within the retention window and the store is
+   * under the cap. The historical name "consolidated" is kept for
+   * back-compat with callers and dashboards.
+   */
   consolidated: number;
+  /** Number of records deleted by this pass. */
   removed: number;
 }
 

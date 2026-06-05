@@ -120,8 +120,13 @@ export class UnderstandStage implements Stage {
         if (results.length > 0) {
           knowledgeContext = this.rag.generateContext(results);
         }
-      } catch {
+      } catch (err) {
+        // Surface the failure to the event bus so a downstream stage
+        // or operator can react, but still allow the rest of the
+        // understand stage to continue.
+        const msg = err instanceof Error ? err.message : String(err);
         knowledgeContext = '';
+        this.emitter.emit('output', { text: `[warn] RAG search failed: ${msg}` });
       }
     }
 

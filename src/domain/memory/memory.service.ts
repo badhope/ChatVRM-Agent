@@ -50,12 +50,11 @@ type GraphologyNs = {
   DirectedGraph?: GraphCtor;
   default?: { DirectedGraph?: GraphCtor } & GraphCtor;
 } & GraphCtor;
-const _g = graphologyNs as unknown as GraphologyNs;
 const DirectedGraphCtor: GraphCtor =
-  (_g.DirectedGraph as GraphCtor | undefined) ??
-  (_g.default?.DirectedGraph as GraphCtor | undefined) ??
-  (_g.default as unknown as GraphCtor) ??
-  (_g as unknown as GraphCtor);
+  ((graphologyNs as unknown as GraphologyNs).DirectedGraph as GraphCtor | undefined) ??
+  ((graphologyNs as unknown as GraphologyNs).default?.DirectedGraph as GraphCtor | undefined) ??
+  ((graphologyNs as unknown as { default?: GraphCtor }).default as unknown as GraphCtor) ??
+  (graphologyNs as unknown as GraphCtor);
 
 
 interface GraphNodeAttributes extends KnowledgeEntity, Record<string, unknown> {}

@@ -83,7 +83,7 @@ export interface IQueue {
   process<T = unknown, R = unknown>(name: string, processor: JobProcessor<T, R>): void;
   pause(): Promise<void>;
   resume(): Promise<void>;
-  isPaused(): boolean;
+  isPaused(): Promise<boolean> | boolean;
   /** Number of jobs in the given state (default all). */
   count(state?: JobState): Promise<number>;
   getJob(id: string): Promise<Job | null>;

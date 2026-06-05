@@ -196,7 +196,7 @@ export class ReActAgent {
           });
         }
         if (llmSpan) {
-          await llmSpan.setMetadata('usage', response.usage);
+          await llmSpan.setMetadata('usage', response.usage ?? null);
           await llmSpan.setOutput({ content: response.content, toolCalls: response.toolCalls });
           await llmSpan.end();
         }
@@ -219,7 +219,11 @@ export class ReActAgent {
         return partial;
       }
 
-      totalTokens += response.usage.totalTokens;
+      // Defensive default — some providers (notably self-hosted ones
+      // via the OpenAI-compatible path) occasionally omit `usage` on
+      // success responses. Treat missing as zeros rather than throwing.
+      const stepUsage = response.usage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+      totalTokens += stepUsage.totalTokens;
       const thought = response.content ?? '';
 
       if (!response.toolCalls || response.toolCalls.length === 0) {
@@ -229,7 +233,7 @@ export class ReActAgent {
           index: i,
           thought,
           actions: [],
-          tokens: response.usage,
+          tokens: stepUsage,
           durationMs: Math.round(performance.now() - iterStart),
         };
         steps.push(step);
@@ -354,8 +358,16 @@ export class ReActAgent {
         const cur = callAccumulator.get(d.index) ?? { id: '', name: '', argsJson: '' };
         if (d.id) cur.id = d.id;
         if (d.name) cur.name = d.name;
-        if (typeof d.arguments !== 'undefined') {
-          cur.argsJson += JSON.stringify(d.arguments).slice(1, -1);
+        if (typeof d.arguments !== 'undefined' && d.arguments !== null) {
+          // OpenAI and most providers send a *string fragment* of JSON
+          // (e.g. '{"city":'), not an object — concatenate as-is. If a
+          // provider already hands us a fully-materialised object, fall
+          // back to a stable JSON serialisation (no stringly slice).
+          if (typeof d.arguments === 'string') {
+            cur.argsJson += d.arguments;
+          } else {
+            cur.argsJson += JSON.stringify(d.arguments);
+          }
         }
         callAccumulator.set(d.index, cur);
       }

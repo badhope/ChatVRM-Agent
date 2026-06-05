@@ -54,6 +54,11 @@ const PROVIDER_BASE_URLS: Record<ProviderType, string> = new Proxy(DEFAULT_BASE_
   },
 });
 
+/** Single source of truth for the default provider base URLs. The
+ *  server's `PROVIDER_META` table imports this and adds display
+ *  metadata — do not duplicate the URL strings elsewhere. */
+export const DEFAULT_PROVIDER_BASE_URLS: Record<ProviderType, string> = DEFAULT_BASE_URLS;
+
 const DEFAULT_MODELS: Record<ProviderType, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-5-sonnet-20241022',
@@ -170,7 +175,7 @@ export class LLMAdapter implements ILLMPort {
 
     const first = await tryModel(params.model);
     if (first.ok) return first.response;
-    if (!first.retry) throw new Error(first.response ? '' : tried.at(-1)!.error);
+    if (!first.retry) throw new Error(tried.at(-1)!.error);
 
     for (const fallback of fallbacks) {
       const r = await tryModel(fallback);
@@ -568,19 +573,31 @@ export class LLMAdapter implements ILLMPort {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const body = JSON.stringify({
+    const body: Record<string, unknown> = {
       model,
       messages: params.messages,
       temperature: params.temperature,
       max_tokens: params.maxTokens,
       stream: true,
-    });
+    };
+
+    // Native function calling (OpenAI-compatible). Without this, streaming
+    // tool-using agents (notably the ReAct agent's primary path) get a
+    // model with no tool knowledge and silently emit no tool_calls.
+    if (params.tools && params.tools.length > 0) {
+      const payload = toProviderTools(params.tools, 'openai', params.toolChoice);
+      body['tools'] = payload.tools;
+      if (payload.toolChoice) body['tool_choice'] = payload.toolChoice;
+      if (params.parallelToolCalls !== undefined) {
+        body['parallel_tool_calls'] = params.parallelToolCalls;
+      }
+    }
 
     const response = await breaker.fire(() =>
       fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers,
-        body,
+        body: JSON.stringify(body),
         signal: combineSignals([AbortSignal.timeout(120_000), params.signal]),
       }),
     );
