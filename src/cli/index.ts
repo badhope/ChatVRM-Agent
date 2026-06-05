@@ -319,9 +319,13 @@ async function main(): Promise<void> {
       const { RecursiveTextChunker } = await import('../adapters/text-chunker.js');
       const { AutoLoader } = await import('../loaders/auto.loader.js');
       const { InMemoryVectorStore } = await import('../adapters/vector-store.memory.js');
+      const { resolveEmbedDim } = await import('../config/embedder.js');
       const outPath = (options.out as string).replace(/^~/, process.env.HOME ?? '');
-      const vectorStore = new InMemoryVectorStore(384);
-      const embedder = new HashingEmbedder({ dim: 384 });
+      // Use the same dim the server uses, so vectors ingested by the
+      // CLI can be loaded by the server's `Runtime.loadVectors()`.
+      const dim = resolveEmbedDim();
+      const vectorStore = new InMemoryVectorStore(dim);
+      const embedder = new HashingEmbedder({ dim });
       const chunker = new RecursiveTextChunker({ chunkSize: 500, chunkOverlap: 50 });
       const loader = new AutoLoader();
       const pipeline = new IngestionPipeline({ embedder, vectorStore, chunker, loader, sourceTag: options.tag });

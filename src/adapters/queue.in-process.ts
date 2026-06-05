@@ -79,10 +79,18 @@ export class InProcessQueue implements IQueue {
     // processor (which calls `schedulePump()`).
     const id = opts.jobId ?? randomUUID();
     const existing = this.jobs.get(id);
-    if (existing && (existing.state === 'waiting' || existing.state === 'delayed')) {
-      existing.data = data;
-      existing.opts = this.normaliseOpts(opts);
-      return this.cloneJob<T>(existing);
+    if (existing) {
+      // Only allow overwriting jobs that haven't started yet. Clobbering
+      // an active / completed / failed job with the same id would lose
+      // its result and confuse anyone listening on the events stream.
+      if (existing.state === 'waiting' || existing.state === 'delayed') {
+        existing.data = data;
+        existing.opts = this.normaliseOpts(opts);
+        return this.cloneJob<T>(existing);
+      }
+      throw new Error(
+        `InProcessQueue.add: duplicate jobId ${id} in terminal/active state ${existing.state}`,
+      );
     }
     const job: InternalJob = {
       id,
@@ -225,14 +233,22 @@ export class InProcessQueue implements IQueue {
 
   private evictIfFull(): void {
     if (this.jobs.size <= this.maxRetained) return;
-    const completed: InternalJob[] = [];
+    // Prefer evicting finished jobs first (cheapest, lowest-impact).
+    // Fall back to oldest active/delayed if the queue is still over
+    // the cap (e.g. a long-running processor holding the cap hostage).
+    const terminal: InternalJob[] = [];
+    const inFlight: InternalJob[] = [];
     for (const j of this.jobs.values()) {
-      if (j.state === 'completed' || j.state === 'failed') completed.push(j);
+      if (j.state === 'completed' || j.state === 'failed') terminal.push(j);
+      else if (j.state === 'active' || j.state === 'delayed') inFlight.push(j);
     }
-    completed.sort((a, b) => (a.finishedOn ?? 0) - (b.finishedOn ?? 0));
-    while (this.jobs.size > this.maxRetained && completed.length > 0) {
-      const j = completed.shift()!;
-      this.jobs.delete(j.id);
+    terminal.sort((a, b) => (a.finishedOn ?? 0) - (b.finishedOn ?? 0));
+    inFlight.sort((a, b) => a.timestamp - b.timestamp);
+    const victims: InternalJob[] = [...terminal, ...inFlight];
+    let i = 0;
+    while (this.jobs.size > this.maxRetained && i < victims.length) {
+      this.jobs.delete(victims[i]!.id);
+      i++;
     }
   }
 

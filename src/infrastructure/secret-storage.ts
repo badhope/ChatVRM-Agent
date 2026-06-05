@@ -73,7 +73,20 @@ export class SecretStorage {
     if (kt) {
       return kt.findCredentials(service);
     }
-    return [];
+    // Env fallback: scan process.env for `SERVICE_*` entries. We can't
+    // *list* env vars by service name, so we use a per-call convention
+    // where the user can `export SERVICE_<account>_<key>=value` and
+    // we sweep by reading the well-known prefix.
+    const prefix = `${service}_`.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    const out: Array<{ account: string; password: string }> = [];
+    for (const [envKey, value] of Object.entries(process.env)) {
+      if (!envKey.startsWith(prefix)) continue;
+      if (value === undefined) continue;
+      const account = envKey.slice(prefix.length).toLowerCase();
+      if (account.length === 0) continue;
+      out.push({ account, password: value });
+    }
+    return out;
   }
 
   async storeProviderKey(provider: string, key: string): Promise<void> {

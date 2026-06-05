@@ -67,6 +67,10 @@ export class OpenAIEmbedder implements Embedder {
         authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({ model: this.model, input: texts }),
+      // Bound the call so a hang on the embed endpoint doesn't stall
+      // the whole ReAct / ingestion pipeline. 60s is generous for
+      // batches of <= 100 chunks.
+      signal: AbortSignal.timeout(60_000),
     });
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');

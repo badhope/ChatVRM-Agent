@@ -120,9 +120,32 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
         this.waiters.delete(p.id);
         if (p.error) w.reject(p.error);
         else w.resolve(p.value);
+      } else {
+        // `done` arrived for a job no one is waiting on — either a
+        // fire-and-forget that finished, or a waiter that already
+        // timed out and was removed. Surface the late event so we
+        // don't silently swallow completions.
+        this.bridge.emit('late-done', p);
       }
     });
     this.bound = true;
+  }
+
+  /**
+   * Detach the `done` listener and clear pending waiters. Call this
+   * in long-lived processes when the queued tool is no longer
+   * needed; otherwise the listener chain (and any retained
+   * closures) keeps the tool alive.
+   */
+  destroy(): void {
+    if (!this.bound) return;
+    this.bridge.removeAllListeners('done');
+    for (const [, w] of this.waiters) {
+      if (w.timer) clearTimeout(w.timer);
+      w.reject(new Error('QueuedTool: destroyed'));
+    }
+    this.waiters.clear();
+    this.bound = false;
   }
 
   /** Fire-and-forget. Returns the ticket id immediately. */

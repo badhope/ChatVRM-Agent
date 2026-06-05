@@ -348,6 +348,9 @@ export class LangfuseClient implements IObservability {
 
   private async send(batch: LangfuseEvent[]): Promise<void> {
     const auth = Buffer.from(`${this.publicKey}:${this.secretKey}`).toString('base64');
+    // Bound the network call so a hang at the Langfuse side can't
+    // block `shutdown()` forever. 10s is generous for a batched
+    // ingestion endpoint; the queue will retry on the next flush.
     const resp = await this.fetchImpl(`${this.baseUrl}/api/public/ingestion`, {
       method: 'POST',
       headers: {
@@ -357,6 +360,7 @@ export class LangfuseClient implements IObservability {
         'x-langfuse-sdk-version': '1.0.0',
       },
       body: JSON.stringify({ batch }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
@@ -366,6 +370,12 @@ export class LangfuseClient implements IObservability {
 
   async shutdown(): Promise<void> {
     this.closed = true;
-    await this.flush();
+    // Bound the final flush so a network hang at Langfuse can't keep
+    // the process alive past its shutdown window. After the timeout
+    // the unflushed batch is dropped — better than blocking forever.
+    await Promise.race([
+      this.flush(),
+      new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+    ]);
   }
 }

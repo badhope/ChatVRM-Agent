@@ -5,6 +5,7 @@ import type { IShellPort } from '../src/ports/shell.port.js';
 import type { IConfigPort } from '../src/ports/config.port.js';
 import type { IToolsPort } from '../src/ports/tools.port.js';
 import type { ProviderType } from '../src/ports/config.port.js';
+import { sandboxPath } from '../src/shared/sandbox.js';
 
 interface Tools {
   llm: ILLMPort;
@@ -69,7 +70,15 @@ export function registerDefaultTools(opts: Tools): void {
         }
       }
       // path/output positional for ops that need it
-      if (typeof args.path === 'string') cliArgs.push(args.path);
+      if (typeof args.path === 'string') {
+        const safe = sandboxPath(args.path);
+        if (!safe.ok) return { success: false, error: safe.error };
+        cliArgs.push(safe.resolved);
+      } else if (typeof args.output === 'string') {
+        const safe = sandboxPath(args.output);
+        if (!safe.ok) return { success: false, error: safe.error };
+        cliArgs.push(safe.resolved);
+      }
       return await new Promise<{ success: boolean; output?: string; error?: string }>((res) => {
         const proc = spawn('python3', cliArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
@@ -126,6 +135,9 @@ export function registerDefaultTools(opts: Tools): void {
           company: '--company', quarter: '--quarter',
           x: '--x', y: '--y', series: '--series', output: '--output', title: '--title', ylabel: '--ylabel',
         };
+        // Arg keys whose values are filesystem paths and must be sandboxed
+        // to the workspace root before being forwarded to the python script.
+        const PATH_KEYS = new Set(['path', 'output', 'uploads', 'out', 'charts']);
         const cliArgs: string[] = [pyScript, subcommand];
         for (const [k, v] of Object.entries(args)) {
           if (STAGE_INJECTED.has(k) || v === undefined || v === null) continue;
@@ -135,7 +147,13 @@ export function registerDefaultTools(opts: Tools): void {
           } else if (Array.isArray(v)) {
             cliArgs.push(flag, v.join(','));
           } else {
-            cliArgs.push(flag, String(v));
+            if (PATH_KEYS.has(k) && typeof v === 'string') {
+              const safe = sandboxPath(v);
+              if (!safe.ok) return { success: false, error: safe.error };
+              cliArgs.push(flag, safe.resolved);
+            } else {
+              cliArgs.push(flag, String(v));
+            }
           }
         }
         return await new Promise<{ success: boolean; output?: string; error?: string }>((res) => {
@@ -212,8 +230,10 @@ export function registerDefaultTools(opts: Tools): void {
       const content = explicitContent && explicitContent.length > 0 ? explicitContent : previousOutput;
       if (!filePath) return { success: false, error: 'filePath is required' };
       if (!content) return { success: false, error: 'No content provided (neither args.content nor previous step output)' };
-      await storage.write(filePath, content);
-      return { success: true, output: `Written ${content.length} bytes to ${filePath}` };
+      const safe = sandboxPath(filePath);
+      if (!safe.ok) return { success: false, error: safe.error };
+      await storage.write(safe.resolved, content);
+      return { success: true, output: `Written ${content.length} bytes to ${safe.resolved}` };
     },
   });
 
@@ -223,10 +243,12 @@ export function registerDefaultTools(opts: Tools): void {
     handler: async (args) => {
       const filePath = (args.filePath as string) ?? (args.path as string);
       if (!filePath) return { success: false, error: 'filePath is required' };
-      if (!(await storage.exists(filePath))) {
+      const safe = sandboxPath(filePath);
+      if (!safe.ok) return { success: false, error: safe.error };
+      if (!(await storage.exists(safe.resolved))) {
         return { success: false, error: `File not found: ${filePath}` };
       }
-      const content = await storage.read(filePath);
+      const content = await storage.read(safe.resolved);
       return { success: true, output: content };
     },
   });

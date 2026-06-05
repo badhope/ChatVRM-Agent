@@ -294,10 +294,15 @@ export class ConfigAdapter implements IConfigPort {
 
   private async backupCurrent(): Promise<void> {
     try {
-      await fs.mkdir(CONFIG_BACKUP_DIR, { recursive: true });
+      await fs.mkdir(CONFIG_BACKUP_DIR, { recursive: true, mode: 0o700 });
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(CONFIG_BACKUP_DIR, `config-${timestamp}.json`);
-      await fs.writeFile(backupPath, JSON.stringify(this.store.store, null, 2), 'utf-8');
+      // Restrict to owner-only read/write. The config can contain API
+      // keys, so leaving it world-readable on a shared box is a leak.
+      await fs.writeFile(backupPath, JSON.stringify(this.store.store, null, 2), {
+        encoding: 'utf-8',
+        mode: 0o600,
+      });
     } catch {
       // best-effort
     }

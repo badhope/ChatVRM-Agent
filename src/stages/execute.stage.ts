@@ -82,6 +82,68 @@ export class ExecuteStage implements Stage {
       const startTime = performance.now();
 
       const runningStep: TaskStep = { ...step, status: 'running', startTime: Date.now() };
+
+      // Pre-execute trust check. Evaluates the *planned* action (step
+      // description + tool + args) before any side effects. A high-risk
+      // verdict here means we never even invoke the tool — guarding
+      // against a prompt-injection-driven shell / writeFile / etc.
+      // whose harm would already be done by the time the post-execute
+      // check runs.
+      const preCheckInput = [
+        step.description,
+        step.tool ? `tool: ${step.tool}` : '',
+        step.args ? `args: ${JSON.stringify(step.args).slice(0, 2000)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const preVerdict = TrustService.evaluate(preCheckInput, {
+        intent: ctx.intent,
+        toolUsed: step.tool,
+      });
+      if (
+        preVerdict.level === TrustLevel.HighRisk ||
+        preVerdict.level === TrustLevel.Critical
+      ) {
+        const durationMs = Math.round(performance.now() - startTime);
+        const skippedStep: TaskStep = {
+          ...runningStep,
+          status: 'skipped',
+          endTime: Date.now(),
+          result: 'Skipped due to pre-execute trust check',
+        };
+        executedSteps.push(skippedStep);
+        const skipResult: StepResult = {
+          stepId: step.id,
+          success: false,
+          output: 'Skipped - pre-execute trust check failed',
+          error: `Trust level: ${preVerdict.level}. ${preVerdict.summary}`,
+          durationMs,
+          changedFiles: [],
+        };
+        results.push(skipResult);
+        this.emitter.emit('step:start', { step: runningStep });
+        this.emitter.emit('step:complete', { step: skippedStep, result: skipResult });
+        this.emitter.emit('output', {
+          text: `  ⚠ ${step.description} skipped (pre-trust: ${preVerdict.level})`,
+        });
+        return {
+          ...ctx,
+          plan: executedSteps,
+          results: [...(ctx.results ?? []), ...results],
+          shouldConfirm: true,
+          confirmPrompt: preVerdict.summary,
+          errors: [
+            ...(ctx.errors ?? []),
+            {
+              phase: `execute:${step.id}`,
+              message: `Pre-execute trust: ${preVerdict.level}. ${preVerdict.summary}`,
+              recoverable: true,
+              timestamp: Date.now(),
+            },
+          ],
+        };
+      }
+
       executedSteps.push(runningStep);
       this.emitter.emit('step:start', { step: runningStep });
       this.emitter.emit('output', { text: `  Running step: ${step.description}` });
@@ -365,6 +427,35 @@ export class ExecuteStage implements Stage {
   async rollback(ctx: PipelineContext): Promise<PipelineContext> {
     this.emitter.emit('output', { text: 'Rolling back execution...' });
 
+    // Actually delete files we created during this run. Without this,
+    // a failed pipeline leaves partial writes on disk that the user
+    // can't distinguish from legitimate work. For files we merely
+    // modified we can't safely restore without a backup, so we warn
+    // and let the caller (or the user) decide.
+    const createdFiles = ctx.createdFiles ?? [];
+    const modifiedFiles = ctx.modifiedFiles ?? [];
+    if (this.storage && createdFiles.length > 0) {
+      let deleted = 0;
+      for (const fp of createdFiles) {
+        try {
+          await this.storage.delete(fp);
+          deleted++;
+        } catch (err) {
+          this.emitter.emit('output', {
+            text: `  ⚠ Rollback: could not delete ${fp}: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+      this.emitter.emit('output', {
+        text: `  ↩️ Deleted ${deleted}/${createdFiles.length} created file(s) during rollback`,
+      });
+    }
+    if (modifiedFiles.length > 0) {
+      this.emitter.emit('output', {
+        text: `  ⚠ ${modifiedFiles.length} file(s) were modified and NOT automatically rolled back — review manually: ${modifiedFiles.join(', ')}`,
+      });
+    }
+
     const rolledBackPlan = (ctx.plan ?? []).map((step) => {
       if (step.status === 'completed' || step.status === 'failed') {
         return { ...step, status: 'pending' as const, result: undefined, error: undefined, startTime: undefined, endTime: undefined };
@@ -378,6 +469,8 @@ export class ExecuteStage implements Stage {
       ...ctx,
       plan: rolledBackPlan,
       results: [],
+      createdFiles: [],
+      modifiedFiles: [],
     };
   }
 }

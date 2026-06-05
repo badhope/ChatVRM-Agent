@@ -96,10 +96,10 @@ describe('GitAdapter', () => {
       expect(mockGit.commit).toHaveBeenCalledWith('test commit');
     });
 
-    it('should not throw on error', async () => {
+    it('should propagate error so callers can handle it (W15 audit fix)', async () => {
       mockGit.add.mockRejectedValue(new Error('add failed'));
 
-      await expect(adapter.commit('msg')).resolves.not.toThrow();
+      await expect(adapter.commit('msg')).rejects.toThrow('add failed');
     });
   });
 
@@ -112,10 +112,10 @@ describe('GitAdapter', () => {
       expect(mockGit.checkoutLocalBranch).toHaveBeenCalledWith('feature-x');
     });
 
-    it('should not throw on error', async () => {
+    it('should propagate error so callers can handle it (W15 audit fix)', async () => {
       mockGit.checkoutLocalBranch.mockRejectedValue(new Error('failed'));
 
-      await expect(adapter.createBranch('bad')).resolves.not.toThrow();
+      await expect(adapter.createBranch('bad')).rejects.toThrow('failed');
     });
   });
 
@@ -128,10 +128,10 @@ describe('GitAdapter', () => {
       expect(mockGit.checkout).toHaveBeenCalledWith('develop');
     });
 
-    it('should not throw on error', async () => {
+    it('should propagate error so callers can handle it (W15 audit fix)', async () => {
       mockGit.checkout.mockRejectedValue(new Error('failed'));
 
-      await expect(adapter.checkout('bad')).resolves.not.toThrow();
+      await expect(adapter.checkout('bad')).rejects.toThrow('failed');
     });
   });
 

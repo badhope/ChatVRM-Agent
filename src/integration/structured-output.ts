@@ -137,12 +137,62 @@ function extractJsonCandidate(s: string): string | null {
   return null;
 }
 
+/**
+ * Strip // line comments and /* block comments *​/ without touching
+ * string literals. A regex like `/(^|[^:"'\\])\/\/.*$/gm` looks
+ * correct at a glance but happily eats `http://` inside a quoted
+ * string (the char before `//` is the letter `p`, not a quote).
+ * The only safe way is to walk the string with a tiny lexer state
+ * machine that knows about `"`, `'`, and template literal backticks.
+ */
+function stripJsonComments(s: string): string {
+  let out = '';
+  let i = 0;
+  const n = s.length;
+  let inString: '"' | "'" | '`' | null = null;
+  while (i < n) {
+    const c = s[i];
+    if (inString !== null) {
+      out += c;
+      // Handle escape sequences inside the active string.
+      if (c === '\\' && i + 1 < n) {
+        out += s[i + 1]!;
+        i += 2;
+        continue;
+      }
+      if (c === inString) inString = null;
+      i += 1;
+      continue;
+    }
+    // Not in a string: look for comment starts.
+    if (c === '"' || c === "'" || c === '`') {
+      inString = c;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === '/' && s[i + 1] === '/') {
+      // line comment — skip to end of line (or end of input)
+      while (i < n && s[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && s[i + 1] === '*') {
+      // block comment — skip to */
+      i += 2;
+      while (i < n - 1 && !(s[i] === '*' && s[i + 1] === '/')) i += 1;
+      i += 2; // consume the closing */
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
 function tryRepair(s: string): string | null {
   let out = s;
-  // Strip // line comments (only outside strings — approximation)
-  out = out.replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
-  // Strip /* */ block comments
-  out = out.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Strip // line comments and /* */ block comments *outside* strings.
+  out = stripJsonComments(out);
   // Trailing commas before } or ]
   out = out.replace(/,(\s*[}\]])/g, '$1');
   // Python None / True / False → null / true / false

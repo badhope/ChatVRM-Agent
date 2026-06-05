@@ -51,6 +51,8 @@ export class HybridRetriever {
   private readonly vectorStore: VectorStore;
   private readonly bm25: MiniSearch<HybridDoc>;
   private readonly bm25Weight: number;
+  /** True when the caller passed `bm25Weight` in the options. */
+  private readonly bm25WeightSet: boolean;
   private readonly vectorWeight: number;
   private readonly rrfK: number;
   private readonly oversample: number;
@@ -61,6 +63,7 @@ export class HybridRetriever {
     this.embedder = opts.embedder;
     this.vectorStore = opts.vectorStore;
     this.bm25Weight = opts.bm25Weight ?? 1;
+    this.bm25WeightSet = opts.bm25Weight !== undefined;
     this.vectorWeight = opts.vectorWeight ?? 1;
     this.rrfK = opts.rrfK ?? 60;
     this.oversample = opts.oversample ?? 4;
@@ -81,11 +84,21 @@ export class HybridRetriever {
     // Insert into vector store.
     const texts = docs.map((d) => d.text);
     const vectors = await this.embedder.embedBatch(texts);
+    if (vectors.length !== texts.length) {
+      throw new Error(
+        `HybridRetriever.add: embedder returned ${vectors.length} vectors for ${texts.length} inputs`,
+      );
+    }
+    for (let i = 0; i < vectors.length; i += 1) {
+      if (vectors[i] === undefined || vectors[i] === null) {
+        throw new Error(`HybridRetriever.add: embedder returned undefined vector at index ${i}`);
+      }
+    }
     const records = docs.map((d, i) => ({
       id: d.id,
       text: d.text,
       metadata: d.metadata,
-      vector: vectors[i],
+      vector: vectors[i]!,
     }));
     await this.vectorStore.add(records);
     for (const r of records) this.vectorIds.add(r.id);
@@ -147,8 +160,12 @@ export class HybridRetriever {
       }));
     }
 
-    // RRF fusion (hybrid mode).
-    const bm25Weight = 1 - vectorWeight; // keep legacy symmetric weighting
+    // RRF fusion (hybrid mode). Honour the user-configured `bm25Weight`
+    // from the constructor; if absent, fall back to the symmetric
+    // (1 - vectorWeight) default to preserve the historical behaviour.
+    const bm25Weight = this.bm25WeightSet
+      ? this.bm25Weight
+      : Math.max(0, 1 - vectorWeight);
     const allIds = new Set<string>([...bm25Rank.keys(), ...vectorRank.keys()]);
     const fused: HybridResult[] = [];
     for (const id of allIds) {

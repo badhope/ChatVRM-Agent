@@ -41,7 +41,12 @@ export class ShellExecutor implements IShellPort {
       }
     }
     if (options?.env) {
+      // Caller-supplied env goes through the same allowlist as the
+      // ambient env. Without this, a caller can set
+      //   options.env = { LD_PRELOAD: '/tmp/evil.so' }
+      // and hijack every native lib loaded by the spawned shell.
       for (const [k, v] of Object.entries(options.env)) {
+        if (!ALLOWED_ENV.has(k)) continue;
         safeEnv[k] = v;
       }
     }

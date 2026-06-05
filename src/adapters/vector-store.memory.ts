@@ -91,15 +91,16 @@ export class InMemoryVectorStore implements VectorStore {
    * command to dump a freshly-built store. The Float32 vectors are
    * serialised as plain number[] to keep the file human-readable.
    */
-  async saveToFile(path: string): Promise<void> {
+  async saveToFile(filePath: string): Promise<void> {
     const out: Array<{ id: string; vector: number[]; text: string; metadata?: Record<string, unknown> }> = [];
     for (const r of this.records.values()) {
       out.push({ id: r.id, vector: Array.from(r.vector), text: r.text, metadata: r.metadata });
     }
     const fs = await import('node:fs/promises');
-    const dir = path.replace(/\/[^/]*$/, '');
-    if (dir && dir !== path) await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path, JSON.stringify({ dim: this.dim, records: out }, null, 2), 'utf8');
+    const pathMod = await import('node:path');
+    const dir = pathMod.dirname(filePath);
+    if (dir && dir !== '.' && dir !== filePath) await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify({ dim: this.dim, records: out }, null, 2), 'utf8');
   }
 
   /** Re-load a previously-saved store. The store must be empty. */

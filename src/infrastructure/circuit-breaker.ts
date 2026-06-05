@@ -42,12 +42,15 @@ export class CircuitBreaker {
   constructor(options: CircuitBreakerOptions) {
     // `opossum` uses `errorThresholdPercentage` and `volumeThreshold`
     // to express failure behaviour. We map our user-friendly
-    // `failureThreshold` to "N out of N failures within a window of N
-    // calls" (i.e. percentage = 100%, window = failureThreshold), and
-    // `halfOpenMaxCalls` is honoured as the minimum call volume that
-    // will retrip the breaker when it next evaluates. `resetTimeout`
-    // is opossum's "ms in OPEN before HALF_OPEN".
-    const { failureThreshold, halfOpenMaxCalls, resetTimeout } = options;
+    // `failureThreshold` to "N consecutive failures" (i.e. percentage
+    // = 100%, window = failureThreshold). `resetTimeout` is opossum's
+    // "ms in OPEN before HALF_OPEN".
+    //
+    // NB: `halfOpenMaxCalls` is *not* a real opossum option — opossum
+    // reuses `volumeThreshold` in the HALF_OPEN state. We still accept
+    // it on the API for back-compat with callers that pass it, but
+    // the actual trip behaviour is driven solely by `failureThreshold`.
+    const { failureThreshold, resetTimeout } = options;
     this.breaker = new CircuitBreakerLib(async (fn: () => Promise<unknown>) => fn(), {
       errorThresholdPercentage: 100,
       timeout: false,
@@ -55,7 +58,6 @@ export class CircuitBreaker {
       volumeThreshold: Math.max(1, failureThreshold),
       rollingCountTimeout: 10_000,
       rollingCountBuckets: 10,
-      ...(halfOpenMaxCalls !== undefined ? { volumeThreshold: Math.max(1, halfOpenMaxCalls) } : {}),
     });
   }
 

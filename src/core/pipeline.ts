@@ -72,20 +72,39 @@ export class PipelineEngine {
     this.emitter.emit('pipeline:start', { context });
 
     let pipelineTimeout: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
     const timeoutPromise = new Promise<never>((_, reject) => {
       pipelineTimeout = setTimeout(() => {
+        timedOut = true;
         reject(new Error(`Pipeline timed out after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
     });
 
     let latestContext: PipelineContext = context;
+    // Track the inner promise so we can silence unhandled rejections
+    // that surface *after* the timeout. Without this, a stage that
+    // rejects a few ticks after the timeout fires produces an
+    // `unhandledRejection` warning that pollutes the test output and
+    // can crash stricter process managers. We deliberately don't
+    // `await innerPromise` here — doing so would block until every
+    // in-flight LLM call / file write completes, which defeats the
+    // whole point of the timeout.
+    const innerPromise = this.executeStages(context, (c) => {
+      latestContext = c;
+    });
+    if (timedOut) {
+      // `timedOut` is only set inside the timeout callback, so this
+      // branch never fires on the initial pass. We attach the
+      // catch handler unconditionally to avoid an extra microtask.
+    }
+    innerPromise.catch(() => {
+      // Swallow rejections that arrive after we've already surfaced
+      // the timeout error to the caller. The rejection still
+      // happened, but our caller already moved on.
+    });
+
     try {
-      const result = await Promise.race([
-        this.executeStages(context, (c) => {
-          latestContext = c;
-        }),
-        timeoutPromise,
-      ]);
+      const result = await Promise.race([innerPromise, timeoutPromise]);
 
       const totalDurationMs = performance.now() - startTime;
       this.emitter.emit('pipeline:complete', {
@@ -219,7 +238,7 @@ export class PipelineEngine {
   private async executeStage(
     stage: Stage,
     context: PipelineContext,
-    attempt: number,
+    _attempt: number,
   ): Promise<PipelineContext> {
     this.emitter.emit('stage:start', { stage: stage.name, context });
 

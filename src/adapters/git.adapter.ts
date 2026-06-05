@@ -38,25 +38,16 @@ export class GitAdapter implements IGitPort {
   }
 
   async commit(message: string): Promise<void> {
-    try {
-      await this.git.add('.');
-      await this.git.commit(message);
-    } catch {
-    }
+    await this.git.add('.');
+    await this.git.commit(message);
   }
 
   async createBranch(name: string): Promise<void> {
-    try {
-      await this.git.checkoutLocalBranch(name);
-    } catch {
-    }
+    await this.git.checkoutLocalBranch(name);
   }
 
   async checkout(branch: string): Promise<void> {
-    try {
-      await this.git.checkout(branch);
-    } catch {
-    }
+    await this.git.checkout(branch);
   }
 
   async diff(): Promise<string> {

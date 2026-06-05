@@ -31,9 +31,12 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { resolveEmbedDim } from '../src/config/embedder.js';
 
 const VECTORS_FILE = path.join(homedir(), '.personal-assistant', 'vectors.json');
-const EMBED_DIM = 256;
+// Single source of truth lives in src/config/embedder.ts so CLI and
+// server agree. Override with the `EMBED_DIM` env var.
+const EMBED_DIM = resolveEmbedDim();
 
 export class Runtime {
   readonly eventBus = new EventEmitter();

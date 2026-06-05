@@ -124,6 +124,17 @@ export function rerank(query: string, results: HybridResult[], opts: RerankOptio
     lengthWeight: opts.lengthWeight ?? 0.1,
   };
   const norm = weights.overlapWeight + weights.positionWeight + weights.lengthWeight;
+  if (norm === 0) {
+    // Caller passed all-zero weights — fall back to identity ranking
+    // (return the inputs in their original order with score 0) instead
+    // of producing NaN scores that break the downstream sort.
+    return results.map((r, idx) => ({
+      ...r,
+      originalRank: idx,
+      features: { overlap: 0, position: 0, length: 0, total: 0 },
+      score: 0,
+    }));
+  }
   const w = {
     overlapWeight: weights.overlapWeight / norm,
     positionWeight: weights.positionWeight / norm,
