@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from 'express';
-import { requireAuth } from '../middleware/auth.js';
 
 interface AgentProfile {
   id: string;
@@ -61,10 +60,7 @@ function now(): string {
 
 export function agentsRoutes(): Router {
   const r = Router();
-  // H13: agent profile mutations (create / update / delete) are
-  // owner-equivalent actions — they change what every other caller
-  // sees. Gated behind the bearer-token middleware.
-  r.use(requireAuth());
+  // C1 (W18): auth is applied globally in app.ts.
 
   r.get('/', (_req, res) => {
     res.json({

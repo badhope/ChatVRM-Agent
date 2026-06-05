@@ -11,7 +11,7 @@ import { createDefaultStages } from '../../src/stages/index.js';
 import { resolveApiKey, PROVIDER_META } from '../providers.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';
 import { incrementAgentRun, incrementToolCall } from './dashboard.routes.js';
-import { requireAuth, validateCwd } from '../middleware/auth.js';
+import { validateCwd } from '../middleware/auth.js';
 import type { ProviderType } from '../../src/ports/config.port.js';
 import type { PipelineContext, PipelineEvents, TaskStep } from '../../src/core/types.js';
 import { readFile, access } from 'node:fs/promises';
@@ -67,10 +67,9 @@ async function listWorkspaceFiles(cwd: string, max = 100): Promise<string[]> {
 export function agentRoutes(deps: AgentDeps): Router {
   const r = Router();
   // H13/H15: agent run / run-task endpoints run an LLM call, may
-  // shell out, and write to the workspace. Bearer-token gate plus
-  // cwd allowlist so a stray curl can't pivot into a different
-  // directory.
-  r.use(requireAuth());
+  // shell out, and write to the workspace. Bearer-token gate is
+  // applied globally in app.ts; cwd allowlist is enforced per-request
+  // in the /run handler below.
 
   r.post('/run', async (req: Request, res: Response) => {
     const { task, provider, model, cwd } = req.body as {
@@ -186,10 +185,48 @@ export function agentRoutes(deps: AgentDeps): Router {
       }
     };
     // res.on('close') fires when the underlying socket closes (client disconnect).
-    // req.on('close') fires when the request body is fully consumed, which happens
-    // early in the request lifecycle — useless for streaming response abort detection.
+    // M10 (W18): `req.on('aborted')` was deprecated in Node 17 and emits
+    // a deprecation warning under Node 18+; we now use the `close` event
+    // on the response instead, which is the documented, supported way to
+    // observe client disconnects on an HTTP/1.1 SSE response. The old
+    // listener is removed entirely so no `DeprecationWarning` shows up in
+    // the logs.
+    // L6 (W18): also register a `finish` handler that explicitly
+    // removes the close listener. The previous code only relied on
+    // the `closeFired` flag, which meant the listener was retained
+    // on the `res` object until GC. For long-lived server processes
+    // serving many SSE requests, that retained-closure chain kept
+    // the `emitter` and the stage results in memory long after the
+    // request was done. `res.off('close', handleClose)` cuts the
+    // reference immediately.
+    const onFinish = () => {
+      res.off('close', handleClose);
+    };
     res.on('close', handleClose);
-    req.on('aborted', handleClose);
+    res.on('finish', onFinish);
+
+    // M11 (W18): SSE keep-alive heartbeat. A long-running stage (e.g. a
+    // slow LLM call inside `understand`) can spend 30+ seconds emitting
+    // nothing. Many proxies (nginx default 60s, ALB 60s, Cloudflare
+    // 100s) will silently drop the connection if no bytes flow in
+    // that window, and the user will see a stream that "just stops".
+    // We send a `:keep-alive` SSE comment every 15s — comments are
+    // ignored by EventSource clients, don't trigger any handler, and
+    // are exactly the mechanism the SSE spec recommends for
+    // heartbeats. The timer is cleared on close.
+    const HEARTBEAT_MS = 15_000;
+    const heartbeat = setInterval(() => {
+      if (aborted || res.writableEnded) return;
+      try {
+        res.write(':keep-alive\n\n');
+      } catch {
+        // Best-effort. If the write fails the close listener will
+        // fire and tear the request down.
+      }
+    }, HEARTBEAT_MS);
+    const stopHeartbeat = () => clearInterval(heartbeat);
+    res.on('close', stopHeartbeat);
+    res.on('finish', stopHeartbeat);
 
     let currentCtx: PipelineContext = ctx;
     let failed: string | null = null;
@@ -235,6 +272,19 @@ export function agentRoutes(deps: AgentDeps): Router {
         failed = stage.name;
         failedErr = err instanceof Error ? err.message : String(err);
         sseSend(res, 'stage', { stage: stage.name, status: 'failed', error: failedErr });
+        // M16 (W18): emit a top-level `failed` event in addition to
+        // the per-stage `stage:failed` payload. The client code in
+        // `web-ui/src/...` listens for `failed` to switch the UI
+        // into an error state without having to inspect
+        // `pipeline-end`. Without this top-level event, a route
+        // that crashes *before* the `pipeline-end` is sent (e.g.
+        // a crash in the SSE write itself) leaves the client
+        // stuck on the "running" state forever.
+        sseSend(res, 'failed', {
+          taskId: ctx.taskId,
+          stage: stage.name,
+          error: failedErr,
+        });
         break;
       }
     }

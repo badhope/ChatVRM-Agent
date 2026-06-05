@@ -12,11 +12,35 @@ import { PersonalityService } from '../domain/personality/personality.service.js
 import { EmotionService } from '../domain/personality/emotion.service.js';
 import { TrustService, TrustLevel } from '../domain/trust/trust.service.js';
 
-function extractCodeBlocks(text: string): string[] {
+/**
+ * L11 (W18): strip ANSI escape sequences from a string. Sandbox
+ * error messages can come from a child process whose stdout
+ * (e.g. a Python test runner, an npm script) emits colour codes
+ * even when the rest of the run is non-TTY. The raw error then
+ * looks like:
+ *   `writeFile blocked: \u001b[31mpath escapes workspace root: foo\u001b[0m`
+ * and the LLM's tool-error path is hard to read, plus the
+ * escape codes can be misinterpreted as control characters by
+ * log shippers. We strip everything matching the ECMA-48
+ * escape grammar we care about: CSI sequences (`\u001b[...m`),
+ * single-character escapes (`\u001b[?25l`), and OSC
+ * (`\u001b]...BEL`).
+ */
+function stripAnsi(s: string): string {
+  return s
+    .replace(/\u001b\][\s\S]*?(?:\u0007|\u001b\\)/g, '')
+    .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
+    .replace(/\u001b[=>][\s\S]*?(?:\u001b\\|\u0007)/g, '')
+    .replace(/\u001b[P^_].*?(?:\u001b\\|\u0007)/g, '')
+    .replace(/\u001b[()][\s\S]/g, '')
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '');
+}
+
+function extractCodeBlocks(content: string): string[] {
   const regex = /```[\w]*\n([\s\S]*?)```/g;
   const blocks: string[] = [];
   let match: RegExpExecArray | null = null;
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(content)) !== null) {
     blocks.push(match[1]);
   }
   return blocks;
@@ -235,6 +259,43 @@ export class ExecuteStage implements Stage {
             }
           }
 
+          // M18 (W18): retroactively extend the snapshot for any
+          // files the tool reported as `changedFiles` in its
+          // result. Some tools (e.g. `wordProcess` writing a
+          // generated .docx, `reportBuild` producing a folder of
+          // artefacts) don't expose the target path in their
+          // `args` — they take a folder name and emit a path
+          // derived at runtime. The pre-tool snapshot in that
+          // case is empty, and a post-execute trust rollback
+          // would have nothing to roll back to. We catch up
+          // here: for every path the tool says it touched, we
+          // record the *current* state as the rollback target.
+          // This is correct because (a) the tool just finished
+          // writing, so "current" is the post-write state, and
+          // (b) if the trust check passes, this snapshot is
+          // thrown away anyway.
+          if (this.storage && Array.isArray(toolResult.changedFiles)) {
+            for (const fp of toolResult.changedFiles) {
+              if (typeof fp !== 'string' || fp.length === 0) continue;
+              if (preToolSnapshot.some((s) => s.filePath === fp)) continue;
+              try {
+                const existed = await this.storage.exists(fp);
+                let content: string | null = null;
+                if (existed) {
+                  try {
+                    content = await this.storage.read(fp);
+                  } catch {
+                    content = null;
+                  }
+                }
+                preToolSnapshot.push({ filePath: fp, existed, content });
+              } catch {
+                // Best-effort. If we can't snapshot a path here, we
+                // just don't include it in the rollback set.
+              }
+            }
+          }
+
           // H8: if the *post-execute* trust check (evaluated later in this
           // block) decides this step's output is high-risk or critical, we
           // need to undo side effects. The judgement is not yet made — but
@@ -285,7 +346,30 @@ export class ExecuteStage implements Stage {
               const { sandboxPath } = await import('../shared/sandbox.js');
               const safe = sandboxPath(explicitFilePath);
               if (!safe.ok) {
-                throw new Error(`writeFile blocked: ${safe.error}`);
+                // L11 (W18): strip ANSI from the sandbox error
+                // so a child process's colour codes don't leak
+                // into the agent's error stream.
+                throw new Error(`writeFile blocked: ${stripAnsi(safe.error)}`);
+              }
+              // H10 (W18): capture a pre-write snapshot in the
+              // LLM-fallback path so a post-execute trust rollback
+              // can restore the previous content. Without this, a
+              // high-risk response that prompts `writeFile` to
+              // overwrite an existing file would leave the overwrite
+              // on disk because the snapshot block above only runs
+              // in the `useTool` branch.
+              let fallbackSnapshot: { filePath: string; existed: boolean; content: string | null } | null = null;
+              if (this.storage) {
+                const existed = await this.storage.exists(safe.resolved);
+                let content: string | null = null;
+                if (existed) {
+                  try {
+                    content = await this.storage.read(safe.resolved);
+                  } catch {
+                    content = null;
+                  }
+                }
+                fallbackSnapshot = { filePath: safe.resolved, existed, content };
               }
               const content = codeBlocks.length > 0 ? codeBlocks.join('\n\n') : response.content;
               if (this.storage && !(await this.storage.exists(safe.resolved))) {
@@ -295,12 +379,30 @@ export class ExecuteStage implements Stage {
               stepChangedFiles.push(safe.resolved);
               modifiedFiles.push(safe.resolved);
               stepOutput = `Written ${content.length} bytes to ${safe.resolved}`;
+              if (fallbackSnapshot) {
+                (runningStep as TaskStep & { _rollbackSnapshot?: Array<{ filePath: string; existed: boolean; content: string | null }> })._rollbackSnapshot = [fallbackSnapshot];
+              }
             } else if (codeBlocks.length > 0) {
               // No explicit path — write to a sandboxed 'output.txt'.
               const { sandboxPath } = await import('../shared/sandbox.js');
               const safe = sandboxPath('output.txt');
               if (!safe.ok) {
-                throw new Error(`writeFile blocked: ${safe.error}`);
+                throw new Error(`writeFile blocked: ${stripAnsi(safe.error)}`);
+              }
+              // H10 (W18): same snapshot-on-fallback-write logic as
+              // the explicit-path branch above.
+              let fallbackSnapshot: { filePath: string; existed: boolean; content: string | null } | null = null;
+              if (this.storage) {
+                const existed = await this.storage.exists(safe.resolved);
+                let content: string | null = null;
+                if (existed) {
+                  try {
+                    content = await this.storage.read(safe.resolved);
+                  } catch {
+                    content = null;
+                  }
+                }
+                fallbackSnapshot = { filePath: safe.resolved, existed, content };
               }
               const content = codeBlocks.join('\n\n');
               if (this.storage && !(await this.storage.exists(safe.resolved))) {
@@ -310,6 +412,9 @@ export class ExecuteStage implements Stage {
               stepChangedFiles.push(safe.resolved);
               modifiedFiles.push(safe.resolved);
               stepOutput = `Written to ${safe.resolved}`;
+              if (fallbackSnapshot) {
+                (runningStep as TaskStep & { _rollbackSnapshot?: Array<{ filePath: string; existed: boolean; content: string | null }> })._rollbackSnapshot = [fallbackSnapshot];
+              }
             }
           }
 
@@ -391,11 +496,21 @@ export class ExecuteStage implements Stage {
                     restored += 1;
                   }
                 } catch (err) {
-                  this.emitter.emit('output', {
-                    text: `  ⚠ Trust-rollback: could not restore ${entry.filePath}: ${
-                      err instanceof Error ? err.message : String(err)
-                    }`,
-                  });
+                  // M5 (W18): swallow ENOENT during rollback. The
+                  // file the snapshot expected to exist was deleted
+                  // by some other process between snapshot and
+                  // rollback; that's the *desired* post-rollback
+                  // state, so a "no such file" is success, not
+                  // failure. We log it at debug level so an
+                  // operator can see it happened.
+                  const code = (err as NodeJS.ErrnoException | undefined)?.code;
+                  if (code !== 'ENOENT') {
+                    this.emitter.emit('output', {
+                      text: `  ⚠ Trust-rollback: could not restore ${entry.filePath}: ${
+                        err instanceof Error ? err.message : String(err)
+                      }`,
+                    });
+                  }
                 }
               }
               if (restored > 0 || removed > 0) {

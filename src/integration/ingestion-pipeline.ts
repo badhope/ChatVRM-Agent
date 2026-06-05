@@ -46,6 +46,40 @@ export interface IngestionProgress {
   detail?: string;
 }
 
+/**
+ * M22 (W18): canonicalise the per-chunk `source` label so we
+ * don't end up with the same path repeated twice on a single
+ * chunk. The previous code joined the document's `source` and
+ * the loader's `documentLabel` with a literal ' :: ' separator
+ * (see the older pre-W17 path), which produced labels like
+ * `/tmp/a/foo.txt :: /tmp/a/foo.txt` when both fields carried
+ * the same path. Even after W17 M10 stopped joining them, a
+ * loader that happens to set `source` to the full path while
+ * the caller passes the full path as `documentLabel` would
+ * still produce a long, redundant label.
+ *
+ * We dedup by (a) trimming, (b) collapsing any
+ * `<label> :: <label>` repetition into a single `<label>`, and
+ * (c) falling back to a stable placeholder if both inputs are
+ * empty. The dedup is intentionally case-sensitive and
+ * path-sensitive — `Foo.txt` and `foo.txt` are different
+ * sources from the agent's point of view.
+ */
+function dedupSourceLabel(a: string | undefined, b: string | undefined): string {
+  const ax = a?.trim() ?? '';
+  const bx = b?.trim() ?? '';
+  if (ax && bx) {
+    if (ax === bx) return ax;
+    // Heuristic: if one is a suffix of the other (after
+    // normalisation), prefer the longer one — the full path is
+    // more useful for the user than the basename.
+    if (ax.endsWith(bx)) return ax;
+    if (bx.endsWith(ax)) return bx;
+    return `${ax} :: ${bx}`;
+  }
+  return ax || bx || '<unknown>';
+}
+
 export class IngestionPipeline {
   private readonly embedder: Embedder;
   private readonly vectorStore: VectorStore;
@@ -120,7 +154,10 @@ export class IngestionPipeline {
     let chunkedCount = 0;
     for (let i = 0; i < documents.length; i++) {
       const d = documents[i]!;
-      const label = d.source ?? documentLabel;
+      // M22 (W18): dedup the source label so a chunk's `source`
+      // metadata doesn't carry the same path twice. See the
+      // `dedupSourceLabel` doc above for the heuristic.
+      const label = dedupSourceLabel(d.source, documentLabel);
       let parts: Array<{ text: string; start: number; end: number }>;
       try {
         parts = this.chunker

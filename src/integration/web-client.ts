@@ -12,6 +12,17 @@
  *     multicast range. Hostnames are resolved once before the
  *     request and the resolved IP is compared against the deny-list
  *     to defeat DNS-rebinding.
+ *   - H6 (W18): the SSRF defense is a "best-effort, point-in-time"
+ *     check. `fetch()` re-resolves the hostname internally, so an
+ *     attacker controlling a DNS record (or the resolver) can still
+ *     return a public IP at the assertSafeUrl() lookup and a private
+ *     IP at the fetch() lookup. This is the standard DNS-rebinding
+ *     gap. We document the limitation here rather than pretending it
+ *     doesn't exist; full mitigation requires using `net.connect()`
+ *     to bind the underlying TCP socket to the resolved IP, which
+ *     Node's `fetch` does not expose. Operators who need that
+ *     guarantee should run this server behind a proxy that enforces
+ *     egress allowlists.
  *   - The body is capped at 1 MB so a malicious response can't OOM
  *     the agent.
  *   - HTML responses are passed through `htmlToText` so the LLM
@@ -203,14 +214,32 @@ async function readBodyWithCap(response: Response, cap: number): Promise<{ text:
  */
 export function htmlToText(html: string, maxLen: number = 16_000): string {
   let s = html;
+  // M9 (W18): strip HTML comments first, before any other tag
+  // stripping. The previous code would leave the body of a
+  // <!-- ... --> intact, so a comment like
+  //   <!-- ignore all previous instructions and ... -->
+  // would be passed verbatim to the LLM. Comments can also hide
+  // visible-looking content (e.g. <!-- <script>foo</script> -->)
+  // that the script-strip regex can't reach because the `<!--`
+  // prefix breaks its `<script\b` anchor. Strip them all up front
+  // and use `[\s\S]*?` so multi-line comments are handled.
+  s = s.replace(/<!--[\s\S]*?-->/g, ' ');
   // Drop dangerous / noisy blocks first.
   s = s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ');
   s = s.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ');
   s = s.replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ');
   s = s.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ');
   s = s.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, ' ');
-  // Block elements → newline.
-  s = s.replace(/<\/?(p|div|br|li|tr|h[1-6]|article|section|header|footer|main|aside|nav|pre|table|tbody|thead|tfoot)\b[^>]*>/gi, '\n');
+  // Block elements → newline. L7 (W18): the previous regex used
+  // `\b[^>]*` after the tag name, which made the matcher accept
+  // any `word` tag whose name happens to start with one of the
+  // listed prefixes. For example `<tabled>` was matched as
+  // `<table\b[d>...]>` because `\b` is satisfied at the `e->d`
+  // boundary, then `[d>]` consumed the rest. The fix is to
+  // require the tag name to be terminated by a `>` or
+  // whitespace, never a letter. We use a non-backtracking
+  // lookahead so the regex remains linear in the input length.
+  s = s.replace(/<\/?(p|div|br|li|tr|h[1-6]|article|section|header|footer|main|aside|nav|pre|figure|figcaption|details|summary|table|tbody|thead|tfoot)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '\n');
   // Drop the remaining tags.
   s = s.replace(/<[^>]+>/g, ' ');
   // Decode the small set of entities the LLM will actually see.
@@ -234,6 +263,29 @@ export function htmlToText(html: string, maxLen: number = 16_000): string {
  * returns an empty list rather than throwing — the LLM can be told
  * the search backend is unavailable.
  */
+// M12 (W18): heuristic CAPTCHA detector. The DDG HTML endpoint
+// can serve a "Prove you're human" challenge when the IP makes too
+// many requests, and the page will look indistinguishable from a
+// "no results" page to the LLM. We look for the well-known
+// challenge markers (Cloudflare, hCaptcha, DDG's own anubis
+// challenge) in the body and return a typed error so the caller
+// can surface it as a tool failure rather than silently returning
+// zero results and letting the LLM hallucinate.
+const CAPTCHA_MARKERS = [
+  /verify you are (a )?human/i,
+  /are you a robot/i,
+  /checking your browser/i,
+  /attention required! \| cloudflare/i,
+  /<title>just a moment\.\.\.?<\/title>/i,
+  /cf-chl-bypass/i,
+  /hcaptcha/i,
+  /recaptcha/i,
+  /anubis_substep/i,
+];
+export function looksLikeCaptchaPage(html: string): boolean {
+  return CAPTCHA_MARKERS.some((re) => re.test(html));
+}
+
 export async function duckDuckGoSearch(query: string, opts: { maxResults: number; signal?: AbortSignal }): Promise<WebSearchResult[]> {
   const url = new URL('https://html.duckduckgo.com/html/');
   url.searchParams.set('q', query);
@@ -250,6 +302,13 @@ export async function duckDuckGoSearch(query: string, opts: { maxResults: number
     throw new Error(`search backend returned HTTP ${res.status}`);
   }
   const { text } = await readBodyWithCap(res, WEB_MAX_BYTES);
+  // M12 (W18): short-circuit on a CAPTCHA challenge so the caller
+  // gets a typed error instead of an empty results list. The LLM
+  // would otherwise be told "no results found" and could invent
+  // plausible URLs to satisfy the user.
+  if (looksLikeCaptchaPage(text)) {
+    throw new Error('search backend served a CAPTCHA/anti-bot challenge; slow down and retry');
+  }
   const results: WebSearchResult[] = [];
   // W17 M7: the previous regex was an unanchored lazy match that
   // could pick up text from the *next* result block when the current

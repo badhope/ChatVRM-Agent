@@ -168,13 +168,13 @@ export class InMemoryVectorStore implements VectorStore {
   }
 }
 
-function float32ToB64(v: Float32Array): string {
+export function float32ToB64(v: Float32Array): string {
   // Use the underlying ArrayBuffer view so we get raw little-endian
   // bytes (Node guarantees LE on x86 + arm64).
   return Buffer.from(v.buffer, v.byteOffset, v.byteLength).toString('base64');
 }
 
-function b64ToFloat32(b64: string): Float32Array {
+export function b64ToFloat32(b64: string): Float32Array {
   const buf = Buffer.from(b64, 'base64');
   // Copy through a fresh ArrayBuffer so the Float32Array doesn't
   // share memory with the (resized-once) Buffer pool.

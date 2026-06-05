@@ -27,7 +27,6 @@ import { ReActAgent } from '../../src/agents/react.agent.js';
 import { Crew, type AgentDefinition, type CrewProcess } from '../../src/agents/crew.agent.js';
 import { Graph, END, START, type ConditionalFn, type GraphState, type NodeFn } from '../../src/agents/graph.agent.js';
 import { getRuntime } from '../runtime.js';
-import { requireAuth } from '../middleware/auth.js';
 import type { ILLMPort } from '../../src/ports/llm.port.js';
 import type { IToolsPort } from '../../src/ports/tools.port.js';
 import type { IConfigPort } from '../../src/ports/config.port.js';
@@ -98,11 +97,7 @@ const GraphRunSchema = z.object({
 
 export function agentsRuntimeRoutes(deps: AgentsRuntimeDeps): Router {
   const router = Router();
-  // H13: every endpoint under /api/runtime/agents runs an LLM
-  // call, optionally invokes tools, and may modify global state
-  // (memory, agent profile, runtime vectors). Gated behind the
-  // bearer-token middleware.
-  router.use(requireAuth());
+  // C1 (W18): auth is applied globally in app.ts.
 
   router.get('/manifest', async (_req: Request, res: Response) => {
     try {

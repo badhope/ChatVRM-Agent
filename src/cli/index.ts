@@ -22,58 +22,21 @@ import type { ProviderType } from '../ports/config.port.js';
 import type { ChatResponse } from '../ports/llm.port.js';
 import type { PipelineContext, PipelineEvents } from '../core/types.js';
 import { sandboxPath } from '../shared/sandbox.js';
-import { z } from 'zod';
 import { WebClient } from '../integration/web-client.js';
-
-// Same zod schemas as the server. The CLI and the server register the
-// same default tools; if we used different (or no) schemas the ReAct
-// agent would only see schemas in server mode, leaving CLI runs to
-// fall back to the prompt-only path.
-const writeFileSchema = z.object({
-  path: z.string().min(1).optional(),
-  filePath: z.string().min(1).optional(),
-  content: z.string().optional(),
-  previousOutput: z.string().optional(),
-});
-const readFileSchema = z.object({
-  path: z.string().min(1).optional(),
-  filePath: z.string().min(1).optional(),
-});
-const shellSchema = z.object({
-  command: z.string().min(1),
-  timeout: z.number().int().positive().optional(),
-});
-const searchSchema = z.object({
-  pattern: z.string().optional(),
-  query: z.string().optional(),
-});
-const rememberSchema = z.object({
-  input: z.string().min(1).optional(),
-  output: z.string().optional(),
-  content: z.string().optional(),
-  provider: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-});
-const analyzeSchema = z.object({
-  text: z.string().optional(),
-  target: z.string().optional(),
-  detail: z.string().optional(),
-});
-const respondSchema = z.object({
-  input: z.string().optional(),
-  message: z.string().optional(),
-  style: z.string().optional(),
-  maxLength: z.number().int().positive().optional(),
-});
-
-const webFetchSchema = z.object({
-  url: z.string().min(1),
-  maxBytes: z.number().int().positive().max(5_242_880).optional(),
-});
-const webSearchSchema = z.object({
-  query: z.string().min(1),
-  maxResults: z.number().int().positive().max(20).optional(),
-});
+// L13 (W18): import the canonical zod schemas from the shared module
+// so the CLI and the server can never drift apart. The previous
+// `const writeFileSchema = z.object({...})` block lived only here.
+import {
+  writeFileSchema,
+  readFileSchema,
+  shellSchema,
+  searchSchema,
+  rememberSchema,
+  analyzeSchema,
+  respondSchema,
+  webFetchSchema,
+  webSearchSchema,
+} from '../agents/tool-defs.js';
 
 interface RegisterToolsOptions {
   llm: LLMAdapter;

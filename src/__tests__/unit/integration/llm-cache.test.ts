@@ -35,7 +35,13 @@ describe('LLMCache', () => {
     const req: ChatParams = { provider: 'openai' as never, model: 'gpt', messages: [{ role: 'user', content: 'hello' }] };
     const r1 = await wrapped.chat(req);
     const r2 = await wrapped.chat(req);
-    expect(r1).toBe(r2);
+    // H5 (W18): the cache no longer returns the same object reference
+    // — that caused mutation pollution when callers modified the
+    // returned response in place. Use deep equality on the user-
+    // visible fields instead.
+    expect(r1.content).toBe(r2.content);
+    expect(r1.model).toBe(r2.model);
+    expect(r1.usage).toEqual(r2.usage);
     expect(llm.calls).toBe(1);
     expect(cache.hitCount).toBe(1);
     expect(cache.missCount).toBe(1);

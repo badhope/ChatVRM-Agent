@@ -126,13 +126,24 @@ export class TokenBudget {
    * prompt size alone would push the session over the limit, the
    * call is rejected **before** the LLM is invoked. This avoids
    * paying for a call whose result would be thrown away.
+   *
+   * M7 (W18): if the inner port tags the response with
+   * `cacheHit: true` (the LLM response cache does this on hits),
+   * we skip `record()`. The tokens were paid for the first time
+   * the cache was populated; replaying them a second time would
+   * double-count. We still call `preCallCheck` because a cache
+   * hit still consumes a tiny bit of CPU/memory and the operator
+   * may want to rate-limit the *number* of calls regardless of
+   * whether they hit a real provider.
    */
   wrap(port: ILLMPort, sessionId = 'default'): ILLMPort {
     return {
       chat: async (req: ChatParams) => {
         this.preCallCheck(sessionId, this.estimatePromptTokens(req));
         const out = await port.chat(req);
-        this.record(sessionId, out.model || req.model || 'unknown', out.usage);
+        if (!out.cacheHit) {
+          this.record(sessionId, out.model || req.model || 'unknown', out.usage);
+        }
         return out;
       },
       stream: port.stream.bind(port),
@@ -152,7 +163,10 @@ export class TokenBudget {
         const sid = getSessionId();
         this.preCallCheck(sid, this.estimatePromptTokens(req));
         const out = await port.chat(req);
-        this.record(sid, out.model || req.model || 'unknown', out.usage);
+        // M7 (W18): same cache-hit detection as `wrap()` above.
+        if (!out.cacheHit) {
+          this.record(sid, out.model || req.model || 'unknown', out.usage);
+        }
         return out;
       },
       stream: port.stream.bind(port),

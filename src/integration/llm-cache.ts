@@ -17,10 +17,17 @@
  * produce the same key. If you change the model behaviour (topP / penalties)
  * the cache key changes, so stale responses are not returned.
  *
+ * H9 (W18): key derivation is now a sha256 hash of the canonical
+ * stringification instead of a recursive `stableStringify` that
+ * produced a multi-MB string for large messages+tools arrays. The
+ * stored key is short, comparable, and the hot path no longer
+ * allocates one giant string per request.
+ *
  * TTL: per-entry expiry; default 5 minutes. LRU eviction: when the
  * cache exceeds `maxEntries`, the least-recently-used entry is removed.
  */
 
+import { createHash } from 'node:crypto';
 import type { ILLMPort, ChatResponse, ChatParams } from '../ports/llm.port.js';
 
 export interface LLMCacheOptions {
@@ -71,7 +78,12 @@ export class LLMCache {
       messages: req.messages.map((m) => ({ role: m.role, content: m.content, toolCallId: m.toolCallId, name: m.name, toolCalls: m.toolCalls })),
       tools: (req.tools ?? []).map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
     };
-    return stableStringify(norm);
+    // H9 (W18): sha256 hash of the canonical JSON. The old stable
+    // stringifier concatenated keys in-place and produced a single
+    // string the size of the request, which the cache then had to
+    // compare lexicographically on every lookup. The hash is a
+    // 64-char string and constant-time to compare.
+    return createHash('sha256').update(stableStringify(norm)).digest('hex');
   }
 
   get size(): number { return this.map.size; }
@@ -93,7 +105,25 @@ export class LLMCache {
     this.map.delete(key);
     this.map.set(key, { ...entry, insertedAt: this.now() });
     this.hits += 1;
-    return entry.value;
+    // H5 (W18): return a structural clone so callers can't mutate the
+    // cached value in place. The previous code returned the same
+    // reference every time, so a route that appended `usage` or
+    // rearranged `toolCalls` on the response would silently poison
+    // every subsequent cache hit. structuredClone preserves the
+    // ChatResponse shape (including toolCalls, usage, content) bit-
+    // exactly and is fast enough for our cache size.
+    // M7 (W18): tag the cloned response with `cacheHit: true` so
+    // downstream `TokenBudget` observers can avoid double-counting
+    // tokens/cost when the cache is stacked under/over a budget.
+    // L10 (W18): also stamp the cloned response with
+    // `cachedAt: <insertedAt>`, so a downstream log/observability
+    // path can tell the *age* of a cache hit (useful for SLO
+    // analysis, e.g. "what fraction of hits are > 1 min stale?").
+    // The value is the original insert epoch-millis.
+    const cloned = structuredClone(entry.value);
+    cloned.cacheHit = true;
+    cloned.cachedAt = entry.insertedAt;
+    return cloned;
   }
 
   set(key: string, value: ChatResponse): void {

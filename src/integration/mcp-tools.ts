@@ -63,12 +63,22 @@ export async function connectStdioMcp(
 
 /**
  * Open a streamable-HTTP MCP connection.
+ *
+ * H7 (W18): validate the URL against the SSRF deny-list before
+ * opening a transport. The earlier version took any URL as-is, so a
+ * malicious /api/agents-runtime or CLI caller could point the MCP
+ * bridge at `http://127.0.0.1/admin` or `http://169.254.169.254/...`
+ * (the AWS metadata service) and have the agent relay its queries
+ * there. We reuse the same `assertSafeUrl()` helper the WebClient
+ * uses so the deny-list lives in one place.
  */
 export async function connectHttpMcp(
   url: string,
   headers: Record<string, string> = {},
   clientInfo: McpClientInfo = DEFAULT_CLIENT_INFO,
 ): Promise<MCPClient> {
+  const { assertSafeUrl } = await import('./web-client.js');
+  await assertSafeUrl(url);
   const transport = new HttpTransport({ url, headers });
   const client = new MCPClient({ transport, clientInfo } satisfies MCPClientOptions);
   await client.initialize();

@@ -76,6 +76,25 @@ export interface ChatResponse {
   toolCalls?: ToolCall[];
   /** Raw finish_reason: `stop` | `tool_calls` | `length` | `content_filter` | ... */
   finishReason?: string;
+  /**
+   * Set by the LLM response cache to indicate this response was
+   * served from a memoised entry, not from a real provider call.
+   * M7 (W18): observers (e.g. `TokenBudget`) use this flag to
+   * avoid double-counting tokens / cost. Without it, a wrapped
+   * `cache(budget(port))` would record the original tokens when
+   * the budget wraps the inner port AND when the outer budget
+   * wraps the cache, because the cache returns the original
+   * `usage` and the outer budget blindly records it.
+   */
+  cacheHit?: boolean;
+  /**
+   * Epoch-millis timestamp of when this response was originally
+   * inserted into the cache. Only set when `cacheHit` is true.
+   * L10 (W18): observability hook so callers can compute
+   * cache-hit age at a glance. The LLMCache is the only
+   * producer; if you set this manually the value is ignored.
+   */
+  cachedAt?: number;
 }
 
 export interface StreamChunk {

@@ -124,25 +124,17 @@ describe('W15 audit regressions', () => {
     it('does not flag "I think" in a short conversational reply', () => {
       // Real users say "I think we should..." all the time without
       // it being a trust issue. The gate should ignore this.
-      delete process.env['VITEST']; // simulate production
-      try {
-        const issues = TrustService.detectIssues('I think we should add a test for this');
-        const hedges = issues.filter((i) => i.type === 'uncertainty');
-        expect(hedges).toHaveLength(0);
-      } finally {
-        process.env['VITEST'] = 'true';
-      }
+      // H14 (W18): tests now pass `strict: true` explicitly to opt
+      // into the production posture; the env-var bypass is gone.
+      const issues = TrustService.detectIssues('I think we should add a test for this', undefined, { strict: true });
+      const hedges = issues.filter((i) => i.type === 'uncertainty');
+      expect(hedges).toHaveLength(0);
     });
     it('does flag a hedge in a long body', () => {
-      delete process.env['VITEST'];
-      try {
-        const longOutput = 'I think '.padEnd(220, 'x');
-        const issues = TrustService.detectIssues(longOutput);
-        const hedges = issues.filter((i) => i.type === 'uncertainty');
-        expect(hedges.length).toBeGreaterThanOrEqual(1);
-      } finally {
-        process.env['VITEST'] = 'true';
-      }
+      const longOutput = 'I think '.padEnd(220, 'x');
+      const issues = TrustService.detectIssues(longOutput, undefined, { strict: true });
+      const hedges = issues.filter((i) => i.type === 'uncertainty');
+      expect(hedges.length).toBeGreaterThanOrEqual(1);
     });
   });
 

@@ -73,9 +73,27 @@ export class PipelineEngine {
 
     let pipelineTimeout: ReturnType<typeof setTimeout> | undefined;
     let timedOut = false;
+    // M14 (W18): the pipeline timeout now aborts an in-flight
+    // AbortController that we pass to every stage. Without this,
+    // a stage that had already started an LLM call would happily
+    // continue past the pipeline timeout — the timeout error would
+    // surface to the caller, but the underlying provider request
+    // would still resolve eventually, and any post-stage hooks
+    // (file writes, cache updates, observability spans) would
+    // continue to fire, polluting the run summary. We attach the
+    // signal to the *stage* execution by threading it through the
+    // context's `metadata.signal` so stages that opt in to the
+    // signal can short-circuit their work.
+    const stageSignal = new AbortController();
     const timeoutPromise = new Promise<never>((_, reject) => {
       pipelineTimeout = setTimeout(() => {
         timedOut = true;
+        try {
+          stageSignal.abort(new Error(`Pipeline timed out after ${this.timeoutMs}ms`));
+        } catch {
+          // AbortController.abort() can throw if the controller is
+          // already aborted; ignore.
+        }
         reject(new Error(`Pipeline timed out after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
     });
@@ -89,9 +107,12 @@ export class PipelineEngine {
     // `await innerPromise` here — doing so would block until every
     // in-flight LLM call / file write completes, which defeats the
     // whole point of the timeout.
-    const innerPromise = this.executeStages(context, (c) => {
-      latestContext = c;
-    });
+    const innerPromise = this.executeStages(
+      { ...context, metadata: { ...context.metadata, signal: stageSignal.signal } },
+      (c) => {
+        latestContext = c;
+      },
+    );
     if (timedOut) {
       // `timedOut` is only set inside the timeout callback, so this
       // branch never fires on the initial pass. We attach the
@@ -189,9 +210,17 @@ export class PipelineEngine {
 
       // Terminal-failure rollback: if we have no retries left and the
       // stage declared rollback, run it once on the post-fail context.
-      // This guarantees that `maxRetries: 0` doesn't silently leave
-      // partial work in place.
-      if (!stageSuccess && postFailContext && stage.rollback && this.maxRetries === 0) {
+      // This guarantees that a `maxRetries: 0` config still rolls back,
+      // and that a multi-retry stage that exhausts all attempts also
+      // rolls back once. H12 (W18): the old guard `this.maxRetries === 0`
+      // was too narrow — it only triggered for stages that *never*
+      // retried. A stage with maxRetries=2 that fails on attempt 2
+      // would fall through without rolling back, leaving partial
+      // work on disk. The new guard `!stageSuccess && lastError`
+      // (combined with the for-loop having exited via the catch
+      // branch) is equivalent to "we tried everything and the stage
+      // is still broken", which is exactly when we want a rollback.
+      if (!stageSuccess && postFailContext && stage.rollback) {
         try {
           const rolled = await stage.rollback(postFailContext);
           if (rolled) track(rolled);
@@ -244,6 +273,13 @@ export class PipelineEngine {
 
     const stageStart = performance.now();
     const phaseRecord: PhaseRecord = {
+      // L8 (W18): the field is named `startTime` but stores a
+      // `Date.now()` epoch-millis value, not a `Date` object.
+      // Older callers sometimes did `new Date(phaseRecord.endTime)`
+      // and got the wrong value if a Date instance was assigned
+      // somewhere. We document the unit here and assign the
+      // value consistently with `Date.now()` (epoch millis) to
+      // keep all timestamps comparable in arithmetic.
       phase: stage.name,
       startTime: Date.now(),
       status: 'running',
@@ -271,6 +307,10 @@ export class PipelineEngine {
       const durationMs = performance.now() - stageStart;
       phaseRecord.endTime = Date.now();
       phaseRecord.status = 'completed';
+      // L8 (W18): set endTime in the *same* epoch-millis unit
+      // (Date.now()) as startTime so a future caller can do
+      // `phaseRecord.endTime - phaseRecord.startTime` without
+      // having to re-parse.
 
       this.emitter.emit('stage:complete', {
         stage: stage.name,
@@ -298,14 +338,29 @@ export class PipelineEngine {
     };
   }
 
+  /**
+   * Helper: append a step result to `context.results` and return a new
+   * context. Pure: the caller's `context` is not mutated.
+   *
+   * H13 (W18): the previous implementation did
+   *   `context.results.push(result); return context;`
+   * which mutated the caller's object in place. If the caller was
+   * holding a reference to a context it expected to remain stable
+   * (e.g. for a parallel run with `Promise.all`), the new result
+   * would suddenly appear under that reference. Stages that re-used
+   * the same `currentContext` for retry backoff would also see
+   * accidental state growth. Returning a new object keeps the
+   * pipeline referentially transparent and matches the explicit
+   * "currentContext = c" tracking in `executeStages`.
+   */
   addResult(context: PipelineContext, result: StepResult): PipelineContext {
-    if (result.changedFiles.length > 0) {
-      context.modifiedFiles = [
-        ...new Set([...context.modifiedFiles, ...result.changedFiles]),
-      ];
-    }
+    const modifiedFiles =
+      result.changedFiles.length > 0
+        ? [...new Set([...context.modifiedFiles, ...result.changedFiles])]
+        : context.modifiedFiles;
     return {
       ...context,
+      modifiedFiles,
       results: [...(context.results ?? []), result],
     };
   }

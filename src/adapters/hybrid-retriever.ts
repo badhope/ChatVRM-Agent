@@ -45,6 +45,18 @@ export interface HybridResult {
   score: number;
   /** Source signals that contributed. */
   sources: { bm25?: number; vector?: number };
+  /**
+   * M21 (W18): optional filesystem path associated with the
+   * document. Some ingestion pipelines (`ingestFolder`) keep the
+   * source path on the document's metadata, but downstream code
+   * (e.g. the RAG stage that builds a citation) needs the path
+   * as a top-level field on the result. Mirroring it here keeps
+   * the result type self-describing and avoids having to read
+   * `metadata.path` in every call site, which used to be a
+   * silent source of `undefined` if the path was missing. We
+   * read the metadata field, but never throw on a missing one.
+   */
+  path?: string;
 }
 
 export interface HybridRetrieverOptions {
@@ -118,11 +130,54 @@ export class HybridRetriever {
     for (const r of records) this.vectorIds.add(r.id);
   }
 
+  /**
+   * M23 (W18): hydrate the retriever with pre-computed vectors
+   * (e.g. loaded from disk on server boot). The previous
+   * `runtime.hydrateFromDisk` called `retriever.add(...)` which
+   * re-embedded every text via the hashing embedder. That's two
+   * problems:
+   *  1. CPU cost: a large corpus takes seconds to re-embed on
+   *     every server boot, even though we already have the
+   *     exact bit-for-bit vectors on disk.
+   *  2. **Metadata loss**: if the embedder config changes
+   *     between two server runs (e.g. the dim was bumped), the
+   *     re-embedded vectors don't match the on-disk dim, and
+   *     the hydration silently fails. The pre-computed vectors
+   *     are exactly what was written, so a hydration that
+   *     uses them is canonical.
+   *
+   * `addWithVectors` skips the embedder and uses the provided
+   * vectors as-is. BM25 and the retriever's `docs` map still
+   * receive every record, so search works the same as a
+   * fresh `add()`.
+   */
+  async addWithVectors(records: Array<HybridDoc & { vector: Float32Array }>): Promise<void> {
+    if (records.length === 0) return;
+    // Insert into BM25.
+    this.bm25.addAll(records);
+    for (const r of records) {
+      this.docs.set(r.id, r);
+    }
+    for (const r of records) {
+      if (r.vector.length === 0) {
+        throw new Error(`HybridRetriever.addWithVectors: empty vector for id ${r.id}`);
+      }
+    }
+    await this.vectorStore.add(
+      records.map((r) => ({ id: r.id, text: r.text, metadata: r.metadata, vector: r.vector })),
+    );
+    for (const r of records) this.vectorIds.add(r.id);
+  }
+
   async remove(ids: string[]): Promise<void> {
-    // W17 L6: clear the local in-memory state FIRST so that even if the
-    // vector-store `remove()` throws (e.g. transient I/O error), the
-    // retriever's own state is already consistent. We then attempt the
-    // backing-store call; if it throws, surface the error.
+    // W17 L6 / H8 (W18): clear the local in-memory state FIRST so that
+    // even if the vector-store `remove()` throws (e.g. transient I/O
+    // error), the retriever's own state is already consistent. We
+    // then attempt the backing-store call; if it throws, surface the
+    // error. The ordering matters: a failed store.remove that leaves
+    // the cache populated would cause retrieve() to return ghost
+    // hits; clearing first means a store failure can only cause
+    // *missing* hits (i.e. the safe direction).
     for (const id of ids) {
       this.bm25.discard(id);
       this.docs.delete(id);
@@ -201,12 +256,32 @@ export class HybridRetriever {
       if (!doc) continue;
       const bm25Raw = bm25Hits.find((h) => String(h.id) === id)?.score;
       const vectorRaw = vectorHits.find((h) => h.id === id)?.score;
+      // M21 (W18): lift the source path from the document metadata
+      // onto the top-level result. We accept several well-known
+      // keys (`path`, `filePath`, `sourcePath`, `source`) so the
+      // retriever doesn't have to know which one the ingestion
+      // pipeline chose. If none is present, `path` stays undefined
+      // and downstream code falls back to `metadata.path` if it
+      // cares. We coerce non-strings to undefined rather than
+      // throwing — the result is for display, not for security.
+      const md = doc.metadata;
+      const path =
+        typeof md?.['path'] === 'string'
+          ? md['path']
+          : typeof md?.['filePath'] === 'string'
+            ? md['filePath']
+            : typeof md?.['sourcePath'] === 'string'
+              ? md['sourcePath']
+              : typeof md?.['source'] === 'string'
+                ? md['source']
+                : undefined;
       fused.push({
         id,
         text: doc.text,
         metadata: doc.metadata,
         score,
         sources: { bm25: bm25Raw, vector: vectorRaw },
+        path,
       });
     }
     fused.sort((a, b) => b.score - a.score);

@@ -48,8 +48,8 @@ export interface ResilientLLMOptions {
     resetTimeout?: number;
     halfOpenMaxCalls?: number;
   };
-  /** Optional sleep function for tests. */
-  sleep?: (ms: number) => Promise<void>;
+  /** Optional sleep function for tests. Signature: `(ms, signal?) => Promise<void>`. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 export class ResilientError extends Error {
@@ -68,7 +68,7 @@ export class ResilientLLM {
   private readonly shouldRetry: (err: unknown, attempt: number) => boolean;
   private readonly signal?: AbortSignal;
   private readonly breaker: CircuitBreaker;
-  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
 
   constructor(opts: ResilientLLMOptions = {}) {
     this.maxRetries = opts.maxRetries ?? 3;
@@ -126,7 +126,14 @@ export class ResilientLLM {
         const base = Math.min(this.maxDelayMs, this.initialDelayMs * Math.pow(this.backoffMultiplier, attempt));
         const jitterMs = base * this.jitter * (Math.random() * 2 - 1);
         const delay = Math.max(0, base + jitterMs);
-        await this.sleep(delay);
+        // M8 (W18): the backoff sleep must respect the abort signal.
+        // Without this, a retry loop can keep waiting for the full
+        // backoff window even after the caller cancelled, which
+        // blows through the cancellation budget and ties up the
+        // event loop. We race the configured sleep against an
+        // abort-triggered reject, so cancellation cuts the wait
+        // short to microseconds.
+        await this.sleep(delay, this.signal);
       }
     }
     // Unreachable.
@@ -139,6 +146,25 @@ export class ResilientLLM {
   }
 }
 
-function defaultSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  // M8 (W18): the default sleep implementation races the timeout
+  // against an abort, so an aborted caller doesn't have to wait for
+  // the full backoff window. We attach a one-shot abort listener
+  // and clear it as soon as the sleep resolves naturally, so a
+  // successful sleep doesn't leak a listener.
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('ResilientLLM: aborted during backoff'));
+      return;
+    }
+    const t = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(new Error('ResilientLLM: aborted during backoff'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }

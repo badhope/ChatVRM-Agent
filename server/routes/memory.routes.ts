@@ -1,13 +1,9 @@
 import { Router, type Request, type Response } from 'express';
 import type { IMemoryPort } from '../../src/ports/memory.port.js';
-import { requireAuth } from '../middleware/auth.js';
 
 export function memoryRoutes(memory: IMemoryPort): Router {
   const r = Router();
-  // H14: memory routes can read/write/clear long-term memory and
-  // include sensitive user data. Gated behind the bearer-token
-  // middleware so a stray curl can't exfiltrate the corpus.
-  r.use(requireAuth());
+  // C1 (W18): auth is applied globally in app.ts.
 
   r.get('/', async (req, res) => {
     const q = (req.query.q as string | undefined)?.trim() ?? '';

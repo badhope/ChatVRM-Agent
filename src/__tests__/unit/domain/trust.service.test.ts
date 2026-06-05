@@ -122,7 +122,10 @@ describe('TrustService', () => {
     it('should detect "I think" as uncertainty', () => {
       const output = 'I think the solution would be to refactor';
 
-      const verdict = TrustService.evaluate(output);
+      // W18: opt into lenient mode to surface the single-hedge
+      // pattern. Production posture (strict: true) would suppress
+      // a single hedge in a short reply as conversational noise.
+      const verdict = TrustService.evaluate(output, undefined, { strict: false });
 
       const uncertaintyIssue = verdict.issues.find(
         (i) => i.type === 'uncertainty' && i.description.includes('I think'),
@@ -133,7 +136,7 @@ describe('TrustService', () => {
     it('should detect "probably" as uncertainty', () => {
       const output = 'This is probably the right approach';
 
-      const verdict = TrustService.evaluate(output);
+      const verdict = TrustService.evaluate(output, undefined, { strict: false });
 
       const uncertaintyIssue = verdict.issues.find(
         (i) => i.type === 'uncertainty' && i.pattern.includes('probably'),
@@ -144,7 +147,7 @@ describe('TrustService', () => {
     it('should detect "maybe" as uncertainty', () => {
       const output = 'Maybe we should try a different approach';
 
-      const verdict = TrustService.evaluate(output);
+      const verdict = TrustService.evaluate(output, undefined, { strict: false });
 
       const maybeIssue = verdict.issues.find((i) => i.pattern.includes('maybe'));
       expect(maybeIssue).toBeDefined();
@@ -153,7 +156,7 @@ describe('TrustService', () => {
     it('should detect "I\'m not sure" as uncertainty', () => {
       const output = "I'm not sure if this will work";
 
-      const issues = TrustService.detectIssues(output);
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const unsureIssue = issues.find(
         (i) => i.type === 'uncertainty' && i.description.includes('lack of certainty'),
@@ -224,7 +227,9 @@ describe('TrustService', () => {
     });
 
     it('should add [?] markers for uncertainty', () => {
-      const issues = TrustService.detectIssues('I think this might work');
+      // W18: opt into lenient mode to surface the single-hedge
+      // pattern so formatOutput has a [?] target.
+      const issues = TrustService.detectIssues('I think this might work', undefined, { strict: false });
       const formatted = TrustService.formatOutput(
         'I think this might work',
         issues,

@@ -104,7 +104,9 @@ describe('TrustService edge cases', () => {
     it('should detect both dangerous and uncertainty patterns in one output', () => {
       const output = 'I think we should run chmod 777 on the directory';
 
-      const verdict = TrustService.evaluate(output);
+      // W18: lenient mode surfaces the single-hedge pattern alongside
+      // the dangerous chmod 777 detection.
+      const verdict = TrustService.evaluate(output, undefined, { strict: false });
 
       const hasUncertainty = verdict.issues.some((i) => i.type === 'uncertainty');
       const hasDangerous = verdict.issues.some((i) => i.type === 'dangerous');
@@ -317,7 +319,8 @@ describe('TrustService edge cases', () => {
 
     it('should add markers for uncertainty issues', () => {
       const output = 'I think this should work for now';
-      const issues = TrustService.detectIssues(output);
+      // W18: lenient mode surfaces the single-hedge pattern.
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -447,7 +450,11 @@ describe('TrustService edge cases', () => {
     it('should not require confirmation for auto-execute level', () => {
       const output = 'maybe we could try this approach';
 
-      const verdict = TrustService.evaluate(output);
+      // W18: lenient mode surfaces the single-hedge pattern so the
+      // verdict is auto-execute (per the maybe pattern's level).
+      // Production posture (strict: true) would suppress this as
+      // conversational noise.
+      const verdict = TrustService.evaluate(output, undefined, { strict: false });
 
       expect(verdict.level).toBe(TrustLevel.AutoExecute);
       expect(verdict.requiresConfirmation).toBe(false);

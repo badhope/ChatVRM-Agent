@@ -8,6 +8,23 @@ import type { ProviderType } from '../src/ports/config.port.js';
 import { sandboxPath } from '../src/shared/sandbox.js';
 import { z } from 'zod';
 import { WebClient } from '../src/integration/web-client.js';
+// L13 (W18): shared zod schemas for the default tool set. The CLI
+// (`src/cli/index.ts`) and the server both register the same tools;
+// the schemas used to live in two parallel copies. We keep the
+// document / chart / report schemas (wordProcess, excelRead,
+// chartGenerate, reportBuild, etc.) defined locally because the CLI
+// does not register those tools.
+import {
+  writeFileSchema,
+  readFileSchema,
+  shellSchema,
+  searchSchema,
+  rememberSchema,
+  analyzeSchema,
+  respondSchema,
+  webFetchSchema,
+  webSearchSchema,
+} from '../src/agents/tool-defs.js';
 
 // ----- zod schemas for the default tool set -----
 // The ReAct agent only forwards tools that declare an `inputSchema`
@@ -16,54 +33,13 @@ import { WebClient } from '../src/integration/web-client.js';
 // heuristic in agents-runtime.routes.ts. Adding zod schemas to
 // every default tool makes native function-calling actually
 // usable.
-const writeFileSchema = z.object({
-  path: z.string().min(1).optional().describe('Absolute or workspace-relative file path'),
-  filePath: z.string().min(1).optional().describe('Alias for `path`'),
-  content: z.string().optional().describe('Explicit file content; if omitted, the previous step output is used'),
-  previousOutput: z.string().optional(),
-}).refine((v) => Boolean(v.path ?? v.filePath), { message: 'path (or filePath) is required' });
+// L13 (W18): writeFileSchema, readFileSchema, shellSchema,
+// searchSchema, rememberSchema, analyzeSchema, respondSchema,
+// webFetchSchema, webSearchSchema now live in
+// `src/agents/tool-defs.ts` and are imported above. Document
+// / chart / report tools stay here because the CLI does not
+// register them.
 
-const readFileSchema = z.object({
-  path: z.string().min(1).optional(),
-  filePath: z.string().min(1).optional(),
-}).refine((v) => Boolean(v.path ?? v.filePath), { message: 'path (or filePath) is required' });
-
-const shellSchema = z.object({
-  command: z.string().min(1).describe('Shell command to execute'),
-  timeout: z.number().int().positive().optional().describe('Timeout in ms, default 60000'),
-});
-
-const searchSchema = z.object({
-  pattern: z.string().optional(),
-  query: z.string().optional(),
-});
-
-const rememberSchema = z.object({
-  input: z.string().min(1).describe('Original user input / context to remember'),
-  output: z.string().optional(),
-  content: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  model: z.string().optional(),
-  provider: z.string().optional(),
-});
-
-const analyzeSchema = z.object({
-  text: z.string().optional(),
-  target: z.string().optional(),
-  instruction: z.string().optional(),
-  provider: z.string().optional(),
-  model: z.string().optional(),
-});
-
-const respondSchema = z.object({
-  prompt: z.string().optional(),
-  message: z.string().optional(),
-  input: z.string().optional(),
-  context: z.union([z.string(), z.record(z.unknown())]).optional(),
-  previousOutput: z.string().optional(),
-  provider: z.string().optional(),
-  model: z.string().optional(),
-});
 
 const wordProcessSchema = z.object({
   op: z.enum(['read', 'create', 'append', 'replace', 'info', 'search', 'to-text']),
@@ -120,16 +96,6 @@ const reportBuildSchema = z.object({
   charts: z.string().optional(),
   company: z.string().optional(),
   quarter: z.string().optional(),
-});
-
-const webFetchSchema = z.object({
-  url: z.string().min(1).describe('http(s) URL to fetch'),
-  maxBytes: z.number().int().positive().max(5_242_880).optional().describe('Cap response size; default 1 MB'),
-});
-
-const webSearchSchema = z.object({
-  query: z.string().min(1).describe('Search query'),
-  maxResults: z.number().int().positive().max(20).optional().describe('Max results to return, default 5'),
 });
 
 /** Cap on stderr / stdout we forward back to the agent. */
@@ -205,13 +171,34 @@ export function registerDefaultTools(opts: Tools): void {
       const parsed = parseArgs(webFetchSchema, args);
       if (!parsed.ok) return { success: false, error: parsed.error };
       const v = parsed.args as { url: string; maxBytes?: number };
+      // M15 (W18): run the trust gate over the URL *and* the
+      // post-fetch body. The URL gate is a quick pre-check for
+      // known prompt-injection markers hidden in the query
+      // string (e.g. `?cmd=ignore%20previous%20instructions`),
+      // and the body gate runs after the fetch so an injected
+      // payload that arrived over a clean URL doesn't slip
+      // through. The body gate is opt-in via a non-throwing
+      // summary: it never blocks the fetch, but the result
+      // includes the trust verdict so the execute stage can
+      // surface it to the user / apply its own post-fetch
+      // policy. H14 (W18) made `strict: true` the default,
+      // so we no longer need to pass it explicitly.
+      const { TrustService } = await import('../src/domain/trust/trust.service.js');
+      const urlVerdict = TrustService.evaluate(v.url, { intent: 'webFetch url', toolUsed: 'webFetch' });
+      if (TrustService.shouldConfirm(urlVerdict)) {
+        return { success: false, error: `Trust gate refused URL: ${urlVerdict.summary}` };
+      }
       const result = await web.fetch(v.url, v.maxBytes ? { maxBytes: v.maxBytes } : {});
       if (!result.ok) {
         return { success: false, error: result.error };
       }
+      const bodyVerdict = TrustService.evaluate(result.text.slice(0, 8_000), { intent: 'webFetch body', toolUsed: 'webFetch' });
+      const warnSuffix = TrustService.shouldConfirm(bodyVerdict)
+        ? `\n\n[trust-warning] body: ${bodyVerdict.summary}`
+        : '';
       return {
         success: true,
-        output: `URL: ${result.url}\nFinal URL: ${result.finalUrl}\nStatus: ${result.status}\nContent-Type: ${result.contentType}\n\n${result.text}`,
+        output: `URL: ${result.url}\nFinal URL: ${result.finalUrl}\nStatus: ${result.status}\nContent-Type: ${result.contentType}\n\n${result.text}${warnSuffix}`,
       };
     },
   });

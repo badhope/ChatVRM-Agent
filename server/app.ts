@@ -54,12 +54,32 @@ export function createApp() {
   wiring.ensureRagTool();
 
   const app = express();
-  app.use(cors());
+  // C1 (W18): allow CORS_ORIGIN to scope the Access-Control-Allow-Origin
+  // header. Default to * so a local UI "just works", but make it
+  // configurable for any non-loopback deployment.
+  const allowedOrigins = (process.env['PA_ALLOWED_ORIGINS'] ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (allowedOrigins.length > 0) {
+    app.use(cors({ origin: allowedOrigins, credentials: false }));
+  } else {
+    app.use(cors());
+  }
   app.use(express.json({ limit: '4mb' }));
 
   app.use((req, _res, next) => {
+    // M19 (W18): use `console.log` instead of
+    // `process.stdout.write`. The old direct write bypassed
+    // Node's stdio configuration (e.g. a TTY coloriser, a
+    // pino-style pretty printer, a test capture). `console.log`
+    // also flushes on newline consistently and respects the
+    // `NODE_NO_WARNINGS` env var for the underlying
+    // `process.stdout`. We construct the string explicitly so
+    // JSON loggers that hook `console.log` see a single
+    // argument.
     const ts = new Date().toISOString();
-    process.stdout.write(`[${ts}] ${req.method} ${req.url}\n`);
+    console.log(`[${ts}] ${req.method} ${req.url}`);
     next();
   });
 
@@ -67,11 +87,25 @@ export function createApp() {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  // C1 (W18): the unauthenticated `/api/health` probe must stay
+  // outside the auth wall. Everything else mounted under `/api` now
+  // requires a valid bearer token by default. Individual routes may
+  // still add their own middleware (e.g. trust gate, cwd validation),
+  // but they no longer need to repeat the auth check.
+  const apiAuth = requireAuth();
+  app.use((req, res, next) => {
+    if (req.path === '/api/health' || req.path === '/health') return next();
+    return apiAuth(req, res, next);
+  });
+
   // Hydrate the shared runtime from disk (best-effort, non-blocking).
   const runtime = getRuntime();
   runtime.hydrateFromDisk().then((r) => {
     if (r.loaded > 0) {
-      process.stdout.write(`[runtime] hydrated ${r.loaded} vectors from ${r.path}\n`);
+      // M19 (W18): see the request-log line above. `console.log`
+      // is the documented surface for application output and
+      // is overridable by test harnesses / log shippers.
+      console.log(`[runtime] hydrated ${r.loaded} vectors from ${r.path}`);
     }
   }).catch(() => {
     /* ignore — Runtime.hydrateFromDisk is best-effort */
@@ -134,7 +168,7 @@ export function createApp() {
   }
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    process.stderr.write(`[error] ${err.stack ?? err.message}\n`);
+    console.error(`[error] ${err.stack ?? err.message}`);
     res.status(500).json({ error: err.message });
   });
 

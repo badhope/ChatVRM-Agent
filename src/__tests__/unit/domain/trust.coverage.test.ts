@@ -35,7 +35,9 @@ describe('TrustService formatOutput coverage', () => {
   describe('formatOutput should add [?] markers for uncertain patterns', () => {
     it('should add [?] for "I think" uncertainty', () => {
       const output = 'I think this approach will work';
-      const issues = TrustService.detectIssues(output);
+      // W18: lenient mode surfaces the single-hedge pattern so
+      // formatOutput has a [?] target to mark.
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -44,7 +46,7 @@ describe('TrustService formatOutput coverage', () => {
 
     it('should add [?] for "probably" uncertainty', () => {
       const output = 'This is probably correct';
-      const issues = TrustService.detectIssues(output);
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -53,7 +55,7 @@ describe('TrustService formatOutput coverage', () => {
 
     it('should add [?] for "maybe" uncertainty', () => {
       const output = 'Maybe we should reconsider';
-      const issues = TrustService.detectIssues(output);
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -62,7 +64,7 @@ describe('TrustService formatOutput coverage', () => {
 
     it('should add [?] for "I\'m not sure" uncertainty', () => {
       const output = "I'm not sure about this one";
-      const issues = TrustService.detectIssues(output);
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -104,7 +106,8 @@ describe('TrustService formatOutput coverage', () => {
 
     it('should preserve line breaks in output', () => {
       const output = 'line1\nI think this works\nline3';
-      const issues = TrustService.detectIssues(output);
+      // W18: lenient mode surfaces the single-hedge pattern.
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 
@@ -117,7 +120,9 @@ describe('TrustService formatOutput coverage', () => {
   describe('formatOutput with multiple issues of same type', () => {
     it('should handle two uncertainty issues in one output', () => {
       const output = 'I think this is probably correct';
-      const issues = TrustService.detectIssues(output);
+      // Two distinct hedges open the gate even in strict mode, but
+      // pass strict: false to keep the test contract explicit.
+      const issues = TrustService.detectIssues(output, undefined, { strict: false });
 
       const formatted = TrustService.formatOutput(output, issues);
 

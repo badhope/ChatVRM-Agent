@@ -357,7 +357,6 @@ export class MemoryAdapter implements IMemoryPort {
     const release = await this.mutex.acquire();
 
     let kept = 0;
-    let removed = 0;
     let totalTokensRemoved = 0;
 
     try {
@@ -378,36 +377,41 @@ export class MemoryAdapter implements IMemoryPort {
         }
       }
 
+      // C8 (W18): build the *unlink-succeeded* set first; only after
+      // the disk state is settled do we propagate the removal to the
+      // search index and the in-memory cache. The previous code used
+      // `toRemove.slice(0, removed)`, which assumed successful
+      // unlinks were a contiguous prefix of `toRemove`. They are
+      // not: a single ENOENT in the middle of the loop would cause
+      // the cache to be filtered by *un-unlinked* ids, desyncing
+      // memory and disk until the next restart.
+      const unlinkedIds = new Set<string>();
       for (const record of toRemove) {
         try {
           await fs.unlink(path.join(MEMORY_DIR, `${record.id}.json`));
-          removed++;
+          unlinkedIds.add(record.id);
           totalTokensRemoved += tokensFor(record);
         } catch {
-          // W17 M1: keep the search-index consistent with disk.
-          // If the disk delete failed we do NOT remove from the
-          // search index, otherwise we'd return a hit that the
-          // user can no longer read.
-          continue;
+          // W17 M1 / C8: keep search index consistent with disk. If
+          // the disk delete failed we MUST NOT remove from the
+          // search index, otherwise we'd return a hit that the user
+          // can no longer read. Skip the id from `unlinkedIds`.
         }
       }
 
-      if (this.searchEngine && toRemove.length > 0) {
+      if (this.searchEngine && unlinkedIds.size > 0) {
         try {
-          // Only remove the IDs that we actually unlinked.
-          const removedIds = toRemove.slice(0, removed).map((r) => r.id);
-          if (removedIds.length > 0) {
-            this.searchEngine.removeAll(removedIds);
-          }
+          this.searchEngine.removeAll([...unlinkedIds]);
         } catch (err) {
-          logger.warn({ err, count: toRemove.length }, 'memory.adapter: search index removeAll failed');
+          logger.warn({ err, count: unlinkedIds.size }, 'memory.adapter: search index removeAll failed');
         }
       }
 
       // W17 H2 / M2: refresh the cache and token counter in lock-
-      // step with the disk state.
+      // step with the disk state. Filter by the unlink-succeeded set,
+      // NOT the original `toRemove` array.
       if (this._cache) {
-        this._cache = this._cache.filter((r) => !toRemove.slice(0, removed).some((t) => t.id === r.id));
+        this._cache = this._cache.filter((r) => !unlinkedIds.has(r.id));
       }
       this._totalTokens = Math.max(0, this._totalTokens - totalTokensRemoved);
 
@@ -415,11 +419,18 @@ export class MemoryAdapter implements IMemoryPort {
       // W17 H1: persist the sidecar so a fresh process picks up
       // the correct lastConsolidation timestamp.
       await this.persistMeta();
+
+      // C8 (W18): the return value of `consolidate` is a public
+      // contract; surface the unlink-succeeded count rather than the
+      // initial `toRemove.length` so callers can detect partial
+      // failure.
+      const unlinkedCount = unlinkedIds.size;
+      return { consolidated: kept, removed: unlinkedCount };
+    } catch (err) {
+      throw err;
     } finally {
       release();
     }
-
-    return { consolidated: kept, removed };
   }
 
   private async persistMeta(): Promise<void> {

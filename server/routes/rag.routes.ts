@@ -13,7 +13,6 @@
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth.js';
 import { IngestionPipeline } from '../../src/integration/ingestion-pipeline.js';
 import { RecursiveTextChunker } from '../../src/adapters/text-chunker.js';
 import { getRuntime } from '../runtime.js';
@@ -44,11 +43,8 @@ const IngestSchema = z.object({
 
 export function ragRoutes(): Router {
   const router = Router();
-  // H14: RAG ingestion can pull a remote URL into the local store;
-  // status / search / list expose the entire corpus. Bearer-token
-  // gate prevents both the data-exfil path and the SSRF-via-RAG
-  // path.
-  router.use(requireAuth());
+  // C1 (W18): auth is applied globally in app.ts; this router just
+  // declares the RAG-related endpoints.
 
   router.get('/status', async (_req: Request, res: Response) => {
     const rt = getRuntime();

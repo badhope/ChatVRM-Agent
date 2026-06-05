@@ -161,7 +161,15 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
     return new Promise<ToolResult>((resolve, reject) => {
       const w: PendingWaiter = { resolve: () => {}, reject: () => {}, timer: null };
       const onAbort = () => {
-        if (w.timer) clearTimeout(w.timer);
+        // M2 (W18): always clear the timer when abort fires, even
+        // if it had already fired. clearTimeout on a fired timer is
+        // a no-op, so this is safe. We null the reference so a
+        // later `done` event (from a worker that ignored the
+        // abort) cannot accidentally resolve an aborted promise.
+        if (w.timer) {
+          clearTimeout(w.timer);
+          w.timer = null;
+        }
         this.waiters.delete(jobId);
         reject(new Error(`QueuedTool: aborted waiting for ${jobId}`));
       };
@@ -170,15 +178,24 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
         options.signal.addEventListener('abort', onAbort, { once: true });
       }
       w.timer = setTimeout(() => {
+        w.timer = null;
         this.waiters.delete(jobId);
         if (options.signal) options.signal.removeEventListener('abort', onAbort);
         reject(new Error(`QueuedTool: timed out after ${timeoutMs}ms waiting for ${jobId}`));
       }, timeoutMs);
       w.resolve = (v) => {
+        if (w.timer) {
+          clearTimeout(w.timer);
+          w.timer = null;
+        }
         if (options.signal) options.signal.removeEventListener('abort', onAbort);
         resolve({ success: true, output: typeof v === 'string' ? v : JSON.stringify(v) });
       };
       w.reject = (e) => {
+        if (w.timer) {
+          clearTimeout(w.timer);
+          w.timer = null;
+        }
         if (options.signal) options.signal.removeEventListener('abort', onAbort);
         resolve({ success: false, error: e.message });
       };

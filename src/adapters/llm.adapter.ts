@@ -85,6 +85,41 @@ function isRetryableModelError(msg: string): boolean {
   return /(?:^|\s)(403|404|429)\b/.test(msg) || /FreeTierOnly|rate.?limit|model not found|not supported/i.test(msg);
 }
 
+/**
+ * C7 (W18): helpers for distinguishing user-driven aborts from real
+ * provider errors. The Node fetch implementation throws
+ * `DOMException` with name `AbortError`, but aborts can also surface
+ * as the underlying cause on a regular `Error`, depending on the
+ * upstream HTTP stack. We treat any of these shapes as "user
+ * cancellation".
+ */
+function isAbortError(err: unknown): boolean {
+  if (!err) return false;
+  if (err instanceof Error) {
+    if (err.name === 'AbortError') return true;
+    if ((err as Error & { code?: string }).code === 'ABORT_ERR') return true;
+  }
+  // Walk the cause chain.
+  let cause: unknown = (err as { cause?: unknown })?.cause;
+  let depth = 0;
+  while (cause && depth < 5) {
+    if (cause instanceof Error) {
+      if (cause.name === 'AbortError') return true;
+      if ((cause as Error & { code?: string }).code === 'ABORT_ERR') return true;
+    }
+    cause = (cause as { cause?: unknown })?.cause;
+    depth += 1;
+  }
+  return false;
+}
+
+function makeAbortError(reason?: unknown): Error {
+  const e = new Error('aborted');
+  e.name = 'AbortError';
+  if (reason !== undefined) (e as Error & { cause?: unknown }).cause = reason;
+  return e;
+}
+
 function toolFormatFor(provider: ProviderType): ToolFormat {
   if (provider === 'anthropic') return 'anthropic';
   if (provider === 'google') return 'google';
@@ -129,7 +164,13 @@ export class LLMAdapter implements ILLMPort {
   async chat(params: ChatParams): Promise<ChatResponse> {
     const provider = params.provider ?? (await this.configPort.getDefaultProvider());
     const breaker = this.getBreaker(provider);
-    return breaker.fire(() => this.chatWithFallbacks(provider, params));
+    // C7 (W18): an `AbortError` from `params.signal` represents the
+    // *caller* giving up — not a provider fault. The circuit breaker
+    // would otherwise count it as a failure and trip after a few user
+    // "Stop" clicks, even though the upstream is healthy. Route the
+    // signal-aware path through `runWithBreaker` which only feeds
+    // genuine provider errors back to the breaker.
+    return this.runWithBreaker(breaker, params, () => this.chatWithFallbacks(provider, params));
   }
 
   /**
@@ -140,7 +181,56 @@ export class LLMAdapter implements ILLMPort {
   async chatExact(params: ChatParams): Promise<ChatResponse> {
     const provider = params.provider ?? (await this.configPort.getDefaultProvider());
     const breaker = this.getBreaker(provider);
-    return breaker.fire(() => this.dispatchChat(provider, params));
+    return this.runWithBreaker(breaker, params, () => this.dispatchChat(provider, params));
+  }
+
+  /**
+   * C7 (W18): run a LLM call under the circuit breaker, but exempt
+   * `AbortError` from being counted as a failure. The breaker is meant
+   * to detect "the provider is sick" — a user clicking Stop or a
+   * timeout in the calling pipeline is not a provider problem.
+   */
+  private async runWithBreaker<T>(
+    breaker: CircuitBreaker,
+    params: ChatParams,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    // Pre-check abort so we don't even enter the breaker.
+    if (params.signal?.aborted) {
+      throw makeAbortError(params.signal.reason);
+    }
+    const onAbort = () => {
+      // Swallow the unhandledRejection from the abandoned promise.
+    };
+    const promise = breaker.fire(fn);
+    let abortHandler: (() => void) | null = null;
+    if (params.signal) {
+      abortHandler = () => {
+        // `breaker.fire` doesn't accept an external abort, so we let
+        // the underlying fetch abort naturally. The breaker wraps the
+        // thrown AbortError via .catch below so it's not counted.
+        onAbort();
+      };
+      params.signal.addEventListener('abort', abortHandler, { once: true });
+    }
+    try {
+      return await promise;
+    } catch (err) {
+      if (isAbortError(err) || params.signal?.aborted) {
+        // Re-throw but don't count toward breaker. The breaker is
+        // already in the "rejected" state from the inner promise, so
+        // we need to manually compensate to keep the failure counter
+        // honest — otherwise a click-Stop will eventually trip the
+        // breaker on a perfectly healthy provider.
+        breaker.compensate();
+        throw err;
+      }
+      throw err;
+    } finally {
+      if (params.signal && abortHandler) {
+        params.signal.removeEventListener('abort', abortHandler);
+      }
+    }
   }
 
   /**

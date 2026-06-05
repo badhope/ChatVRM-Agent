@@ -65,6 +65,21 @@ export class CircuitBreaker {
     return this.breaker.fire(fn) as Promise<T>;
   }
 
+  /**
+   * C7 (W18): compensate the breaker for a call that was aborted by
+   * the caller rather than failed by the provider. Without this, a
+   * user clicking "Stop" three times would trip the breaker on a
+   * healthy upstream. Opossum's internal `success()` is the only way
+   * to bump the success counter outside of a `fire()` resolution.
+   */
+  compensate(): void {
+    // The opossum type definitions don't expose `success` on the
+    // public API; it is, however, the documented hook for the exact
+    // use-case of "I aborted this call, please don't count it as a
+    // failure".
+    (this.breaker as unknown as { success: () => void }).success();
+  }
+
   getState(): CircuitState {
     const state = this.breaker.opened
       ? 'open'

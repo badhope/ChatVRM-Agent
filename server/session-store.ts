@@ -23,6 +23,26 @@ export class SessionStore {
   // operation queued behind the current one awaits the full flush.
   private writeChain: Promise<void> = Promise.resolve();
 
+  // M17 (W18): cap the number of sessions loaded into memory on
+  // boot. The store file is a single JSON document and is fully
+  // read into `this.cache` on the first `load()`. A user who has
+  // been using the app for a year will have thousands of sessions
+  // in that file; loading them all into memory is wasteful and
+  // blows the heap under low-memory conditions. We sort by
+  // `updatedAt` desc, keep the top N, and drop the rest. The cap
+  // is intentionally generous (default 1000) — most users won't
+  // notice the difference, and the 99th-percentile case is well
+  // under that. Operators who want a different cap can set the
+  // env var `PA_SESSION_STORE_MAX` or pass `maxSessions` to the
+  // constructor.
+  private readonly maxSessions: number;
+
+  constructor(opts: { maxSessions?: number } = {}) {
+    const env = Number.parseInt(process.env['PA_SESSION_STORE_MAX'] ?? '', 10);
+    const fromEnv = Number.isFinite(env) && env > 0 ? env : NaN;
+    this.maxSessions = opts.maxSessions ?? (Number.isFinite(fromEnv) ? fromEnv : 1000);
+  }
+
   private async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
     const next = this.writeChain.then(fn, fn);
     this.writeChain = next.then(
@@ -38,7 +58,15 @@ export class SessionStore {
     try {
       await access(STORE_FILE, constants.F_OK);
       const raw = await readFile(STORE_FILE, 'utf-8');
-      this.cache = JSON.parse(raw) as ChatSession[];
+      const parsed = JSON.parse(raw) as ChatSession[];
+      // M17 (W18): cap the in-memory store on boot. Sort by
+      // `updatedAt` desc so the cap keeps the *most recently
+      // used* sessions, not a random slice. We don't touch the
+      // on-disk file here — the cap is a read-time filter; a
+      // later PR can add a "compact" command that rewrites the
+      // file with only the kept entries.
+      parsed.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+      this.cache = parsed.slice(0, this.maxSessions);
     } catch (err) {
       // W17 M12: distinguish "file doesn't exist" (silent — first run)
       // from "file is corrupt" (log so the operator can fix it).

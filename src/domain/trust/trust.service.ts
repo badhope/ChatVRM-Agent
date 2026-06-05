@@ -133,11 +133,12 @@ export const DANGEROUS_PATTERNS: DangerPattern[] = [
 
 // Hedge patterns are extremely common in legitimate prose
 // ("I think we should refactor this", "we'll probably go", "maybe
-// tomorrow"). The gate is: flag a hedge when the body is long
-// enough to be a real "uncertain conclusion", OR when multiple
-// distinct hedge markers appear in a short reply. This keeps the
-// "safe to run" verdicts for short conversational hedges while
-// still surfacing real uncertainty in long outputs.
+// tomorrow"). The gate keeps the "safe to run" verdicts for short
+// conversational hedges while still surfacing real uncertainty
+// in long outputs. W15 added this gate; H14 (W18) removed the
+// silent `process.env['VITEST']` env-var bypass that made
+// `strict` collapse to false under the test runner, and now ties
+// gate behaviour to the explicit `strict` option only.
 const HEDGE_PATTERNS = [
   /\bI\s+think\b/i,
   /\bprobably\b/i,
@@ -189,8 +190,9 @@ export class TrustService {
   static evaluate(
     output: string,
     context?: { intent?: string; toolUsed?: string },
+    opts: { strict?: boolean } = {},
   ): TrustVerdict {
-    const issues = TrustService.detectIssues(output, context);
+    const issues = TrustService.detectIssues(output, context, opts);
     const score = TrustService.calculateScore(issues);
     const level = scoreToLevel(score);
     const summary = generateSummary(issues, level);
@@ -216,24 +218,32 @@ export class TrustService {
   ): TrustIssue[] {
     const issues: TrustIssue[] = [];
 
-    // Pre-compute hedge density so we can suppress the noisy
-    // single-hedge false positives. A single "maybe" or "I think" in
-    // an otherwise confident short reply is not a trust issue.
-    // `strict: true` disables the gate. Tests that exercise the
-    // pattern detector in isolation pass `strict: true` explicitly.
-    const strict = opts.strict === true || process.env['VITEST'] === 'true';
+    // H14 (W18): removed the silent `process.env['VITEST'] !== 'true'`
+    // env-var bypass that auto-set strict under the test runner. The
+    // production code path is now the same under vitest as under node.
+    //
+    // `strict` controls the hedge gate:
+    //   - `strict: true`  (default, production posture): a single
+    //     hedge in a short conversational reply is suppressed as
+    //     noise. Multiple hedges OR a hedge in a long body opens
+    //     the gate and surfaces the issue. This is the W15 design.
+    //   - `strict: false` (lenient / test isolation): every matched
+    //     hedge is surfaced regardless of count or body length.
+    //
+    // Pre-existing tests that want every hedge surfaced should
+    // pass `{ strict: false }` explicitly to opt into lenient mode.
+    const strict = opts.strict !== false;
     const hedgeCount = HEDGE_PATTERNS.reduce(
       (n, p) => n + (p.test(output) ? 1 : 0),
       0,
     );
     const gateOpen = strict
-      ? hedgeCount >= 1
-      : hedgeGateOpen(hedgeCount, output.length);
+      ? hedgeGateOpen(hedgeCount, output.length)
+      : hedgeCount >= 1;
 
     for (const dp of DANGEROUS_PATTERNS) {
       if (!dp.pattern.test(output)) continue;
-      // Suppress the noisy hedge pattern unless the gate is open
-      // (long body OR multiple distinct hedges in a short reply).
+      // Suppress the noisy hedge pattern unless the gate is open.
       if (dp.type === 'uncertainty' && !gateOpen) continue;
       issues.push({
         type: dp.type,

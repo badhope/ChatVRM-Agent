@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { homedir } from 'os';
 import path from 'path';
 import fs from 'fs/promises';
+import { SecretStorage } from '../infrastructure/secret-storage.js';
 import type {
   IConfigPort,
   ProviderType,
@@ -164,6 +165,22 @@ export class ConfigAdapter implements IConfigPort {
   }
 
   async getApiKey(provider: ProviderType): Promise<string | undefined> {
+    // M13 (W18): prefer the OS keychain (keytar) over the on-disk
+    // JSON config. A keychain entry is encrypted at rest by the OS
+    // (macOS Keychain, libsecret on Linux, Windows Credential
+    // Manager) and is not readable by other users on the box. The
+    // JSON file is 0600-permissioned but still appears in plaintext
+    // to anything that can read the user's home directory, e.g. a
+    // shell history parser, a backup tool, or a misconfigured
+    // filesystem snapshot. We fall back to the JSON only when
+    // keytar is unavailable (e.g. on a CI box where the OS
+    // credential store isn't running).
+    try {
+      const fromKeychain = await new SecretStorage().getProviderKey(provider);
+      if (fromKeychain && fromKeychain.length > 0) return fromKeychain;
+    } catch {
+      // Fall through to the JSON store.
+    }
     const config = this.getValidatedConfig();
     const key = config.apiKeys[provider];
     if (typeof key === 'string' && key.length > 0) return key.trim();
@@ -171,12 +188,28 @@ export class ConfigAdapter implements IConfigPort {
   }
 
   async setApiKey(provider: ProviderType, key: string): Promise<void> {
+    const trimmed = key.trim();
+    // M13 (W18): mirror the key to the OS keychain. The keychain
+    // write is best-effort: if keytar is not available (e.g. in a
+    // headless CI box), the JSON store is still updated so the
+    // user isn't locked out. The keychain value, when present, is
+    // the source of truth for `getApiKey`.
+    try {
+      await new SecretStorage().storeProviderKey(provider, trimmed);
+    } catch {
+      // best-effort; JSON store is the fallback.
+    }
     const config = this.getValidatedConfig();
-    config.apiKeys[provider] = key.trim();
+    config.apiKeys[provider] = trimmed;
     this.store.set('apiKeys', config.apiKeys);
   }
 
   async removeApiKey(provider: ProviderType): Promise<void> {
+    try {
+      await new SecretStorage().deleteProviderKey(provider);
+    } catch {
+      // best-effort
+    }
     const config = this.getValidatedConfig();
     delete config.apiKeys[provider];
     this.store.set('apiKeys', config.apiKeys);
