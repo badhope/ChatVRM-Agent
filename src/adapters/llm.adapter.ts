@@ -213,19 +213,18 @@ export class LLMAdapter implements ILLMPort {
   }
 
   async isAvailable(provider: ProviderType): Promise<boolean> {
+    // H7: do NOT route this through the circuit breaker. The breaker exists
+    // to *short-circuit* traffic when the provider is failing; using it for
+    // the health probe means "is this provider up?" becomes "is the breaker
+    // open?", which is exactly the question a health check is supposed to
+    // answer. Probe directly with a small HEAD/GET and a tight timeout so
+    // the UI doesn't block when a provider is slow.
     try {
-      const breaker = this.getBreaker(provider);
-      if (provider === 'google') {
+      if (provider === 'google' || provider === 'anthropic') {
         const apiKey = await this.configPort.getApiKey(provider);
-        if (!apiKey) return false;
-        return true;
+        return Boolean(apiKey && apiKey.length > 0);
       }
-      if (provider === 'anthropic') {
-        const apiKey = await this.configPort.getApiKey(provider);
-        if (!apiKey) return false;
-        return true;
-      }
-      await breaker.fire(() => this.doHeadRequest(provider));
+      await this.doHeadRequest(provider);
       return true;
     } catch {
       return false;

@@ -164,7 +164,12 @@ export function configRoutes(cfg: IConfigPort, llm: ILLMPort): Router {
   r.get('/snapshot', async (_req, res) => {
     await cfg.init();
     const defaultProvider = await cfg.getDefaultProvider();
-    const all = await cfg.getAllConfig();
+    // H16: ask the config layer for the *raw* keys; we apply the
+    // server-side masking here so the response is consistently safe and
+    // the masking policy lives in one place. (Default `getAllConfig()`
+    // is now redacted, so passing the redacted value through this mask
+    // would just re-mask a redacted string.)
+    const all = await cfg.getAllConfig({ revealSecrets: true });
     const apiKeys = ((all.apiKeys as Record<string, string>) ?? {}) as Record<string, string>;
     const masked: Record<string, string> = {};
     for (const [k, v] of Object.entries(apiKeys)) {
@@ -226,10 +231,21 @@ export function configRoutes(cfg: IConfigPort, llm: ILLMPort): Router {
     }
     const trimmed = baseUrl.trim();
     if (trimmed.length > 0) {
+      let parsed: URL;
       try {
-        new URL(trimmed);
+        parsed = new URL(trimmed);
       } catch {
         res.status(400).json({ error: `baseUrl "${trimmed}" is not a valid URL` });
+        return;
+      }
+      // W17 M11: an LLM-facing base URL is supposed to point at an
+      // HTTP(S) API. Accepting arbitrary schemes (e.g. `javascript:`,
+      // `file:`, `data:`) lets a misconfigured client smuggle the
+      // wrong value into the LLM. Whitelist the two useful schemes.
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        res
+          .status(400)
+          .json({ error: `baseUrl "${trimmed}" must use http or https (got ${parsed.protocol})` });
         return;
       }
     }

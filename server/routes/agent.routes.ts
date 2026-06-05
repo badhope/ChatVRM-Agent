@@ -11,6 +11,7 @@ import { createDefaultStages } from '../../src/stages/index.js';
 import { resolveApiKey, PROVIDER_META } from '../providers.js';
 import { updateEmotionFromInteraction } from './emotion.routes.js';
 import { incrementAgentRun, incrementToolCall } from './dashboard.routes.js';
+import { requireAuth, validateCwd } from '../middleware/auth.js';
 import type { ProviderType } from '../../src/ports/config.port.js';
 import type { PipelineContext, PipelineEvents, TaskStep } from '../../src/core/types.js';
 import { readFile, access } from 'node:fs/promises';
@@ -65,6 +66,11 @@ async function listWorkspaceFiles(cwd: string, max = 100): Promise<string[]> {
 
 export function agentRoutes(deps: AgentDeps): Router {
   const r = Router();
+  // H13/H15: agent run / run-task endpoints run an LLM call, may
+  // shell out, and write to the workspace. Bearer-token gate plus
+  // cwd allowlist so a stray curl can't pivot into a different
+  // directory.
+  r.use(requireAuth());
 
   r.post('/run', async (req: Request, res: Response) => {
     const { task, provider, model, cwd } = req.body as {
@@ -75,6 +81,13 @@ export function agentRoutes(deps: AgentDeps): Router {
     };
     if (!task) {
       res.status(400).json({ error: 'task is required' });
+      return;
+    }
+
+    // H15: validate the user-supplied cwd before any tool runs in it.
+    const cwdCheck = validateCwd(cwd);
+    if (!cwdCheck.ok) {
+      res.status(400).json({ error: cwdCheck.error });
       return;
     }
 
@@ -96,7 +109,7 @@ export function agentRoutes(deps: AgentDeps): Router {
 
     sseHeaders(res);
 
-    const workdir = cwd && cwd.length > 0 ? cwd : process.cwd();
+    const workdir = cwdCheck.resolved;
     const emitter = new EventEmitter<PipelineEvents>();
 
     const stageStartedAt: Record<string, number> = {};

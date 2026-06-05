@@ -18,6 +18,20 @@ import MiniSearch from 'minisearch';
 import type { Embedder } from '../ports/embeddings.port.js';
 import type { VectorStore, VectorHit } from '../ports/vector-store.port.js';
 
+/**
+ * W17 M4: a vector containing NaN/Infinity would poison cosine scores and
+ * produce non-deterministic ordering. Detect and reject early so that
+ * `retrieve()` falls back to the BM25-only path.
+ */
+function hasNonFinite(v: Float32Array | number[] | undefined | null): boolean {
+  if (!v || v.length === 0) return true;
+  for (let i = 0; i < v.length; i += 1) {
+    const x = v[i];
+    if (x === undefined || x === null || !Number.isFinite(x)) return true;
+  }
+  return false;
+}
+
 export interface HybridDoc {
   id: string;
   text: string;
@@ -105,6 +119,10 @@ export class HybridRetriever {
   }
 
   async remove(ids: string[]): Promise<void> {
+    // W17 L6: clear the local in-memory state FIRST so that even if the
+    // vector-store `remove()` throws (e.g. transient I/O error), the
+    // retriever's own state is already consistent. We then attempt the
+    // backing-store call; if it throws, surface the error.
     for (const id of ids) {
       this.bm25.discard(id);
       this.docs.delete(id);
@@ -134,7 +152,14 @@ export class HybridRetriever {
     let vectorHits: VectorHit[] = [];
     if ((source === 'vector' || source === 'hybrid') && this.vectorIds.size > 0) {
       const qv = await this.embedder.embed(opts.query);
-      vectorHits = await this.vectorStore.query({ vector: qv, topK: oversample });
+      // W17 M4: guard against an embedder that produced NaN/Infinity.
+      // The cosine math would propagate NaN through the entire ranking
+      // and the sort comparator would return unstable results. Reject
+      // a degenerate query vector up-front and fall back to BM25-only
+      // results for this call.
+      if (!hasNonFinite(qv)) {
+        vectorHits = await this.vectorStore.query({ vector: qv, topK: oversample });
+      }
     }
     const vectorRank = new Map<string, number>();
     vectorHits.forEach((h, idx) => vectorRank.set(h.id, idx + 1));

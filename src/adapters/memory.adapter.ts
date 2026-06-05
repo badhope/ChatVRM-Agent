@@ -15,6 +15,19 @@ import type {
 const MEMORY_DIR = path.join(homedir(), '.personal-assistant', 'memory');
 const MAX_RECORDS = 1000;
 const RETENTION_DAYS = 30;
+// W17 H1: persist the last-consolidation timestamp to a sidecar
+// file so `stats().lastConsolidation` survives a process restart.
+const META_FILE = path.join(MEMORY_DIR, '.meta.json');
+
+interface MemoryMeta {
+  lastConsolidation: number | null;
+}
+
+/** W17 M2: per-record token estimate. Free-standing so tests can
+ * pin the formula. */
+function tokensFor(record: Pick<MemoryRecord, 'input' | 'output'>): number {
+  return Math.ceil(record.input.length / 4) + Math.ceil(record.output.length / 4);
+}
 
 export class MemoryAdapter implements IMemoryPort {
   private mutex = new Mutex();
@@ -24,6 +37,16 @@ export class MemoryAdapter implements IMemoryPort {
   private _initializing = false;
   private _initPromise: Promise<void> | null = null;
   private _lastConsolidation: number | null = null;
+
+  // W17 H2: in-memory record cache. Populated on first `loadAll`,
+  // invalidated by writes (`remember`, `forget`, `update`).
+  // `recall()` now reads from this cache instead of walking the
+  // disk for every query.
+  private _cache: MemoryRecord[] | null = null;
+  // W17 M2: maintain a running token counter incrementally so
+  // `stats()` is O(1) instead of O(N).
+  private _totalTokens: number = 0;
+  private _cachePromise: Promise<MemoryRecord[]> | null = null;
 
   private async ensureInit(): Promise<void> {
     if (this.initialized) return;
@@ -46,6 +69,15 @@ export class MemoryAdapter implements IMemoryPort {
   private async _doInit(): Promise<void> {
     await fs.mkdir(MEMORY_DIR, { recursive: true });
 
+    // W17 H1: hydrate lastConsolidation from the sidecar file.
+    try {
+      const raw = await fs.readFile(META_FILE, 'utf-8');
+      const meta = JSON.parse(raw) as MemoryMeta;
+      this._lastConsolidation = typeof meta.lastConsolidation === 'number' ? meta.lastConsolidation : null;
+    } catch {
+      this._lastConsolidation = null;
+    }
+
     try {
       this.searchEngine = new Minisearch({
         fields: ['input', 'output', 'tags'],
@@ -58,6 +90,10 @@ export class MemoryAdapter implements IMemoryPort {
       });
 
       const records = await this.loadAllRaw();
+      this._cache = records;
+      // W17 M2: warm the token counter once at init; subsequent
+      // writes maintain it incrementally.
+      this._totalTokens = records.reduce((acc, r) => acc + tokensFor(r), 0);
       if (records.length > 0) {
         this.searchEngine.addAll(
           records.map((r) => ({
@@ -73,6 +109,8 @@ export class MemoryAdapter implements IMemoryPort {
       }
     } catch {
       this.searchEngine = null;
+      this._cache = [];
+      this._totalTokens = 0;
     }
 
     this.initialized = true;
@@ -125,6 +163,17 @@ export class MemoryAdapter implements IMemoryPort {
           tags: full.tags.join(' '),
         });
       }
+
+      // W17 H2 / M2: keep the cache and the running token counter
+      // consistent with the on-disk state. We *append* to the
+      // cache so `recall()` doesn't have to walk the disk.
+      if (this._cache) {
+        this._cache.push(full);
+        this._cache.sort((a, b) => b.timestamp - a.timestamp);
+      } else {
+        this._cache = [full];
+      }
+      this._totalTokens += tokensFor(full);
     } finally {
       release();
     }
@@ -134,7 +183,10 @@ export class MemoryAdapter implements IMemoryPort {
     await this.ensureInit();
 
     const maxResults = limit ?? 10;
-    const allRecords = await this.loadAll();
+    // W17 H2: read from the in-memory cache, not from disk. The
+    // cache is invalidated on every write (remember / forget /
+    // update) and is populated eagerly on first call.
+    const allRecords = await this.getCachedRecords();
     if (allRecords.length === 0) return [];
 
     if (this.searchEngine && this.searchEngine.documentCount > 0) {
@@ -148,9 +200,13 @@ export class MemoryAdapter implements IMemoryPort {
         const matched = allRecords.filter((r) => topIds.has(r.id));
         if (matched.length > 0) return matched.slice(0, maxResults);
       } catch {
+        // fall through to substring search
       }
     }
 
+    // W17 L1: reuse `allRecords` for the substring branch — the
+    // old code re-walked the disk and effectively doubled the
+    // work for a zero-hit search.
     const lowerQuery = query.toLowerCase();
     const scored = allRecords
       .map((r) => {
@@ -168,30 +224,36 @@ export class MemoryAdapter implements IMemoryPort {
     return scored.slice(0, maxResults).map((e) => e.record);
   }
 
-  async loadAll(): Promise<MemoryRecord[]> {
-    await this.ensureInit();
-
+  /**
+   * W17 H2: in-memory record cache accessor. The cache is
+   * populated lazily on the first call and invalidated by writes
+   * (`remember`, `forget`, `update`, `consolidate`).
+   */
+  private async getCachedRecords(): Promise<MemoryRecord[]> {
+    if (this._cache) return this._cache;
+    if (this._cachePromise) return this._cachePromise;
+    this._cachePromise = (async () => {
+      const records = await this.loadAllRaw();
+      this._cache = records;
+      // Re-derive the token counter if the cache was cold — this
+      // catches the case where a process imports a hand-edited
+      // corpus.
+      this._totalTokens = records.reduce((acc, r) => acc + tokensFor(r), 0);
+      return records;
+    })();
     try {
-      const files = await fs.readdir(MEMORY_DIR);
-      const jsonFiles = files.filter((f) => f.endsWith('.json'));
-
-      const records: MemoryRecord[] = [];
-      for (const file of jsonFiles) {
-        try {
-          const content = await fs.readFile(path.join(MEMORY_DIR, file), 'utf-8');
-          const parsed = JSON.parse(content) as MemoryRecord;
-          if (parsed.id && typeof parsed.input === 'string') {
-            records.push(parsed);
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      return records.sort((a, b) => b.timestamp - a.timestamp);
-    } catch {
-      return [];
+      return await this._cachePromise;
+    } finally {
+      this._cachePromise = null;
     }
+  }
+
+  async loadAll(): Promise<MemoryRecord[]> {
+    // Public surface — preserve the historical "walk the disk"
+    // semantics so callers (e.g. the test harness) that expect
+    // a fresh read still get one. Internal `recall()` uses
+    // `getCachedRecords` instead.
+    return this.loadAllRaw();
   }
 
   async forget(id: string): Promise<boolean> {
@@ -200,6 +262,9 @@ export class MemoryAdapter implements IMemoryPort {
 
     try {
       const filePath = path.join(MEMORY_DIR, `${id}.json`);
+      // W17 M2: track the record we're removing so we can update
+      // the running token counter.
+      const removed = this._cache?.find((r) => r.id === id) ?? null;
       try {
         await fs.unlink(filePath);
       } catch (err) {
@@ -217,6 +282,11 @@ export class MemoryAdapter implements IMemoryPort {
           // can spot a corrupted search index.
           logger.warn({ err, id }, 'memory.adapter: search index remove failed');
         }
+      }
+      // W17 H2 / M2: invalidate the cache + decrement the counter.
+      if (this._cache && removed) {
+        this._cache = this._cache.filter((r) => r.id !== id);
+        this._totalTokens = Math.max(0, this._totalTokens - tokensFor(removed));
       }
       return true;
     } finally {
@@ -265,6 +335,17 @@ export class MemoryAdapter implements IMemoryPort {
           logger.warn({ err, id: next.id }, 'memory.adapter: search index replace failed');
         }
       }
+      // W17 H2 / M2: refresh the cache in place + adjust the
+      // counter for the *delta* (input/output length can change).
+      if (this._cache) {
+        const idx = this._cache.findIndex((r) => r.id === id);
+        if (idx >= 0) {
+          this._totalTokens = Math.max(0, this._totalTokens - tokensFor(this._cache[idx]!));
+          this._cache[idx] = next;
+          this._cache.sort((a, b) => b.timestamp - a.timestamp);
+          this._totalTokens += tokensFor(next);
+        }
+      }
       return next;
     } finally {
       release();
@@ -277,9 +358,11 @@ export class MemoryAdapter implements IMemoryPort {
 
     let kept = 0;
     let removed = 0;
+    let totalTokensRemoved = 0;
 
     try {
-      const records = await this.loadAll();
+      // W17 H2: source from the cache (no disk walk).
+      const records = await this.getCachedRecords();
       const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
       const toRemove: MemoryRecord[] = [];
@@ -299,20 +382,39 @@ export class MemoryAdapter implements IMemoryPort {
         try {
           await fs.unlink(path.join(MEMORY_DIR, `${record.id}.json`));
           removed++;
+          totalTokensRemoved += tokensFor(record);
         } catch {
+          // W17 M1: keep the search-index consistent with disk.
+          // If the disk delete failed we do NOT remove from the
+          // search index, otherwise we'd return a hit that the
+          // user can no longer read.
           continue;
         }
       }
 
       if (this.searchEngine && toRemove.length > 0) {
         try {
-          this.searchEngine.removeAll(toRemove.map((r) => r.id));
+          // Only remove the IDs that we actually unlinked.
+          const removedIds = toRemove.slice(0, removed).map((r) => r.id);
+          if (removedIds.length > 0) {
+            this.searchEngine.removeAll(removedIds);
+          }
         } catch (err) {
           logger.warn({ err, count: toRemove.length }, 'memory.adapter: search index removeAll failed');
         }
       }
 
+      // W17 H2 / M2: refresh the cache and token counter in lock-
+      // step with the disk state.
+      if (this._cache) {
+        this._cache = this._cache.filter((r) => !toRemove.slice(0, removed).some((t) => t.id === r.id));
+      }
+      this._totalTokens = Math.max(0, this._totalTokens - totalTokensRemoved);
+
       this._lastConsolidation = Date.now();
+      // W17 H1: persist the sidecar so a fresh process picks up
+      // the correct lastConsolidation timestamp.
+      await this.persistMeta();
     } finally {
       release();
     }
@@ -320,20 +422,30 @@ export class MemoryAdapter implements IMemoryPort {
     return { consolidated: kept, removed };
   }
 
+  private async persistMeta(): Promise<void> {
+    try {
+      const meta: MemoryMeta = { lastConsolidation: this._lastConsolidation };
+      await fs.writeFile(META_FILE, JSON.stringify(meta), 'utf-8');
+    } catch (err) {
+      // Non-fatal — `stats()` will just report the in-memory
+      // value on the next call.
+      logger.warn({ err }, 'memory.adapter: failed to persist .meta.json');
+    }
+  }
+
   async stats(): Promise<MemoryStats> {
     await this.ensureInit();
-
-    const records = await this.loadAll();
-    let totalTokens = 0;
-
-    for (const record of records) {
-      totalTokens += Math.ceil(record.input.length / 4);
-      totalTokens += Math.ceil(record.output.length / 4);
+    // W17 M2: the running counter is the source of truth. If the
+    // cache is still cold (e.g. an external test that called
+    // `stats()` before any `recall()`), warm it once so the
+    // counter agrees with `totalRecords`.
+    if (this._cache === null) {
+      await this.getCachedRecords();
     }
-
+    const totalRecords = this._cache?.length ?? 0;
     return {
-      totalRecords: records.length,
-      totalTokens,
+      totalRecords,
+      totalTokens: this._totalTokens,
       lastConsolidation: this._lastConsolidation ?? 0,
     };
   }

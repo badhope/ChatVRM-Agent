@@ -453,11 +453,28 @@ export class Crew {
     const startTime = performance.now();
     this.bus.emit('crew:start', { agents: def.agents.map((a) => a.name), input });
 
-    const instances: AgentInstance[] = def.agents.map((a) => {
-      const existing = this.registry.get(a.name);
-      if (existing) return existing;
-      return this.add(a);
-    });
+    // H11: detect duplicate agent names *before* any side effect. Previously
+    // the run() method silently reused a same-named agent for the second
+    // occurrence, which meant a typo like "Researcher" vs "Researcher "
+    // would skip work and report success. Throw with a clear message that
+    // also points at the existing instance.
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const a of def.agents) {
+      if (seen.has(a.name)) dupes.push(a.name);
+      seen.add(a.name);
+    }
+    if (dupes.length > 0) {
+      const existing = dupes.map((n) => `"${n}" (registered at index ${
+        this.registry.get(n) ? this.registry.names().indexOf(n) : 'unknown'
+      })`).join(', ');
+      throw new Error(
+        `Crew.run() received duplicate agent name(s): ${dupes.join(', ')}. ` +
+        `Each agent in a crew must have a unique name. Already registered: ${existing}.`,
+      );
+    }
+
+    const instances: AgentInstance[] = def.agents.map((a) => this.add(a));
 
     let perAgent: AgentRunResult[];
     if (process === 'sequential') {

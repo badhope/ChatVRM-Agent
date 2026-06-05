@@ -80,11 +80,32 @@ export class Runtime {
       }));
       // Validate dim against the in-memory store.
       if (records.length > 0 && records[0]!.vector.length !== this.vectorStore.dim) {
+        // W17 M9: log dim mismatch to stderr so operators can tell the
+        // difference between "no corpus" and "wrong embedder dim".
+        process.stderr.write(
+          `[runtime] vectors file at ${VECTORS_FILE} has dim ${records[0]!.vector.length}, ` +
+            `expected ${this.vectorStore.dim}; skipping hydration\n`,
+        );
         return { loaded: 0, path: VECTORS_FILE };
       }
       await this.vectorStore.add(records);
+      // W17 M9: also feed the records into the HybridRetriever so that
+      // BM25 + hybrid search can return hydrated docs. The vector
+      // store alone is not enough — the retriever caches `docs` and
+      // `vectorIds` in its own maps.
+      await this.retriever.add(
+        records.map((r) => ({
+          id: r.id,
+          text: r.text,
+          metadata: r.metadata,
+        })),
+      );
       return { loaded: records.length, path: VECTORS_FILE };
-    } catch {
+    } catch (err) {
+      // W17 M9: surface hydration errors to the operator's stderr so a
+      // corrupt file doesn't silently keep the runtime empty.
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[runtime] failed to hydrate ${VECTORS_FILE}: ${message}\n`);
       return { loaded: 0, path: VECTORS_FILE };
     }
   }

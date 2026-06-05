@@ -13,7 +13,9 @@
  * and most callers want fresh data).
  *
  * Cache key: stable JSON of (provider, model, messages, tools, temperature,
- * maxTokens). Two equivalent calls produce the same key.
+ * maxTokens, topP, presencePenalty, frequencyPenalty). Two equivalent calls
+ * produce the same key. If you change the model behaviour (topP / penalties)
+ * the cache key changes, so stale responses are not returned.
  *
  * TTL: per-entry expiry; default 5 minutes. LRU eviction: when the
  * cache exceeds `maxEntries`, the least-recently-used entry is removed.
@@ -60,6 +62,12 @@ export class LLMCache {
       maxTokens: req.maxTokens ?? null,
       toolChoice: req.toolChoice ?? null,
       parallelToolCalls: req.parallelToolCalls ?? null,
+      // Sampling parameters affect the output distribution; omitting them
+      // would cause cache hits across requests with different sampling,
+      // returning a wrong answer. Include them.
+      topP: req.topP ?? null,
+      presencePenalty: req.presencePenalty ?? null,
+      frequencyPenalty: req.frequencyPenalty ?? null,
       messages: req.messages.map((m) => ({ role: m.role, content: m.content, toolCallId: m.toolCallId, name: m.name, toolCalls: m.toolCalls })),
       tools: (req.tools ?? []).map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
     };

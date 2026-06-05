@@ -130,6 +130,15 @@ export async function assertSafeUrl(rawUrl: string): Promise<URL> {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(`unsupported URL scheme: ${url.protocol} (only http/https)`);
   }
+  // W17 M13: `https://user@evil.example/path` is a known phishing trick
+  // that hides the real host (evil.example) behind a friendly-looking
+  // userinfo segment. The URL parser does not let us inspect the
+  // userinfo separately, but `url.username` and `url.password` are
+  // populated from the `user[:pass]@` segment, and a public web tool
+  // should never have credentials in the URL. Refuse the request.
+  if (url.username !== '' || url.password !== '') {
+    throw new Error(`refusing URL with embedded credentials: ${rawUrl}`);
+  }
   const hostname = url.hostname.toLowerCase();
   if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
     throw new Error(`refusing to fetch local hostname: ${hostname}`);
@@ -205,14 +214,7 @@ export function htmlToText(html: string, maxLen: number = 16_000): string {
   // Drop the remaining tags.
   s = s.replace(/<[^>]+>/g, ' ');
   // Decode the small set of entities the LLM will actually see.
-  s = s
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
+  s = decodeHtmlEntities(s);
   // Collapse whitespace within a line; keep \n as paragraph break.
   s = s
     .split('\n')
@@ -249,15 +251,19 @@ export async function duckDuckGoSearch(query: string, opts: { maxResults: number
   }
   const { text } = await readBodyWithCap(res, WEB_MAX_BYTES);
   const results: WebSearchResult[] = [];
-  // Match a single result block, then pull out title/href/snippet.
-  // The HTML uses class="result__a" and class="result__snippet" (or
-  // result__url for older versions). We accept either.
-  const blockRe = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:class="result__snippet"[^>]*>([\s\S]*?)<\/a>|class="result__snippet"[^>]*>([\s\S]*?)<\/div>)/gi;
+  // W17 M7: the previous regex was an unanchored lazy match that
+  // could pick up text from the *next* result block when the current
+  // one was malformed. Restrict the search to a single result
+  // container, which is how DDG HTML always structures results.
+  const blockRe = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]*class="result__a"|<\/div>\s*<\/div>\s*<\/div>)/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(text)) !== null) {
     const href = decodeHtmlEntities(m[1] ?? '');
     const rawTitle = m[2] ?? '';
-    const rawSnippet = m[3] ?? m[4] ?? '';
+    // Snippet is the first <a class="result__snippet"> inside the block.
+    const blockTail = m[3] ?? '';
+    const snippetMatch = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i.exec(blockTail);
+    const rawSnippet = snippetMatch ? snippetMatch[1] : '';
     const title = htmlToText(rawTitle, 300).trim();
     const snippet = htmlToText(rawSnippet, 400).trim();
     if (!title) continue;
@@ -267,14 +273,25 @@ export async function duckDuckGoSearch(query: string, opts: { maxResults: number
   return results;
 }
 
-function decodeHtmlEntities(s: string): string {
+export function decodeHtmlEntities(s: string): string {
   return s
+    .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
+    // W17 L2: handle the modern named entities some HTML5 sites emit.
+    .replace(/&apos;/g, "'")
+    // W17 L2: handle hex entities (e.g. &#x27;). Cap to a sane number of
+    // hex digits to avoid a regex DoS on malformed strings.
+    .replace(/&#x([0-9a-fA-F]{1,6});/g, (_, n: string) => {
+      const code = Number.parseInt(n, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&#(\d+);/g, (_, n: string) => {
+      const code = Number(n);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
+    });
 }
 
 export class WebClient {
@@ -289,36 +306,87 @@ export class WebClient {
   }
 
   async fetch(url: string, opts: { maxBytes?: number; signal?: AbortSignal } = {}): Promise<WebFetchOutcome> {
-    const safe = await assertSafeUrl(url).catch((err: Error) => ({ error: err.message } as { error: string }));
-    if ('error' in safe) {
-      return { ok: false, url, error: safe.error };
-    }
+    // W17 M6: fetch's built-in `redirect: 'follow'` would happily chase
+    // a 3xx to a private IP. We re-implement the redirect loop manually
+    // so we can re-validate the URL of every hop against the SSRF
+    // deny-list. We cap the chain length to avoid pathological loops.
+    const MAX_REDIRECTS = 5;
     const ac = new AbortController();
     const timeout = setTimeout(() => ac.abort(new Error(`webFetch timeout after ${this.timeoutMs}ms`)), this.timeoutMs);
     const onParentAbort = () => ac.abort(opts.signal?.reason);
     opts.signal?.addEventListener('abort', onParentAbort);
     try {
-      const res = await fetch(safe, {
-        method: 'GET',
-        redirect: 'follow',
-        signal: ac.signal,
-        headers: {
-          'User-Agent': this.userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.5',
-        },
-      });
+      let current = await assertSafeUrl(url).catch((err: Error) => ({ error: err.message } as { error: string }));
+      if ('error' in current) {
+        return { ok: false, url, error: current.error };
+      }
+      let redirectCount = 0;
+      let res: Response;
+      while (true) {
+        res = await fetch(current, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: ac.signal,
+          headers: {
+            'User-Agent': this.userAgent,
+            'Accept': 'text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.5',
+          },
+        });
+        // Follow 3xx manually.
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.get('location');
+          if (!location) {
+            // Malformed redirect; treat as final response.
+            break;
+          }
+          if (redirectCount >= MAX_REDIRECTS) {
+            return { ok: false, url, error: `too many redirects (>${MAX_REDIRECTS})` };
+          }
+          // Drain the redirect body before following.
+          try {
+            await res.body?.cancel();
+          } catch {
+            /* ignore */
+          }
+          // Resolve the relative Location header.
+          let nextUrl: URL;
+          try {
+            nextUrl = new URL(location, current);
+          } catch {
+            return { ok: false, url, error: `invalid redirect target: ${location}` };
+          }
+          const validated = await assertSafeUrl(nextUrl.toString()).catch(
+            (err: Error) => ({ error: err.message } as { error: string }),
+          );
+          if ('error' in validated) {
+            return { ok: false, url, error: `redirect to unsafe URL: ${validated.error}` };
+          }
+          current = validated;
+          redirectCount += 1;
+          continue;
+        }
+        break;
+      }
       const cap = opts.maxBytes ?? WEB_MAX_BYTES;
-      const { text, truncated } = await readBodyWithCap(res, cap);
-      const contentType = res.headers.get('content-type') ?? 'application/octet-stream';
+      const { text, truncated } = await readBodyWithCap(res!, cap);
+      const contentType = res!.headers.get('content-type') ?? 'application/octet-stream';
       const isHtml = /html/i.test(contentType);
-      const body = isHtml ? htmlToText(text, cap) : text;
+      let body = isHtml ? htmlToText(text, cap) : text;
+      // W17 M14: normalise line endings so the LLM never sees a body
+      // with only \r or mixed \r\n / \n separators — both the BM25
+      // tokenizer and most LLM tokenizers treat \r as whitespace but
+      // a body consisting entirely of \r is unreadable when echoed.
+      body = body.replace(/\r\n?/g, '\n');
+      // W17 M15: the truncated marker is appended *after* the cap so
+      // it never pushes us over. We add it conditionally.
+      const marker = truncated ? `\n[truncated to ${cap} bytes]` : '';
       return {
         ok: true,
         url,
-        finalUrl: res.url,
-        status: res.status,
+        finalUrl: res!.url,
+        status: res!.status,
         contentType,
-        text: truncated ? body + `\n[truncated to ${cap} bytes]` : body,
+        text: body + marker,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

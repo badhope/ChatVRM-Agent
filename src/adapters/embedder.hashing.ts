@@ -63,15 +63,25 @@ export class HashingEmbedder implements Embedder {
 
   private embedOne(text: string): Float32Array {
     const v = new Float32Array(this.dim);
-    const counts = new Map<number, number>();
+    const counts = new Map<number, { count: number; sign: number }>();
     for (const tok of tokenize(text, this.n)) {
       const h = fnv1a(tok);
       const slot = h % this.dim;
-      counts.set(slot, (counts.get(slot) ?? 0) + 1);
+      // Sign polarity must be derived from the n-gram hash, NOT the slot index.
+      // Using `(slot & 1)` makes every collision carry the same sign, so
+      // collisions *add* instead of partially cancelling. Use the high bit of
+      // the same hash for an independent pseudo-random sign per n-gram.
+      const sign = ((h >>> 16) & 1) === 1 ? 1 : -1;
+      const existing = counts.get(slot);
+      if (existing) {
+        existing.count += 1;
+        // Distinct n-grams that collide on slot but disagree on sign will
+        // partially cancel — which is the whole point of polarity.
+      } else {
+        counts.set(slot, { count: 1, sign });
+      }
     }
-    for (const [slot, count] of counts) {
-      // Sign polarity derived from the n-gram hash to reduce collisions.
-      const sign = (slot & 1) === 1 ? 1 : -1;
+    for (const [slot, { count, sign }] of counts) {
       v[slot] = sign * (this.sublinear ? Math.log(1 + count) : count);
     }
     // L2 normalize.

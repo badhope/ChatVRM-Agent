@@ -177,6 +177,40 @@ export class ExecuteStage implements Stage {
             previousOutput,
           };
 
+          // H8: capture pre-tool file snapshot so we can roll back if the
+          // post-execute trust check fails. We snapshot every file path
+          // visible in step.args (`filePath` / `path`) since these are
+          // the candidate write targets of typical file-mutating tools.
+          const preToolSnapshot: Array<{
+            filePath: string;
+            existed: boolean;
+            content: string | null;
+          }> = [];
+          const candidatePaths: unknown[] = [
+            (step.args as Record<string, unknown> | undefined)?.filePath,
+            (step.args as Record<string, unknown> | undefined)?.path,
+            (step.args as Record<string, unknown> | undefined)?.target,
+            (step.args as Record<string, unknown> | undefined)?.dest,
+          ];
+          if (this.storage) {
+            for (const candidate of candidatePaths) {
+              if (typeof candidate !== 'string' || candidate.length === 0) continue;
+              const { sandboxPath } = await import('../shared/sandbox.js');
+              const safe = sandboxPath(candidate);
+              if (!safe.ok) continue;
+              const existed = await this.storage.exists(safe.resolved);
+              let content: string | null = null;
+              if (existed) {
+                try {
+                  content = await this.storage.read(safe.resolved);
+                } catch {
+                  content = null;
+                }
+              }
+              preToolSnapshot.push({ filePath: safe.resolved, existed, content });
+            }
+          }
+
           let toolResult: ToolResult;
           try {
             toolResult = await this.tools.execute(step.tool!, toolArgs);
@@ -199,6 +233,15 @@ export class ExecuteStage implements Stage {
               }
               stepChangedFiles.push(explicitFilePath);
             }
+          }
+
+          // H8: if the *post-execute* trust check (evaluated later in this
+          // block) decides this step's output is high-risk or critical, we
+          // need to undo side effects. The judgement is not yet made — but
+          // we stash the snapshot on the runningStep so the trust-failure
+          // branch can find it.
+          if (preToolSnapshot.length > 0) {
+            (runningStep as TaskStep & { _rollbackSnapshot?: typeof preToolSnapshot })._rollbackSnapshot = preToolSnapshot;
           }
         } else {
           const chatConfig = await this.config.getChatConfig();
@@ -320,6 +363,56 @@ export class ExecuteStage implements Stage {
             results.push(skipResult);
             this.emitter.emit('step:complete', { step: skippedStep, result: skipResult });
             this.emitter.emit('output', { text: `  ⚠ ${step.description} skipped (trust: ${trustVerdict.level})` });
+
+            // H8: post-execute trust check failed. The tool already ran and
+            // may have written files. Restore the pre-tool state from the
+            // snapshot we captured earlier so a prompt-injection-driven
+            // tool can't leave a partial write on disk.
+            const snapshot = (runningStep as TaskStep & {
+              _rollbackSnapshot?: Array<{ filePath: string; existed: boolean; content: string | null }>;
+            })._rollbackSnapshot;
+            if (snapshot && this.storage) {
+              let restored = 0;
+              let removed = 0;
+              for (const entry of snapshot) {
+                try {
+                  const nowExists = await this.storage.exists(entry.filePath);
+                  if (!entry.existed) {
+                    // The file didn't exist before — remove it.
+                    if (nowExists) {
+                      await this.storage.delete(entry.filePath);
+                      removed += 1;
+                    }
+                  } else if (entry.content !== null) {
+                    // The file existed with a known content — overwrite to
+                    // restore. (We don't compare-then-skip because the
+                    // restored state must be authoritative.)
+                    await this.storage.write(entry.filePath, entry.content);
+                    restored += 1;
+                  }
+                } catch (err) {
+                  this.emitter.emit('output', {
+                    text: `  ⚠ Trust-rollback: could not restore ${entry.filePath}: ${
+                      err instanceof Error ? err.message : String(err)
+                    }`,
+                  });
+                }
+              }
+              if (restored > 0 || removed > 0) {
+                this.emitter.emit('output', {
+                  text: `  ↩️ Trust-rollback: restored ${restored} file(s), removed ${removed} new file(s)`,
+                });
+              }
+              // Drop these from the run-level modifiedFiles / createdFiles
+              // since the rollback put the workspace back to its pre-step
+              // state.
+              for (const entry of snapshot) {
+                const mi = modifiedFiles.indexOf(entry.filePath);
+                if (mi >= 0) modifiedFiles.splice(mi, 1);
+                const ci = createdFiles.indexOf(entry.filePath);
+                if (ci >= 0) createdFiles.splice(ci, 1);
+              }
+            }
 
             const updatedCtx: PipelineContext = {
               ...ctx,

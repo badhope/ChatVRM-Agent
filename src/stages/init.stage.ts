@@ -1,6 +1,5 @@
 import type { Stage, PipelineContext, PipelineEvents } from '../core/types.js';
 import { EventEmitter } from 'eventemitter3';
-import { getEventBus } from '../core/event-bus.js';
 import type { IConfigPort } from '../ports/config.port.js';
 import { PersonalityService } from '../domain/personality/personality.service.js';
 import { EmotionService } from '../domain/personality/emotion.service.js';
@@ -15,7 +14,7 @@ export class InitStage implements Stage {
   private config?: IConfigPort;
 
   constructor(emitter?: EventEmitter<PipelineEvents>, config?: IConfigPort) {
-    this.emitter = emitter ?? getEventBus();
+    this.emitter = emitter ?? new EventEmitter<PipelineEvents>();
     this.config = config;
   }
 
@@ -24,7 +23,6 @@ export class InitStage implements Stage {
       throw new Error('Input must be non-empty');
     }
 
-    const eventBus = getEventBus();
     const warnings: string[] = [];
     let apiKeyStatus: { provider: string; available: boolean } | null = null;
     let configDirOk = false;
@@ -69,13 +67,16 @@ export class InitStage implements Stage {
       },
     };
 
-    eventBus.emit('output', {
+    // H9: emit on the injected emitter, not on the global bus. With multiple
+    // concurrent pipelines, the global bus would cross-deliver these init
+    // events to every pipeline's UI listener, mixing unrelated runs.
+    this.emitter.emit('output', {
       text: `Pipeline initialized (provider: ${apiKeyStatus?.provider ?? 'unknown'}, key: ${apiKeyStatus?.available ? 'yes' : 'no'}, config dir: ${configDirOk ? 'ok' : 'failed'})`,
     });
 
     if (warnings.length > 0) {
       for (const w of warnings) {
-        eventBus.emit('output', { text: `  ⚠ ${w}` });
+        this.emitter.emit('output', { text: `  ⚠ ${w}` });
       }
     }
 

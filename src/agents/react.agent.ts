@@ -256,7 +256,13 @@ export class ReActAgent {
         index: i,
         thought,
         actions: [],
-        tokens: response.usage,
+        // H10: use the defensive `stepUsage` default instead of the raw
+        // `response.usage`. If the upstream provider omitted `usage` (a
+        // documented quirk of some self-hosted OpenAI-compatible servers),
+        // `response.usage` is `undefined` and the `tokens` field on this
+        // step would violate the ReActStep type and crash anything that
+        // sums tokens later.
+        tokens: stepUsage,
         durationMs: 0,
       };
 

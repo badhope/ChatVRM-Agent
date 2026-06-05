@@ -50,6 +50,21 @@ const FullConfigSchema = z.object({
 
 type FullConfig = z.infer<typeof FullConfigSchema>;
 
+/**
+ * Redact an API key for safe display. Keeps the prefix (provider-
+ * specific — e.g. `sk-` for OpenAI) and the last 4 characters, masking
+ * the middle. Empty / non-string values return an empty string.
+ */
+function redactApiKey(key: string | undefined | null): string {
+  if (!key || typeof key !== 'string' || key.length === 0) return '';
+  if (key.length <= 8) return '***';
+  // Try to detect a 2-4 char prefix separated by '-' (sk-, gsk-, AIza, etc.)
+  const dashIdx = key.indexOf('-');
+  const prefix = dashIdx > 0 && dashIdx <= 6 ? key.slice(0, dashIdx + 1) : key.slice(0, 3);
+  const tail = key.slice(-4);
+  return `${prefix}***${tail}`;
+}
+
 const DEFAULT_CONFIG: FullConfig = {
   version: 1,
   defaultProvider: undefined,
@@ -230,8 +245,25 @@ export class ConfigAdapter implements IConfigPort {
     this.store.set('circuitBreaker', { ...current, ...partial });
   }
 
-  async getAllConfig(): Promise<Record<string, unknown>> {
-    return this.store.store as Record<string, unknown>;
+  /**
+   * Return the full config object. By default, `apiKeys` values are
+   * REDACTED (replaced with a redacted-form string) so a careless log /
+   * HTTP response / test failure can't leak a real key. Pass
+   * `{ revealSecrets: true }` to receive the raw values — the caller
+   * is then responsible for not echoing the result to a wider surface.
+   */
+  async getAllConfig(options?: { revealSecrets?: boolean }): Promise<Record<string, unknown>> {
+    const raw = this.store.store as Record<string, unknown>;
+    if (options?.revealSecrets) return raw;
+    // Redact apiKeys. Other fields are non-sensitive.
+    const out: Record<string, unknown> = { ...raw };
+    if (out.apiKeys && typeof out.apiKeys === 'object') {
+      const keys = out.apiKeys as Record<string, string>;
+      out.apiKeys = Object.fromEntries(
+        Object.entries(keys).map(([provider, key]) => [provider, redactApiKey(key)]),
+      );
+    }
+    return out;
   }
 
   async exists(): Promise<boolean> {

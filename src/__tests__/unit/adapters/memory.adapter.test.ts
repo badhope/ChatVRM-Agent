@@ -346,5 +346,67 @@ describe('MemoryAdapter', () => {
       const filtered = records.filter((r) => r.input !== '_init_');
       expect(filtered.length).toBe(10);
     });
+
+    it('H17: real concurrency — interleaved remember/recall yields consistent cache+disk+stats', async () => {
+      await initAdapter();
+
+      // Mix of operations to maximise the chance of a real race hitting
+      // the cache map, the running token counter, and the search index
+      // at the same time. We seed 50 records, then hammer the adapter
+      // from many concurrent paths: 50 new remembers, 50 recalls of
+      // those new records. After settling, the disk, the cache and
+      // stats() must agree.
+      for (let i = 0; i < 50; i += 1) {
+        await adapter.remember({
+          input: `seed-input-${i}`,
+          output: `seed-output-${i}`,
+          provider: 'openai',
+          model: 'gpt-4o',
+          tags: ['seed'],
+        });
+      }
+
+      // Force the cache to be hot so subsequent ops take the fast path.
+      const warm = await adapter.recall('seed', 200);
+      expect(warm.length).toBeGreaterThan(0);
+
+      const ops: Array<Promise<unknown>> = [];
+      for (let i = 0; i < 50; i += 1) {
+        ops.push(adapter.remember({
+          input: `inter-input-${i}`,
+          output: `inter-output-${i}`,
+          provider: 'openai',
+          model: 'gpt-4o',
+          tags: ['inter'],
+        }));
+      }
+      for (let i = 0; i < 50; i += 1) {
+        ops.push(adapter.recall(`inter-input-${i % 50}`, 5));
+      }
+      await Promise.all(ops);
+
+      // Allow async writes to drain.
+      await new Promise((r) => setTimeout(r, 50));
+
+      const onDisk = await adapter.loadAll();
+      // 50 seeded + 1 _init_ + 50 inter = 101
+      const realRecords = onDisk.filter((r) => r.input !== '_init_');
+      expect(realRecords.length).toBe(100);
+      const diskInputs = new Set(realRecords.map((r) => r.input));
+      for (let i = 0; i < 50; i += 1) {
+        expect(diskInputs.has(`inter-input-${i}`)).toBe(true);
+      }
+
+      // Cache must agree with disk after settling.
+      const cached = await adapter.recall('inter', 100);
+      const cachedInputs = new Set(cached.map((r) => r.input));
+      for (let i = 0; i < 50; i += 1) {
+        expect(cachedInputs.has(`inter-input-${i}`)).toBe(true);
+      }
+
+      // stats.totalRecords must match on-disk count.
+      const stats = await adapter.stats();
+      expect(stats.totalRecords).toBe(onDisk.length);
+    });
   });
 });

@@ -52,6 +52,14 @@ export class IngestionPipeline {
   private readonly chunker?: RecursiveTextChunker;
   private readonly loader: Loader;
   private readonly sourceTag?: string;
+  // W17 M10: monotonic per-instance counter mixed into chunk IDs to
+  // guarantee uniqueness across ingestion runs of the same source.
+  private idCounter = 0;
+  private nextId(): string {
+    this.idCounter = (this.idCounter + 1) >>> 0;
+    // base36 keeps the id short and human-readable in persisted form.
+    return this.idCounter.toString(36);
+  }
 
   constructor(opts: IngestionOptions) {
     this.embedder = opts.embedder;
@@ -125,8 +133,16 @@ export class IngestionPipeline {
       onProgress?.({ stage: 'chunk', current: i + 1, total: documents.length, detail: `${parts.length} chunk(s)` });
       for (let j = 0; j < parts.length; j++) {
         const p = parts[j]!;
+        // W17 M10: the previous id was `${label}#${i}-${j}` which
+        // collides if two documents share the same `source` field
+        // (e.g. when the loader re-emits the same file under a
+        // different document index, or when two virtual docs in a
+        // batch both have `source: "user"`). Mix in the byte offset
+        // and a per-pipeline counter so collisions are essentially
+        // impossible.
+        const id = `${label}#${i}-${j}-${p.start}-${this.nextId()}`;
         allChunks.push({
-          id: `${label}#${i}-${j}`,
+          id,
           text: p.text,
           metadata: {
             source: label,

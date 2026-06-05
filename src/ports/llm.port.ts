@@ -56,6 +56,12 @@ export interface ChatParams {
   toolChoice?: ToolChoice;
   /** Parallel tool calls. Defaults to true on OpenAI, false on others. */
   parallelToolCalls?: boolean;
+  /** Top-p (nucleus) sampling. Affects output distribution. */
+  topP?: number;
+  /** Penalises tokens that have already appeared. Range typically [-2, 2]. */
+  presencePenalty?: number;
+  /** Penalises tokens by frequency of appearance. Range typically [-2, 2]. */
+  frequencyPenalty?: number;
 }
 
 export interface ChatResponse {

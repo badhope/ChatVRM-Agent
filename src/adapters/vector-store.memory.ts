@@ -49,8 +49,22 @@ export class InMemoryVectorStore implements VectorStore {
   }
 
   async query(q: VectorQuery): Promise<VectorHit[]> {
-    const qNorm = l2norm(q.vector);
-    if (qNorm === 0) {
+    // W17 M3: a hand-crafted query vector (e.g. an embedding from
+    // a different provider, or a unit test) is not necessarily
+    // L2-normalised. The cosine-similarity math still produces a
+    // value, but the relative ranking becomes non-deterministic
+    // and counter-intuitive. Normalise here so callers don't
+    // have to remember the embedder's contract.
+    let qVector = q.vector;
+    let qNorm = l2norm(qVector);
+    if (qNorm > 0) {
+      // Re-normalise to unit length in place.
+      const out = new Float32Array(qVector.length);
+      for (let i = 0; i < qVector.length; i++) out[i] = qVector[i]! / qNorm;
+      qVector = out;
+      qNorm = 1;
+    } else {
+      // Zero vector — no hits possible.
       return [];
     }
     const scored: VectorHit[] = [];
@@ -58,7 +72,7 @@ export class InMemoryVectorStore implements VectorStore {
       if (q.filter && !q.filter(rec.metadata)) {
         continue;
       }
-      const score = cosine(q.vector, qNorm, rec.vector, rec.norm);
+      const score = cosine(qVector, qNorm, rec.vector, rec.norm);
       scored.push({ id: rec.id, text: rec.text, metadata: rec.metadata, score });
     }
     scored.sort((a, b) => b.score - a.score);
@@ -71,15 +85,24 @@ export class InMemoryVectorStore implements VectorStore {
 
   /**
    * Return every record in the store. Used by the admin/RAG
-   * routes to surface the corpus and to back up to disk. For
-   * larger corpora prefer paginated `query` calls.
+   * routes to surface the corpus. By default vectors are NOT
+   * included to keep the response small; pass `{ includeVector: true }`
+   * to get the raw Float32Array (used by the backup / restore path).
    */
-  async all(): Promise<Array<{ id: string; text: string; metadata?: Record<string, unknown> }>> {
-    return Array.from(this.records.values()).map((r) => ({
-      id: r.id,
-      text: r.text,
-      metadata: r.metadata,
-    }));
+  async all(opts: { includeVector?: boolean } = {}): Promise<Array<{ id: string; text: string; metadata?: Record<string, unknown>; vector?: Float32Array }>> {
+    return Array.from(this.records.values()).map((r) => {
+      const out: { id: string; text: string; metadata?: Record<string, unknown>; vector?: Float32Array } = {
+        id: r.id,
+        text: r.text,
+        metadata: r.metadata,
+      };
+      if (opts.includeVector) {
+        // Hand back a *copy* so the caller cannot mutate our
+        // internal state by writing into the returned array.
+        out.vector = new Float32Array(r.vector);
+      }
+      return out;
+    });
   }
 
   clear(): void {
@@ -87,31 +110,77 @@ export class InMemoryVectorStore implements VectorStore {
   }
 
   /**
-   * Persist the store to a JSON file. Used by the CLI's `ingest`
-   * command to dump a freshly-built store. The Float32 vectors are
-   * serialised as plain number[] to keep the file human-readable.
+   * Persist the store to a file. W17 H4: the previous
+   * implementation round-tripped Float32 vectors through
+   * `Array.from(r.vector)` (which widens to JS Number) and
+   * `new Float32Array(number[])` (which rounds back to Float32),
+   * losing low-magnitude components. We now serialise the
+   * vector body as a base64-encoded little-endian Float32 binary
+   * blob, which is exact. A small JSON header carries the dim
+   * and the per-record metadata.
    */
   async saveToFile(filePath: string): Promise<void> {
-    const out: Array<{ id: string; vector: number[]; text: string; metadata?: Record<string, unknown> }> = [];
-    for (const r of this.records.values()) {
-      out.push({ id: r.id, vector: Array.from(r.vector), text: r.text, metadata: r.metadata });
-    }
     const fs = await import('node:fs/promises');
     const pathMod = await import('node:path');
     const dir = pathMod.dirname(filePath);
     if (dir && dir !== '.' && dir !== filePath) await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify({ dim: this.dim, records: out }, null, 2), 'utf8');
+
+    const records: Array<{ id: string; vectorB64: string; text: string; metadata?: Record<string, unknown> }> = [];
+    for (const r of this.records.values()) {
+      // Float32 → little-endian bytes → base64. Round-trip is
+      // bit-exact; the previous JSON-of-numbers path could lose
+      // the bottom bits of low-magnitude components.
+      records.push({
+        id: r.id,
+        vectorB64: float32ToB64(r.vector),
+        text: r.text,
+        metadata: r.metadata,
+      });
+    }
+    await fs.writeFile(
+      filePath,
+      JSON.stringify({ dim: this.dim, version: 2, records }, null, 2),
+      'utf8',
+    );
   }
 
-  /** Re-load a previously-saved store. The store must be empty. */
+  /**
+   * Re-load a previously-saved store. Supports both the new v2
+   * binary format and the v1 JSON-of-numbers format (auto-detected
+   * by the presence of `version`).
+   */
   static async loadFromFile(path: string): Promise<InMemoryVectorStore> {
     const fs = await import('node:fs/promises');
     const raw = await fs.readFile(path, 'utf8');
-    const parsed = JSON.parse(raw) as { dim: number; records: Array<{ id: string; vector: number[]; text: string; metadata?: Record<string, unknown> }> };
+    const parsed = JSON.parse(raw) as {
+      dim: number;
+      version?: number;
+      records: Array<{ id: string; vector?: number[]; vectorB64?: string; text: string; metadata?: Record<string, unknown> }>;
+    };
     const store = new InMemoryVectorStore(parsed.dim);
-    await store.add(parsed.records.map((r) => ({ id: r.id, vector: new Float32Array(r.vector), text: r.text, metadata: r.metadata })));
+    await store.add(
+      parsed.records.map((r) => {
+        const vector = typeof r.vectorB64 === 'string' ? b64ToFloat32(r.vectorB64) : new Float32Array(r.vector ?? []);
+        return { id: r.id, vector, text: r.text, metadata: r.metadata };
+      }),
+    );
     return store;
   }
+}
+
+function float32ToB64(v: Float32Array): string {
+  // Use the underlying ArrayBuffer view so we get raw little-endian
+  // bytes (Node guarantees LE on x86 + arm64).
+  return Buffer.from(v.buffer, v.byteOffset, v.byteLength).toString('base64');
+}
+
+function b64ToFloat32(b64: string): Float32Array {
+  const buf = Buffer.from(b64, 'base64');
+  // Copy through a fresh ArrayBuffer so the Float32Array doesn't
+  // share memory with the (resized-once) Buffer pool.
+  const ab = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(ab).set(buf);
+  return new Float32Array(ab);
 }
 
 function l2norm(v: Float32Array): number {
@@ -122,8 +191,14 @@ function l2norm(v: Float32Array): number {
 
 function cosine(a: Float32Array, aNorm: number, b: Float32Array, bNorm: number): number {
   if (aNorm === 0 || bNorm === 0) return 0;
+  // W17 M5: a length mismatch used to be silently truncated via
+  // `Math.min(a.length, b.length)`. That produced bogus scores for
+  // vectors that *almost* matched. Treat a dim mismatch as a hard zero
+  // (i.e. "no overlap" — the highest conservative score).
+  if (a.length !== b.length) {
+    return 0;
+  }
   let dot = 0;
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i++) dot += a[i] * b[i];
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
   return dot / (aNorm * bNorm);
 }

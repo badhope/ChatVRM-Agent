@@ -78,7 +78,7 @@ export interface IConfigPort {
   updateSandboxConfig(config: Partial<SandboxConfig>): Promise<void>;
   getCircuitBreakerConfig(): Promise<CircuitBreakerConfig>;
   updateCircuitBreakerConfig(config: Partial<CircuitBreakerConfig>): Promise<void>;
-  getAllConfig(): Promise<Record<string, unknown>>;
+  getAllConfig(options?: { revealSecrets?: boolean }): Promise<Record<string, unknown>>;
   exists(): Promise<boolean>;
   getFileMeta(): Promise<ConfigFileMeta>;
   export(): Promise<Record<string, unknown>>;

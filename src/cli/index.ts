@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, exit } from 'node:process';
 import { randomUUID } from 'node:crypto';
+import { statSync } from 'node:fs';
 import { EventEmitter } from 'eventemitter3';
 import chalk from 'chalk';
 import {
@@ -371,14 +372,88 @@ async function main(): Promise<void> {
     .command('set-key <provider> [key]')
     .description('Set API key for a provider (pass key as 2nd arg or via stdin)')
     .action(async (provider, key) => {
+      // W17 L7: validate the provider name before prompting for a key.
+      // Otherwise an operator who mistypes `pa-claude` would set a
+      // stray entry in the config and the key would never be used.
+      // We derive the valid set from the LLM adapter's base-URL table
+      // so the CLI and server can't drift apart.
+      const { DEFAULT_PROVIDER_BASE_URLS } = await import('../adapters/llm.adapter.js');
+      const validProviders = Object.keys(DEFAULT_PROVIDER_BASE_URLS) as ProviderType[];
+      if (!validProviders.includes(provider as ProviderType)) {
+        process.stdout.write(`${chalk.red('✗')} Unknown provider "${provider}". Supported: ${validProviders.join(', ')}\n`);
+        exit(1);
+      }
       if (!key) {
-        process.stdout.write(`Enter API key for ${provider}: `);
-        const rl = createInterface({ input: stdin, output: stdout, terminal: false });
-        for await (const line of rl) {
-          key = line.trim();
-          break;
+        // H12: read the key without echoing it. When stdin is a TTY we
+        // switch to raw mode and suppress echo, masking each character
+        // with '*'. When stdin is piped (non-TTY — e.g. read from a
+        // secrets manager) we read the first line normally; the user
+        // has already taken care not to leak it to a terminal in that
+        // path.
+        const isTTY = Boolean(stdin.isTTY);
+        if (isTTY) {
+          process.stdout.write(`Enter API key for ${provider}: `);
+          // TTY: read each character silently and replace with '*'.
+          // We can't use readline for this because we need per-char
+          // suppression of echo, not line-based input.
+          stdin.setRawMode?.(true);
+          stdin.resume();
+          stdin.setEncoding('utf8');
+          const readlineEmit = (stdin as unknown as { readLineEmit?: () => void }).readLineEmit;
+          // Mute the internal emitter so a stray '\n' from a paste
+          // doesn't leak into the next readline caller.
+          readlineEmit?.();
+          let masked = '';
+          await new Promise<void>((resolve) => {
+            const onData = (ch: string) => {
+              for (const c of ch) {
+                if (c === '\n' || c === '\r' || c === '\x04' /* Ctrl-D */) {
+                  stdin.off('data', onData);
+                  stdin.setRawMode?.(false);
+                  stdin.pause();
+                  process.stdout.write('\n');
+                  resolve();
+                  return;
+                }
+                if (c === '\x03' /* Ctrl-C */) {
+                  stdin.off('data', onData);
+                  stdin.setRawMode?.(false);
+                  stdin.pause();
+                  process.stdout.write('\n');
+                  // Cast `exit` to a regular function for this call so
+                  // TypeScript doesn't flag the next line as
+                  // unreachable — `exit()`'s return type is `never`
+                  // which makes any code after it dead.
+                  (exit as (code?: number) => void)(130);
+                  return;
+                }
+                if (c === '\x7f' || c === '\b') {
+                  // Backspace.
+                  if (masked.length > 0) {
+                    masked = masked.slice(0, -1);
+                    // Erase the previous '*' visually.
+                    process.stdout.write('\b \b');
+                  }
+                  continue;
+                }
+                // Printable character.
+                masked += c;
+                process.stdout.write('*');
+              }
+            };
+            stdin.on('data', onData);
+          });
+          key = masked.trim();
+        } else {
+          // Piped stdin: read the first non-empty line. Don't write a
+          // prompt to avoid corrupting the piped stream.
+          const rl = createInterface({ input: stdin, output: stdout, terminal: false });
+          for await (const line of rl) {
+            key = line.trim();
+            break;
+          }
+          rl.close();
         }
-        rl.close();
       }
       if (!key) {
         process.stdout.write(`${chalk.red('✗')} No key provided.\n`);
@@ -386,6 +461,9 @@ async function main(): Promise<void> {
       }
       const { config } = await bootstrap();
       await config.setApiKey(provider as ProviderType, key);
+      // Best-effort: clear the local variable so it doesn't linger in
+      // this closure.
+      key = '';
       process.stdout.write(`${chalk.green('✓')} API key set for ${provider}.\n`);
     });
 
@@ -429,6 +507,23 @@ async function main(): Promise<void> {
       const { InMemoryVectorStore } = await import('../adapters/vector-store.memory.js');
       const { resolveEmbedDim } = await import('../config/embedder.js');
       const outPath = (options.out as string).replace(/^~/, process.env.HOME ?? '');
+      // W17 M16: refuse to write to a directory path. The previous
+      // code would happily call `vectorStore.saveToFile('/tmp/')`
+      // and then either error inside writeFile (with a confusing
+      // EISDIR) or — worse — overwrite a directory in tests. Reject
+      // early with a clear message.
+      try {
+        const st = statSync(outPath);
+        if (st.isDirectory()) {
+          process.stderr.write(`${chalk.red('✗')} --out ${outPath} is a directory; expected a file\n`);
+          exit(1);
+        }
+      } catch (err) {
+        if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          process.stderr.write(`${chalk.red('✗')} --out ${outPath} is not writable: ${err.message}\n`);
+          exit(1);
+        }
+      }
       // Use the same dim the server uses, so vectors ingested by the
       // CLI can be loaded by the server's `Runtime.loadVectors()`.
       const dim = resolveEmbedDim();

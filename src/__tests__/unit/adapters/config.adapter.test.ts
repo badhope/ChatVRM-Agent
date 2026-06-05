@@ -271,6 +271,23 @@ describe('ConfigAdapter', () => {
       expect(all).toHaveProperty('sandbox');
       expect(all).toHaveProperty('circuitBreaker');
     });
+
+    it('should redact apiKey values by default (H16)', async () => {
+      // Plant a fake raw key — we should never see it in the default response.
+      mockStorage.apiKeys = { openai: 'sk-supersecret1234567890abcdef' };
+      const all = await adapter.getAllConfig();
+      const keys = all.apiKeys as Record<string, string>;
+      expect(keys.openai).toBe('sk-***cdef');
+      // Raw value must NOT be present anywhere in the serialised blob.
+      expect(JSON.stringify(all)).not.toContain('supersecret');
+    });
+
+    it('should return raw apiKey values only when revealSecrets: true', async () => {
+      mockStorage.apiKeys = { openai: 'sk-supersecret1234567890abcdef' };
+      const all = await adapter.getAllConfig({ revealSecrets: true });
+      const keys = all.apiKeys as Record<string, string>;
+      expect(keys.openai).toBe('sk-supersecret1234567890abcdef');
+    });
   });
 
   describe('getFileMeta', () => {
@@ -319,7 +336,7 @@ describe('ConfigAdapter', () => {
         circuitBreaker: { enabled: true },
       });
 
-      const all = await adapter.getAllConfig();
+      const all = await adapter.getAllConfig({ revealSecrets: true });
       expect((all.apiKeys as Record<string, string>).anthropic).toBe('new-key');
       expect((all.apiKeys as Record<string, string>).openai).toBeUndefined();
       expect((all.chat as { model?: string }).model).toBe('claude-3-5-sonnet');

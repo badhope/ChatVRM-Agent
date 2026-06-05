@@ -20,6 +20,7 @@ import { queueRoutes } from './routes/queue.routes.js';
 import { observabilityRoutes } from './routes/observability.routes.js';
 import { agentsRuntimeRoutes } from './routes/agents-runtime.routes.js';
 import { budgetRoutes } from './routes/budget.routes.js';
+import { requireAuth, validateCwd } from './middleware/auth.js';
 import { getRuntime } from './runtime.js';
 import { buildWiring } from './wiring.js';
 import { registerDefaultTools } from './tools-setup.js';

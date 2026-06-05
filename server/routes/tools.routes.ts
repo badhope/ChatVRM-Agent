@@ -8,6 +8,7 @@ import type { IShellPort } from '../../src/ports/shell.port.js';
 import type { ITrustPort } from '../../src/ports/trust.port.js';
 import { TrustLevel } from '../../src/domain/trust/trust.service.js';
 import { incrementToolCall } from './dashboard.routes.js';
+import { requireAuth } from '../middleware/auth.js';
 
 interface ToolDeps {
   tools: IToolsPort;
@@ -239,6 +240,10 @@ function validateTemplateParams(params: unknown): TemplateParam[] | string {
 
 export function toolsRoutes(deps: ToolDeps): Router {
   const r = Router();
+  // H13: the tool surface is the most dangerous endpoint family —
+  // even with the trust gate (W16 H12), a bare curl can run an
+  // LLM call or a shell command. Bearer-token auth is required.
+  r.use(requireAuth());
 
   r.get('/', (_req, res) => {
     const list = deps.tools.listAll().map((t) => ({
