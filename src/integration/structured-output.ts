@@ -165,7 +165,7 @@ function describeZod(schema: z.ZodType<unknown>): string {
 function manualDescribe(schema: z.ZodType<unknown>): string {
   // For unknown unions / refinements / lazy schemas, fall back to {}.
   // For object schemas, the most common case, emit a hand-rolled hint.
-  const def = (schema as unknown as { _def?: { typeName?: string; shape?: () => Record<string, z.ZodType<unknown>>; innerType?: z.ZodType<unknown>; values?: unknown[] } })._def;
+  const def = (schema as unknown as { _def?: { typeName?: string; shape?: () => Record<string, z.ZodType<unknown>>; innerType?: z.ZodType<unknown>; values?: unknown[]; options?: Array<z.ZodType<unknown>> } })._def;
   if (!def) return 'JSON object';
   switch (def.typeName) {
     case 'ZodObject': {
@@ -184,8 +184,37 @@ function manualDescribe(schema: z.ZodType<unknown>): string {
     case 'ZodEnum':
       return JSON.stringify({ type: 'string', enum: def.values ?? [] });
     case 'ZodUnion':
-    case 'ZodDiscriminatedUnion':
-      return JSON.stringify({ description: 'one of multiple shapes' });
+    case 'ZodDiscriminatedUnion': {
+      // Better than "{}": actually enumerate each branch's shape.
+      const branches = (def.options ?? []).map((o) => {
+        try {
+          return JSON.parse(manualDescribe(o));
+        } catch {
+          return describeInner(o);
+        }
+      });
+      if (branches.length === 0) return JSON.stringify({ description: 'one of multiple shapes' });
+      return JSON.stringify({ oneOf: branches });
+    }
+    case 'ZodIntersection': {
+      // Merge both sides' properties best-effort.
+      const left = (() => { try { return JSON.parse(manualDescribe(def.innerType as z.ZodType<unknown>)); } catch { return {}; } })();
+      const inner: { innerType?: z.ZodType<unknown> } = def as { innerType?: z.ZodType<unknown> };
+      const rightSchema = (inner as { left?: z.ZodType<unknown>; right?: z.ZodType<unknown> });
+      const right = rightSchema.right ? (() => { try { return JSON.parse(manualDescribe(rightSchema.right!)); } catch { return {}; } })() : {};
+      const merged: Record<string, unknown> = { ...(left as Record<string, unknown>), ...(right as Record<string, unknown>) };
+      return JSON.stringify(merged);
+    }
+    case 'ZodRecord':
+      return JSON.stringify({ type: 'object', additionalProperties: def.innerType ? describeInner(def.innerType) : {} });
+    case 'ZodTuple':
+      return JSON.stringify({ type: 'array', prefixItems: def.innerType ? [describeInner(def.innerType)] : [] });
+    case 'ZodEffects':
+    case 'ZodPipeline':
+    case 'ZodLazy':
+      // Peel off the wrapper.
+      if (def.innerType) return manualDescribe(def.innerType);
+      return JSON.stringify(describeInner(schema));
     default:
       return JSON.stringify(describeInner(schema));
   }

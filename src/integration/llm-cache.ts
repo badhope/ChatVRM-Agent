@@ -137,9 +137,11 @@ export class LLMCache {
         this.set(key, out);
         return out;
       },
-      stream: port.stream,
-      listModels: port.listModels,
-      isAvailable: port.isAvailable,
+      stream: port.stream.bind(port),
+      // Keep `this` bound to `port` so instance methods like
+      // `getBreaker` on the underlying adapter keep working.
+      listModels: ((...args: Parameters<ILLMPort['listModels']>) => port.listModels(...args)) as ILLMPort['listModels'],
+      isAvailable: ((...args: Parameters<ILLMPort['isAvailable']>) => port.isAvailable(...args)) as ILLMPort['isAvailable'],
     };
   }
 }

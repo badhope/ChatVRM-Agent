@@ -59,12 +59,16 @@ const DEFAULT_TOKENIZE = (s: string): string[] =>
 
 /**
  * Score a single (query, candidate) pair. Returns 0..1 — higher is
- * more relevant. The score is a weighted sum of three features.
+ * more relevant. The score is a weighted sum of three features; the
+ * `total` field is computed with the supplied weights, or with the
+ * defaults (0.7 / 0.2 / 0.1, normalised) when omitted.
  */
 export function scorePair(query: string, candidate: string, opts: {
   tokenize?: (s: string) => string[];
   originalRank?: number;
   candidateCount?: number;
+  /** Per-feature weights (raw — they are normalised internally). */
+  weights?: { overlapWeight?: number; positionWeight?: number; lengthWeight?: number };
 } = {}): { overlap: number; position: number; length: number; total: number } {
   const tok = opts.tokenize ?? DEFAULT_TOKENIZE;
   const q = new Set(tok(query));
@@ -93,7 +97,14 @@ export function scorePair(query: string, candidate: string, opts: {
   if (c.length < 3) length = 0.3;
   else if (c.length > 400) length = 0.7;
 
-  return { overlap: overlapScore, position, length, total: 0 };
+  const features = { overlap: overlapScore, position, length };
+  const w = opts.weights ?? {};
+  const total = computeTotal(features, {
+    overlapWeight: w.overlapWeight ?? 0.7,
+    positionWeight: w.positionWeight ?? 0.2,
+    lengthWeight: w.lengthWeight ?? 0.1,
+  });
+  return { ...features, total };
 }
 
 export function computeTotal(features: { overlap: number; position: number; length: number }, w: { overlapWeight: number; positionWeight: number; lengthWeight: number }): number {

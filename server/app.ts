@@ -19,7 +19,9 @@ import { webhooksRoutes } from './routes/webhooks.routes.js';
 import { queueRoutes } from './routes/queue.routes.js';
 import { observabilityRoutes } from './routes/observability.routes.js';
 import { agentsRuntimeRoutes } from './routes/agents-runtime.routes.js';
+import { budgetRoutes } from './routes/budget.routes.js';
 import { getRuntime } from './runtime.js';
+import { buildWiring } from './wiring.js';
 import { registerDefaultTools } from './tools-setup.js';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -39,6 +41,16 @@ export function createApp() {
     tools: adapters.tools,
   });
   const sessions = new SessionStore();
+
+  // Build the W11 wiring: ResilientLLM → LLMCache → TokenBudget.
+  // Every route that talks to the LLM uses `wiring.llm` instead of
+  // `adapters.llm` so retries, caching, and budget enforcement are
+  // actually live (not just sitting on a shelf).
+  const wiring = buildWiring(adapters);
+  // Register the RAG tool on the shared tools registry. Idempotent
+  // through `wiring.ensureRagTool()` so a second call (e.g. after a
+  // hot-reload) is safe.
+  wiring.ensureRagTool();
 
   const app = express();
   app.use(cors());
@@ -64,34 +76,34 @@ export function createApp() {
     /* ignore — Runtime.hydrateFromDisk is best-effort */
   });
 
-  app.use('/api/config', configRoutes(adapters.config, adapters.llm));
+  app.use('/api/config', configRoutes(adapters.config, wiring.llm));
   app.use('/api/memory', memoryRoutes(adapters.memory));
   app.use('/api/tools', toolsRoutes({
     tools: adapters.tools,
-    llm: adapters.llm,
+    llm: wiring.llm,
     storage: adapters.storage,
     memory: adapters.memory,
     shell: adapters.shell,
   }));
-  app.use('/api/dashboard', dashboardRoutes(adapters.llm, adapters.memory, adapters.config, sessions));
+  app.use('/api/dashboard', dashboardRoutes(wiring.llm, adapters.memory, adapters.config, sessions));
   app.use('/api/graph', graphRoutes(adapters.memory));
   app.use('/api/personality', personalityRoutes());
   app.use('/api/emotion', emotionRoutes());
   app.use('/api/chat', chatRoutes({
-    llm: adapters.llm,
+    llm: wiring.llm,
     config: adapters.config,
     memory: adapters.memory,
     sessions,
   }));
   app.use('/api/agent', agentRoutes({
-    llm: adapters.llm,
+    llm: wiring.llm,
     config: adapters.config,
     storage: adapters.storage,
     memory: adapters.memory,
     shell: adapters.shell,
     tools: adapters.tools,
   }));
-  app.use('/api/ai', aiRoutes({ llm: adapters.llm, config: adapters.config }));
+  app.use('/api/ai', aiRoutes({ llm: wiring.llm, config: adapters.config }));
   app.use('/api/skills', skillsRoutes());
   app.use('/api/agents', agentsRoutes());
 
@@ -100,8 +112,9 @@ export function createApp() {
   app.use('/api/webhooks', webhooksRoutes());
   app.use('/api/queue', queueRoutes());
   app.use('/api/observability', observabilityRoutes());
+  app.use('/api/budget', budgetRoutes(wiring));
   app.use('/api/runtime/agents', agentsRuntimeRoutes({
-    llm: adapters.llm,
+    llm: wiring.llm,
     config: adapters.config,
     memory: adapters.memory,
     storage: adapters.storage,

@@ -110,8 +110,10 @@ export class AgentEventWebhook {
   failedCount = 0;
   private transport: WebhookTransport;
   private sleep: (ms: number) => Promise<void>;
+  /** Optional router-supplied bounded-concurrency slot. */
+  private acquireSlot?: <T>(fn: () => Promise<T>) => Promise<T>;
 
-  constructor(cfg: WebhookConfig, transport: WebhookTransport = defaultTransport, sleep: (ms: number) => Promise<void> = defaultSleep) {
+  constructor(cfg: WebhookConfig, transport: WebhookTransport = defaultTransport, sleep: (ms: number) => Promise<void> = defaultSleep, acquireSlot?: <T>(fn: () => Promise<T>) => Promise<T>) {
     this.name = cfg.name;
     this.url = cfg.url;
     this.method = cfg.method ?? 'POST';
@@ -125,6 +127,7 @@ export class AgentEventWebhook {
     this.customHeaders = cfg.customHeaders;
     this.transport = transport;
     this.sleep = sleep;
+    this.acquireSlot = acquireSlot;
   }
 
   /** Bind to a bus. Calling this twice replaces the prior binding. */
@@ -162,14 +165,16 @@ export class AgentEventWebhook {
       const ok = await this.filter(payload, event);
       if (!ok) return;
     }
-    const job = this.deliver(event, payload);
-    this.delivering.add(job);
+    const job = this.acquireSlot
+      ? this.acquireSlot(() => this.deliver(event, payload))
+      : this.deliver(event, payload);
+    this.delivering.add(job as Promise<void>);
     try {
       if (this.queueMode) {
         await job;
       }
     } finally {
-      this.delivering.delete(job);
+      this.delivering.delete(job as Promise<void>);
     }
   }
 
@@ -216,22 +221,55 @@ export class WebhookRouter {
   private bus: EventEmitter;
   private transport: WebhookTransport;
   private sleep: (ms: number) => Promise<void>;
-  private concurrency = 8;
-  private sem: number = this.concurrency;
+  private concurrency: number;
+  private sem: number;
   private waiters: Array<() => void> = [];
 
   constructor(opts: { bus: EventEmitter; transport?: WebhookTransport; sleep?: (ms: number) => Promise<void>; concurrency?: number }) {
     this.bus = opts.bus;
     this.transport = opts.transport ?? defaultTransport;
     this.sleep = opts.sleep ?? defaultSleep;
-    if (opts.concurrency !== undefined) {
-      this.concurrency = opts.concurrency;
-      this.sem = opts.concurrency;
+    this.concurrency = opts.concurrency ?? 8;
+    this.sem = this.concurrency;
+  }
+
+  /**
+   * Acquire a slot in the bounded worker pool, run the function, then
+   * release the slot for the next waiter. Excess callers block until
+   * a slot becomes free. Used by registered webhooks to cap parallel
+   * outbound HTTP deliveries.
+   */
+  async withSlot<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.sem <= 0) {
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+    }
+    this.sem -= 1;
+    try {
+      return await fn();
+    } finally {
+      this.sem += 1;
+      const next = this.waiters.shift();
+      if (next) next();
     }
   }
 
+  /** Number of slots currently in use. */
+  get inFlight(): number {
+    return this.concurrency - this.sem;
+  }
+
+  /** Max number of concurrent deliveries. */
+  get maxConcurrency(): number {
+    return this.concurrency;
+  }
+
   register(cfg: WebhookConfig): AgentEventWebhook {
-    const w = new AgentEventWebhook(cfg, this.transport, this.sleep);
+    const w = new AgentEventWebhook(
+      cfg,
+      this.transport,
+      this.sleep,
+      <T>(fn: () => Promise<T>) => this.withSlot(fn),
+    );
     w.bind(this.bus);
     this.webhooks.push(w);
     return w;

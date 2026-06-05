@@ -104,7 +104,8 @@ export function agentsRuntimeRoutes(deps: AgentsRuntimeDeps): Router {
       let models: string[] = [];
       try {
         models = await deps.llm.listModels('openai' as never);
-      } catch {
+      } catch (err) {
+        process.stderr.write(`[manifest] listModels threw: ${(err as Error).message}\n`);
         models = [];
       }
       res.json({ tools, models });

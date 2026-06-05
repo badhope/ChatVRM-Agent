@@ -34,10 +34,17 @@ export interface QueuedToolOptions<TArgs = unknown, TResult = unknown> {
   description: string;
   queue: IQueue;
   /**
-   * Synchronous portion: enqueue a job and return some jobId. The
-   * `data` payload is what the worker receives.
+   * Queue job name. The processor is registered with the same name
+   * so the queue can route jobs to it. Defaults to `name`.
    */
-  enqueue: (args: TArgs) => Promise<{ jobId: string; data: unknown }>;
+  jobName?: string;
+  /**
+   * Synchronous portion: enqueue a job and return some jobId. The
+   * bridge passes its own `jobName` as the second argument so the
+   * enqueue name and the processor name always match — the queue
+   * won't pick up a job whose name has no registered processor.
+   */
+  enqueue: (args: TArgs, jobName: string) => Promise<{ jobId: string; data: unknown }>;
   /**
    * Worker-side handler. The bridge registers this with the queue
    * on construction.
@@ -69,6 +76,7 @@ interface PendingWaiter {
 export class QueuedTool<TArgs = unknown, TResult = unknown> {
   readonly name: string;
   readonly description: string;
+  readonly jobName: string;
   private readonly opts: QueuedToolOptions<TArgs, TResult>;
   private readonly waiters = new Map<string, PendingWaiter>();
   private readonly bridge: EventEmitter;
@@ -78,24 +86,40 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
     this.opts = opts;
     this.name = opts.name;
     this.description = opts.description;
+    this.jobName = opts.jobName ?? opts.name;
     this.bridge = bridge;
     this.bindWorker();
   }
 
-  private bindWorker(): void {
+  /**
+   * Register the worker processor with the queue. Called automatically
+   * from the constructor; exposed publicly so tests can re-bind or
+   * late-bind against a different queue.
+   */
+  bindWorker(): void {
     if (this.bound) return;
     const proc = this.opts.processor;
-    this.opts.queue.process(`${this.name}.worker`, async (j: Job) => {
-      const r = await proc(j as unknown as Parameters<typeof proc>[0]);
-      this.bridge.emit('done', { id: j.id, value: r });
-      return r;
+    this.opts.queue.process(this.jobName, async (j: Job) => {
+      try {
+        const r = await proc(j as unknown as Parameters<typeof proc>[0]);
+        this.bridge.emit('done', { id: j.id, value: r });
+        return r;
+      } catch (err) {
+        // Surface the actual error to runAndWait callers instead of
+        // letting the queue swallow it and the caller time out.
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.bridge.emit('done', { id: j.id, error });
+        throw error;
+      }
     });
-    this.bridge.on('done', ({ id, value }) => {
-      const w = this.waiters.get(id);
+    this.bridge.on('done', (payload) => {
+      const p = payload as { id: string; value?: unknown; error?: Error };
+      const w = this.waiters.get(p.id);
       if (w) {
         if (w.timer) clearTimeout(w.timer);
-        this.waiters.delete(id);
-        w.resolve(value);
+        this.waiters.delete(p.id);
+        if (p.error) w.reject(p.error);
+        else w.resolve(p.value);
       }
     });
     this.bound = true;
@@ -103,13 +127,13 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
 
   /** Fire-and-forget. Returns the ticket id immediately. */
   async run(args: TArgs): Promise<ToolResult> {
-    const { jobId } = await this.opts.enqueue(args);
+    const { jobId } = await this.opts.enqueue(args, this.jobName);
     return { success: true, output: JSON.stringify({ ticketId: jobId, status: 'queued' }) };
   }
 
   /** Enqueue and wait for completion. */
   async runAndWait(args: TArgs, options: RunAndWaitOptions = {}): Promise<ToolResult> {
-    const { jobId } = await this.opts.enqueue(args);
+    const { jobId } = await this.opts.enqueue(args, this.jobName);
     const timeoutMs = options.timeoutMs ?? this.opts.defaultTimeoutMs ?? 60_000;
     return new Promise<ToolResult>((resolve, reject) => {
       const w: PendingWaiter = { resolve: () => {}, reject: () => {}, timer: null };

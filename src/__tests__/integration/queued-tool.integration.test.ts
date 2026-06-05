@@ -10,7 +10,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueuedTool } from '../../integration/queued-tool.js';
 import { InProcessQueue } from '../../adapters/queue.in-process.js';
 import { ToolsRegistry } from '../../adapters/tools.registry.js';
-import { z } from 'zod';
 
 describe('QueuedTool', () => {
   let q: InProcessQueue;
@@ -26,8 +25,8 @@ describe('QueuedTool', () => {
       name: 'double',
       description: 'double a number',
       queue: q,
-      enqueue: async (args: { n: number }) => {
-        const j = await q.add('double.worker', args);
+      enqueue: async (args: { n: number }, jobName) => {
+        const j = await q.add(jobName, args);
         return { jobId: j.id, data: args };
       },
       processor: async (job) => {
@@ -47,8 +46,8 @@ describe('QueuedTool', () => {
       name: 'square',
       description: 'square a number',
       queue: q,
-      enqueue: async (args) => {
-        const j = await q.add('square.worker', args);
+      enqueue: async (args, jobName) => {
+        const j = await q.add(jobName, args);
         return { jobId: j.id, data: args };
       },
       processor: async (job) => Math.pow((job.data as { n: number }).n, 2),
@@ -64,8 +63,8 @@ describe('QueuedTool', () => {
       name: 'slow',
       description: 'sleeps a long time',
       queue: q,
-      enqueue: async () => {
-        const j = await q.add('slow.worker', {});
+      enqueue: async (_args, jobName) => {
+        const j = await q.add(jobName, {});
         return { jobId: j.id, data: {} };
       },
       processor: async () => {
@@ -82,8 +81,8 @@ describe('QueuedTool', () => {
       name: 'slow',
       description: 'sleeps a long time',
       queue: q,
-      enqueue: async () => {
-        const j = await q.add('slow.worker', {});
+      enqueue: async (_args, jobName) => {
+        const j = await q.add(jobName, {});
         return { jobId: j.id, data: {} };
       },
       processor: async () => {
@@ -102,8 +101,8 @@ describe('QueuedTool', () => {
       name: 'greet',
       description: 'greet by name',
       queue: q,
-      enqueue: async (args) => {
-        const j = await q.add('greet.worker', args);
+      enqueue: async (args, jobName) => {
+        const j = await q.add(jobName, args);
         return { jobId: j.id, data: args };
       },
       processor: async (job) => ({ greeting: `Hello, ${(job.data as { name: string }).name}!` }),
@@ -118,8 +117,8 @@ describe('QueuedTool', () => {
       name: 'incr',
       description: 'increment',
       queue: q,
-      enqueue: async (args) => {
-        const j = await q.add('incr.worker', args);
+      enqueue: async (args, jobName) => {
+        const j = await q.add(jobName, args);
         return { jobId: j.id, data: args };
       },
       processor: async (job) => (job.data as { n: number }).n + 1,
@@ -137,8 +136,8 @@ describe('QueuedTool', () => {
       name: 'eco',
       description: 'echo',
       queue: q,
-      enqueue: async (args) => {
-        const j = await q.add('eco.worker', args);
+      enqueue: async (args, jobName) => {
+        const j = await q.add(jobName, args);
         return { jobId: j.id, data: args };
       },
       processor: async () => 'done',

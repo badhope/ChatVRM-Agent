@@ -100,9 +100,11 @@ export class ResilientLLM {
   wrap(port: ILLMPort): ILLMPort {
     return {
       chat: async (req: ChatParams) => this.callWithResilience(() => port.chat(req)),
-      stream: port.stream,
-      listModels: port.listModels,
-      isAvailable: port.isAvailable,
+      stream: port.stream.bind(port),
+      // Keep `this` bound to `port` so adapters that read `this.getBreaker(...)`
+      // (or any other instance method) continue to work after we destructure.
+      listModels: ((...args: Parameters<ILLMPort['listModels']>) => port.listModels(...args)) as ILLMPort['listModels'],
+      isAvailable: ((...args: Parameters<ILLMPort['isAvailable']>) => port.isAvailable(...args)) as ILLMPort['isAvailable'],
     };
   }
 

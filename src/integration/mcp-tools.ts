@@ -27,10 +27,10 @@ import {
   type MCPClientOptions,
 } from '../adapters/mcp/client.js';
 import { StdioTransport } from '../adapters/mcp/stdio-transport.js';
+import { StdioServerTransport } from '../adapters/mcp/stdio-server-transport.js';
 import { HttpTransport } from '../adapters/mcp/http-transport.js';
 import { MCPServer } from '../adapters/mcp/server.js';
-import type { ToolDefinition, ToolResult } from '../ports/tools.port.js';
-import type { IToolsPort } from '../ports/tools.port.js';
+import type { IToolsPort, ToolDefinition, ToolResult } from '../ports/tools.port.js';
 import type {
   MCPToolDescriptor,
   MCPToolResult,
@@ -182,9 +182,20 @@ export class McpServerBridge {
     }
   }
 
-  /** Start serving over stdio. */
-  async serveStdio(command: string, args: string[] = []): Promise<void> {
-    const transport = new StdioTransport({ command, args });
+  /**
+   * Start serving over our process's stdio. This is the
+   * **server-side** stdio transport: it reads JSON-RPC from
+   * `process.stdin` and writes responses to `process.stdout`,
+   * allowing a host (Cursor, Claude Desktop, …) to launch us as a
+   * subprocess and call our tools.
+   *
+   * The earlier version of this method spawned a child process,
+   * which is the **client-side** pattern and is wrong here. The
+   * inbound transport takes no parameters; for outbound client
+   * use, see {@link StdioTransport}.
+   */
+  async serveStdio(): Promise<void> {
+    const transport = new StdioServerTransport();
     await this.server.attach(transport);
   }
 

@@ -81,7 +81,14 @@ export class RagTool {
     hits: HybridResult[];
   }> {
     const topK = input.topK ?? this.topK;
-    const all = await this.retriever.retrieve(input.query, topK * (this.filter ? 1 : 1));
+    // When a metadata filter is configured, the post-filter hit rate
+    // is unknown, so over-fetch by a factor to avoid returning fewer
+    // than `topK` documents. 3x is a good balance between recall and
+    // cost: with a 50% filter pass-rate, 3x gives 1.5x topK results
+    // before the post-filter; the post-filter then trims to topK.
+    const overFetch = this.filter ? 3 : 1;
+    const requestK = Math.max(topK, topK * overFetch);
+    const all = await this.retriever.retrieve(input.query, requestK);
     const hits = this.filter ? all.filter((h) => this.filter!(h.metadata ?? {})) : all;
     const trimmed = hits.slice(0, topK);
     return {

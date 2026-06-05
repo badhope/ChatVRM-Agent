@@ -94,6 +94,10 @@ export class IngestionPipeline {
   /**
    * Ingest a pre-loaded list of documents. Useful for in-memory
    * ingestion (e.g. from a chat message or a queue event).
+   *
+   * Best-effort: chunking or embedding failures for a single document
+   * are pushed into `errors` and the rest of the batch continues.
+   * Vector-store failures are surfaced as a single error entry.
    */
   async ingestDocuments(
     documents: Document[],
@@ -103,35 +107,63 @@ export class IngestionPipeline {
     const errors: Array<{ document: string; error: string }> = [];
     const allChunks: Array<{ id: string; text: string; metadata: Record<string, unknown> }> = [];
 
-    // 1) chunk
+    // 1) chunk — per-document try/catch so one bad document does not
+    //    abort the whole run.
+    let chunkedCount = 0;
     for (let i = 0; i < documents.length; i++) {
       const d = documents[i]!;
-      const parts = this.chunker
-        ? this.chunker.split(d.text)
-        : [{ text: d.text, start: 0, end: d.text.length }];
+      const label = d.source ?? documentLabel;
+      let parts: Array<{ text: string; start: number; end: number }>;
+      try {
+        parts = this.chunker
+          ? this.chunker.split(d.text)
+          : [{ text: d.text, start: 0, end: d.text.length }];
+      } catch (err) {
+        errors.push({ document: label, error: `chunk: ${(err as Error).message}` });
+        continue;
+      }
       onProgress?.({ stage: 'chunk', current: i + 1, total: documents.length, detail: `${parts.length} chunk(s)` });
       for (let j = 0; j < parts.length; j++) {
         const p = parts[j]!;
         allChunks.push({
-          id: `${d.source ?? documentLabel}#${i}-${j}`,
+          id: `${label}#${i}-${j}`,
           text: p.text,
           metadata: {
-            source: d.source ?? documentLabel,
+            source: label,
             locator: d.locator ?? '',
             ...(d.metadata ?? {}),
             chunkIndex: j,
             ...(this.sourceTag ? { sourceTag: this.sourceTag } : {}),
           },
         });
+        chunkedCount += 1;
       }
     }
+    const chunks = chunkedCount;
 
-    // 2) embed (batched)
+    // 2) embed (batched) — per-batch try/catch + length check so a
+    //    misbehaving embedder cannot push `undefined` vectors into
+    //    the store.
     const vectors: VectorRecord[] = [];
     const BATCH = 32;
     for (let i = 0; i < allChunks.length; i += BATCH) {
       const batch = allChunks.slice(i, i + BATCH);
-      const embeddings = await this.embedder.embedBatch(batch.map((c) => c.text));
+      let embeddings: Float32Array[];
+      try {
+        const out = await this.embedder.embedBatch(batch.map((c) => c.text));
+        embeddings = out as Float32Array[];
+        if (embeddings.length !== batch.length) {
+          throw new Error(
+            `embedBatch length mismatch: got ${embeddings.length} vectors for ${batch.length} inputs (embedder=${this.embedder.id})`,
+          );
+        }
+      } catch (err) {
+        const msg = (err as Error).message;
+        for (const c of batch) {
+          errors.push({ document: c.metadata['source'] as string ?? documentLabel, error: `embed: ${msg}` });
+        }
+        continue;
+      }
       onProgress?.({
         stage: 'embed',
         current: Math.min(i + BATCH, allChunks.length),
@@ -150,13 +182,15 @@ export class IngestionPipeline {
     // 3) store
     onProgress?.({ stage: 'store', current: 0, total: 1 });
     try {
-      await this.vectorStore.add(vectors);
+      if (vectors.length > 0) {
+        await this.vectorStore.add(vectors);
+      }
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      errors.push({ document: documentLabel, error });
+      errors.push({ document: documentLabel, error: `store: ${error}` });
     }
     onProgress?.({ stage: 'done', current: 1, total: 1 });
 
-    return { chunks: allChunks.length, vectors: vectors.length, errors };
+    return { chunks, vectors: vectors.length, errors };
   }
 }
