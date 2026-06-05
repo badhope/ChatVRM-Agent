@@ -154,7 +154,11 @@ describe('W15 audit regressions', () => {
       // actually run, and assert that the LD_PRELOAD-injected child
       // can't hijack the spawn. The proof here is *that* the spawn
       // succeeds and returns quickly without the injected lib.
-      const shell = new ShellExecutor();
+      const trustStub = {
+        evaluate: () => ({ level: 'Safe' as never, issues: [], score: 0, requiresConfirmation: false, summary: 'safe' }),
+        detectIssues: () => [],
+      };
+      const shell = new ShellExecutor({ trustService: trustStub });
       const start = Date.now();
       const result = await shell.execute('echo hello', {
         env: { LD_PRELOAD: '/tmp/this-file-does-not-exist.so', PATH: process.env.PATH ?? '/usr/bin' },

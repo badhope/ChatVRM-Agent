@@ -84,6 +84,7 @@ export function createApp() {
     storage: adapters.storage,
     memory: adapters.memory,
     shell: adapters.shell,
+    trust: adapters.trust,
   }));
   app.use('/api/dashboard', dashboardRoutes(wiring.llm, adapters.memory, adapters.config, sessions));
   app.use('/api/graph', graphRoutes(adapters.memory));

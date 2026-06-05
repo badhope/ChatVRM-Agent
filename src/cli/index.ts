@@ -12,6 +12,7 @@ import {
   MemoryAdapter,
   ShellExecutor,
   ToolsRegistry,
+  TrustServiceAdapter,
 } from '../adapters/index.js';
 import { createDefaultStages } from '../stages/index.js';
 import { EmotionService } from '../domain/personality/emotion.service.js';
@@ -19,6 +20,59 @@ import { PersonalityService } from '../domain/personality/personality.service.js
 import type { ProviderType } from '../ports/config.port.js';
 import type { ChatResponse } from '../ports/llm.port.js';
 import type { PipelineContext, PipelineEvents } from '../core/types.js';
+import { sandboxPath } from '../shared/sandbox.js';
+import { z } from 'zod';
+import { WebClient } from '../integration/web-client.js';
+
+// Same zod schemas as the server. The CLI and the server register the
+// same default tools; if we used different (or no) schemas the ReAct
+// agent would only see schemas in server mode, leaving CLI runs to
+// fall back to the prompt-only path.
+const writeFileSchema = z.object({
+  path: z.string().min(1).optional(),
+  filePath: z.string().min(1).optional(),
+  content: z.string().optional(),
+  previousOutput: z.string().optional(),
+});
+const readFileSchema = z.object({
+  path: z.string().min(1).optional(),
+  filePath: z.string().min(1).optional(),
+});
+const shellSchema = z.object({
+  command: z.string().min(1),
+  timeout: z.number().int().positive().optional(),
+});
+const searchSchema = z.object({
+  pattern: z.string().optional(),
+  query: z.string().optional(),
+});
+const rememberSchema = z.object({
+  input: z.string().min(1).optional(),
+  output: z.string().optional(),
+  content: z.string().optional(),
+  provider: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+const analyzeSchema = z.object({
+  text: z.string().optional(),
+  target: z.string().optional(),
+  detail: z.string().optional(),
+});
+const respondSchema = z.object({
+  input: z.string().optional(),
+  message: z.string().optional(),
+  style: z.string().optional(),
+  maxLength: z.number().int().positive().optional(),
+});
+
+const webFetchSchema = z.object({
+  url: z.string().min(1),
+  maxBytes: z.number().int().positive().max(5_242_880).optional(),
+});
+const webSearchSchema = z.object({
+  query: z.string().min(1),
+  maxResults: z.number().int().positive().max(20).optional(),
+});
 
 interface RegisterToolsOptions {
   llm: LLMAdapter;
@@ -32,9 +86,45 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   const tools = new ToolsRegistry();
   const { llm, storage, memory, shell, config } = opts;
 
+  // The CLI registers the same web tools as the server. Without them
+  // an `agent` command that needs current data can only hallucinate.
+  const web = new WebClient();
+
+  tools.register({
+    name: 'webFetch',
+    description: 'Fetch a URL over HTTP(S) and return its body as plain text. Private IPs and loopback hostnames are refused.',
+    inputSchema: webFetchSchema,
+    handler: async (args) => {
+      const url = args.url as string;
+      if (!url) return { success: false, error: 'url is required' };
+      const result = await web.fetch(url, args.maxBytes ? { maxBytes: args.maxBytes as number } : {});
+      if (!result.ok) return { success: false, error: result.error };
+      return {
+        success: true,
+        output: `URL: ${result.url}\nFinal URL: ${result.finalUrl}\nStatus: ${result.status}\nContent-Type: ${result.contentType}\n\n${result.text}`,
+      };
+    },
+  });
+
+  tools.register({
+    name: 'webSearch',
+    description: 'Search the public web and return up to N results (title, url, snippet).',
+    inputSchema: webSearchSchema,
+    handler: async (args) => {
+      const query = args.query as string;
+      if (!query) return { success: false, error: 'query is required' };
+      const result = await web.search(query, args.maxResults ? { maxResults: args.maxResults as number } : {});
+      if (!result.ok) return { success: false, error: result.error };
+      if (result.results.length === 0) return { success: true, output: 'No results.' };
+      const lines = result.results.map((r, i) => `[${i + 1}] ${r.title}\n    ${r.url}\n    ${r.snippet}`);
+      return { success: true, output: lines.join('\n\n') };
+    },
+  });
+
   tools.register({
     name: 'writeFile',
     description: 'Write content to a file',
+    inputSchema: writeFileSchema,
     handler: async (args) => {
       const filePath = (args.filePath as string) ?? (args.path as string);
       const explicitContent = (args.content as string) ?? '';
@@ -42,21 +132,26 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
       const content = explicitContent && explicitContent.length > 0 ? explicitContent : previousOutput;
       if (!filePath) return { success: false, error: 'filePath is required' };
       if (!content) return { success: false, error: 'No content provided (neither args.content nor previous step output)' };
-      await storage.write(filePath, content);
-      return { success: true, output: `Written ${content.length} bytes to ${filePath}` };
+      const safe = sandboxPath(filePath);
+      if (!safe.ok) return { success: false, error: safe.error };
+      await storage.write(safe.resolved, content);
+      return { success: true, output: `Written ${content.length} bytes to ${safe.resolved}` };
     },
   });
 
   tools.register({
     name: 'readFile',
     description: 'Read the contents of a file',
+    inputSchema: readFileSchema,
     handler: async (args) => {
       const filePath = (args.filePath as string) ?? (args.path as string);
       if (!filePath) return { success: false, error: 'filePath is required' };
-      if (!(await storage.exists(filePath))) {
+      const safe = sandboxPath(filePath);
+      if (!safe.ok) return { success: false, error: safe.error };
+      if (!(await storage.exists(safe.resolved))) {
         return { success: false, error: `File not found: ${filePath}` };
       }
-      const content = await storage.read(filePath);
+      const content = await storage.read(safe.resolved);
       return { success: true, output: content };
     },
   });
@@ -64,10 +159,15 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   tools.register({
     name: 'shell',
     description: 'Execute a shell command',
+    inputSchema: shellSchema,
     handler: async (args) => {
       const command = args.command as string;
       const timeoutMs = (args.timeout as number) ?? 60_000;
       if (!command) return { success: false, error: 'command is required' };
+      // CLI shell goes through the same ShellExecutor the agent pipeline
+      // uses; if a trustService is wired into the executor the dangerous-
+      // command check runs here too. The executor itself enforces the
+      // allowlist env and timeout.
       const result = await shell.execute(command, { timeout: timeoutMs });
       return {
         success: result.exitCode === 0,
@@ -80,6 +180,7 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   tools.register({
     name: 'search',
     description: 'Search memory for a query',
+    inputSchema: searchSchema,
     handler: async (args) => {
       const pattern = (args.pattern as string) ?? (args.query as string) ?? '';
       const memoryResults = await memory.recall(pattern, 5);
@@ -91,6 +192,7 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   tools.register({
     name: 'remember',
     description: 'Store an entry in long-term memory',
+    inputSchema: rememberSchema,
     handler: async (args) => {
       const input = (args.input as string) ?? '';
       const output = (args.output as string) ?? (args.content as string) ?? '';
@@ -109,8 +211,9 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   tools.register({
     name: 'analyze',
     description: 'Use the LLM to analyze a target',
+    inputSchema: analyzeSchema,
     handler: async (args) => {
-      const target = (args.target as string) ?? '';
+      const target = (args.target as string) ?? (args.text as string) ?? '';
       const detail = (args.detail as string) ?? 'standard';
       const prompt = `Analyze the following target. Detail level: ${detail}\n\nTarget: ${target}\n\nProduce a structured report.`;
       const response = await llm.chat({ messages: [{ role: 'user', content: prompt }] });
@@ -121,6 +224,7 @@ export function registerDefaultTools(opts: RegisterToolsOptions): ToolsRegistry 
   tools.register({
     name: 'respond',
     description: 'Generate a response using the LLM',
+    inputSchema: respondSchema,
     handler: async (args) => {
       const input = (args.input as string) ?? (args.message as string) ?? '';
       const style = (args.style as string) ?? 'conversational';
@@ -153,7 +257,11 @@ async function bootstrap(): Promise<{
   const llm = new LLMAdapter(config);
   const storage = new StorageAdapter();
   const memory = new MemoryAdapter();
-  const shell = new ShellExecutor();
+  // CLI also requires a trust service. Wires the same dangerous-
+  // command checks used by the server, so the CLI never spawns a
+  // shell command the agent would have refused.
+  const trust = new TrustServiceAdapter();
+  const shell = new ShellExecutor({ trustService: trust });
   const tools = registerDefaultTools({ llm, storage, memory, shell, config });
   const emitter = new EventEmitter<PipelineEvents>();
   return { config, llm, storage, memory, shell, tools, emitter };

@@ -195,7 +195,7 @@ export function agentsRuntimeRoutes(deps: AgentsRuntimeDeps): Router {
       role: a.role,
       goal: a.goal,
       backstory: a.backstory,
-      toolNames: a.toolNames,
+      tools: a.toolNames,
       model: a.model,
       temperature: a.temperature,
       maxIterations: a.maxIterations,

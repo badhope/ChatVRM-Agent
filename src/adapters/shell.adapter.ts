@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import path from 'path';
 import os from 'os';
 import type { IShellPort } from '../ports/shell.port.js';
+import type { ITrustPort } from '../ports/trust.port.js';
 
 const execAsync = promisify(exec);
 
@@ -12,10 +13,21 @@ const MAX_BUFFER = 10 * 1024 * 1024;
 const ALLOWED_ENV = new Set(['PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'TZ', 'TMPDIR', 'NODE_ENV', 'PWD', 'OLDPWD']);
 
 export class ShellExecutor implements IShellPort {
-  private trustService?: { evaluate: (s: string, c?: unknown) => { level: string } };
+  private trustService: ITrustPort;
 
-  constructor(options?: { trustService?: { evaluate: (s: string, c?: unknown) => { level: string } } }) {
-    this.trustService = options?.trustService;
+  /**
+   * @param options.trustService REQUIRED. The trust gate that decides whether
+   *   a candidate shell command is safe to execute. Every `execute()` call is
+   *   evaluated against it. If the level is `HighRisk` or `Critical` we
+   *   refuse to spawn the child process entirely — the previous "optional
+   *   trustService" design meant production callers could omit it, which
+   *   left the dangerous-command check dead code in CI.
+   */
+  constructor(options: { trustService: ITrustPort }) {
+    if (!options || !options.trustService) {
+      throw new Error('ShellExecutor requires a trustService. Wire one in via createAdapters() or pass it explicitly.');
+    }
+    this.trustService = options.trustService;
   }
 
   async execute(command: string, options?: { cwd?: string; timeout?: number; env?: Record<string, string> }): Promise<{ stdout: string; stderr: string; exitCode: number; durationMs: number }> {
@@ -23,11 +35,9 @@ export class ShellExecutor implements IShellPort {
       throw new Error('Command must be non-empty');
     }
 
-    if (this.trustService) {
-      const verdict = this.trustService.evaluate(command, { intent: 'shell', toolUsed: 'shell' });
-      if (verdict.level === 'Critical' || verdict.level === 'HighRisk') {
-        throw new Error(`Refused to execute dangerous command: ${verdict.level}`);
-      }
+    const verdict = this.trustService.evaluate({ output: command, context: JSON.stringify({ intent: 'shell', toolUsed: 'shell' }) });
+    if (verdict.level === 'Critical' || verdict.level === 'HighRisk') {
+      throw new Error(`Refused to execute dangerous command: ${verdict.level} (${verdict.summary})`);
     }
 
     const cwd = options?.cwd ?? process.cwd();

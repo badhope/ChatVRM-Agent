@@ -5,6 +5,8 @@ import type { ILLMPort } from '../../src/ports/llm.port.js';
 import type { IStoragePort } from '../../src/ports/storage.port.js';
 import type { IMemoryPort } from '../../src/ports/memory.port.js';
 import type { IShellPort } from '../../src/ports/shell.port.js';
+import type { ITrustPort } from '../../src/ports/trust.port.js';
+import { TrustLevel } from '../../src/domain/trust/trust.service.js';
 import { incrementToolCall } from './dashboard.routes.js';
 
 interface ToolDeps {
@@ -13,6 +15,14 @@ interface ToolDeps {
   storage: IStoragePort;
   memory: IMemoryPort;
   shell: IShellPort;
+  /**
+   * Trust gate. Every tool call routed through `/execute` is
+   * evaluated against the trust service. `HighRisk` and
+   * `Critical` verdicts are refused before the handler runs. This
+   * closes the gap where the HTTP endpoint could trigger `shell`
+   * with `rm -rf /` while the in-process agent path was gated.
+   */
+  trust: ITrustPort;
 }
 
 const TOOL_SCHEMAS: Record<string, Array<{ name: string; type: string; description: string; required: boolean }>> = {
@@ -249,6 +259,25 @@ export function toolsRoutes(deps: ToolDeps): Router {
       res.status(404).json({ error: `tool "${tool}" not registered` });
       return;
     }
+    // ---- Trust gate ----
+    // H12: the HTTP /execute endpoint was previously unguarded — any
+    // authenticated client could POST `{tool:"shell", args:{command:"rm -rf /"}}`
+    // and the request would run. Now we evaluate every call against
+    // the trust service. HighRisk / Critical verdicts are refused
+    // with HTTP 403 before the handler is invoked. RequireConfirmation
+    // verdicts are passed through but flagged in the response so the
+    // UI can prompt the user.
+    const trustInput = JSON.stringify({ tool, args: args ?? {} });
+    const verdict = deps.trust.evaluate({ output: trustInput, context: JSON.stringify({ intent: 'http-tool-execute', toolUsed: tool }) });
+    if (verdict.level === TrustLevel.HighRisk || verdict.level === TrustLevel.Critical) {
+      res.status(403).json({
+        success: false,
+        error: `Refused by trust gate: ${verdict.level}. ${verdict.summary}`,
+        trust: { level: verdict.level, score: verdict.score, issues: verdict.issues.map((i) => ({ type: i.type, description: i.description })) },
+        tool,
+      });
+      return;
+    }
     const startedAt = Date.now();
     try {
       const result = await deps.tools.execute(tool, args ?? {});
@@ -258,6 +287,9 @@ export function toolsRoutes(deps: ToolDeps): Router {
         tool,
         durationMs: Date.now() - startedAt,
         startedAt: new Date(startedAt).toISOString(),
+        trust: verdict.level === TrustLevel.RequireConfirmation
+          ? { level: verdict.level, summary: verdict.summary, requiresConfirmation: true }
+          : undefined,
       });
     } catch (err) {
       res.status(500).json({

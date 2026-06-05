@@ -6,6 +6,7 @@ export { GitAdapter } from './git.adapter.js';
 export { ShellExecutor } from './shell.adapter.js';
 export { ContextBuilder } from './context.builder.js';
 export { ToolsRegistry } from './tools.registry.js';
+export { TrustServiceAdapter } from './trust.adapter.js';
 
 import type { IConfigPort } from '../ports/config.port.js';
 import type { ILLMPort } from '../ports/llm.port.js';
@@ -15,6 +16,7 @@ import type { IGitPort } from '../ports/git.port.js';
 import type { IShellPort } from '../ports/shell.port.js';
 import type { IContextPort } from '../ports/context.port.js';
 import type { IToolsPort } from '../ports/tools.port.js';
+import type { ITrustPort } from '../ports/trust.port.js';
 import { ConfigAdapter } from './config.adapter.js';
 import { LLMAdapter } from './llm.adapter.js';
 import { StorageAdapter } from './storage.adapter.js';
@@ -23,6 +25,7 @@ import { GitAdapter } from './git.adapter.js';
 import { ShellExecutor } from './shell.adapter.js';
 import { ContextBuilder } from './context.builder.js';
 import { ToolsRegistry } from './tools.registry.js';
+import { TrustServiceAdapter } from './trust.adapter.js';
 
 export interface Adapters {
   config: IConfigPort;
@@ -33,6 +36,7 @@ export interface Adapters {
   shell: IShellPort;
   context: IContextPort;
   tools: IToolsPort;
+  trust: ITrustPort;
 }
 
 export function createAdapters(): Adapters {
@@ -41,11 +45,17 @@ export function createAdapters(): Adapters {
   const storage = new StorageAdapter();
   const memory = new MemoryAdapter();
   const git = new GitAdapter();
-  const shell = new ShellExecutor();
+  const trust = new TrustServiceAdapter();
+  // ShellExecutor now requires a trust service. The previous version
+  // accepted an optional one and production callers omitted it, which
+  // left the dangerous-command check dead. Wiring it here closes the
+  // gap and keeps the constructor's required-parameter contract
+  // honest.
+  const shell = new ShellExecutor({ trustService: trust });
   const context = new ContextBuilder(storage);
   const tools = new ToolsRegistry();
 
-  return { config, llm, storage, memory, git, shell, context, tools };
+  return { config, llm, storage, memory, git, shell, context, tools, trust };
 }
 
 export function createConfigAdapter(): IConfigPort {
@@ -68,8 +78,8 @@ export function createGitAdapter(): IGitPort {
   return new GitAdapter();
 }
 
-export function createShellAdapter(): IShellPort {
-  return new ShellExecutor();
+export function createShellAdapter(trust: ITrustPort): IShellPort {
+  return new ShellExecutor({ trustService: trust });
 }
 
 export function createContextAdapter(storage: IStoragePort): IContextPort {
@@ -78,4 +88,8 @@ export function createContextAdapter(storage: IStoragePort): IContextPort {
 
 export function createToolsAdapter(): IToolsPort {
   return new ToolsRegistry();
+}
+
+export function createTrustAdapter(): ITrustPort {
+  return new TrustServiceAdapter();
 }

@@ -233,24 +233,40 @@ export class ExecuteStage implements Stage {
             const codeBlocks = extractCodeBlocks(response.content);
             const explicitFilePath = (step.args?.filePath as string) ?? (step.args?.path as string);
             if (explicitFilePath) {
+              // Sandbox the path so a prompt-injection-driven step
+              // can't write to /etc/passwd or overwrite the project
+              // root. The handler in server/tools-setup.ts already
+              // does this; this fallback path (LLM-generated
+              // step.output) did not, so a malicious step could
+              // slip through.
+              const { sandboxPath } = await import('../shared/sandbox.js');
+              const safe = sandboxPath(explicitFilePath);
+              if (!safe.ok) {
+                throw new Error(`writeFile blocked: ${safe.error}`);
+              }
               const content = codeBlocks.length > 0 ? codeBlocks.join('\n\n') : response.content;
-              if (this.storage && !(await this.storage.exists(explicitFilePath))) {
-                createdFiles.push(explicitFilePath);
+              if (this.storage && !(await this.storage.exists(safe.resolved))) {
+                createdFiles.push(safe.resolved);
               }
-              await this.storage.write(explicitFilePath, content);
-              stepChangedFiles.push(explicitFilePath);
-              modifiedFiles.push(explicitFilePath);
-              stepOutput = `Written ${content.length} bytes to ${explicitFilePath}`;
+              await this.storage.write(safe.resolved, content);
+              stepChangedFiles.push(safe.resolved);
+              modifiedFiles.push(safe.resolved);
+              stepOutput = `Written ${content.length} bytes to ${safe.resolved}`;
             } else if (codeBlocks.length > 0) {
-              const filePath = 'output.txt';
-              const content = codeBlocks.join('\n\n');
-              if (this.storage && !(await this.storage.exists(filePath))) {
-                createdFiles.push(filePath);
+              // No explicit path — write to a sandboxed 'output.txt'.
+              const { sandboxPath } = await import('../shared/sandbox.js');
+              const safe = sandboxPath('output.txt');
+              if (!safe.ok) {
+                throw new Error(`writeFile blocked: ${safe.error}`);
               }
-              await this.storage.write(filePath, content);
-              stepChangedFiles.push(filePath);
-              modifiedFiles.push(filePath);
-              stepOutput = `Written to ${filePath}`;
+              const content = codeBlocks.join('\n\n');
+              if (this.storage && !(await this.storage.exists(safe.resolved))) {
+                createdFiles.push(safe.resolved);
+              }
+              await this.storage.write(safe.resolved, content);
+              stepChangedFiles.push(safe.resolved);
+              modifiedFiles.push(safe.resolved);
+              stepOutput = `Written to ${safe.resolved}`;
             }
           }
 
