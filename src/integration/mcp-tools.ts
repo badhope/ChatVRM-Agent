@@ -158,9 +158,21 @@ function mcpToolToToolDefinition(client: MCPClient, d: MCPToolDescriptor): ToolD
     description: d.description ?? '',
     inputSchema: (d.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
     metadata: { kind: 'mcp', server: client.serverInfo?.name ?? 'mcp' },
-    handler: async (args) => {
+    // L6 (W19) / L14 (W19): the handler now accepts the
+    // per-call `opts.signal` (L6) and forwards it into
+    // `client.callTool` (L14), which combines it with a
+    // per-call timeout into a single AbortSignal and wires it
+    // into the JSON-RPC request. Without this, a 30s MCP tool
+    // call would have run to completion even after the user
+    // clicked "stop" on the chat. The default timeout (60s)
+    // is conservative; callers can override via a future
+    // tool-registration knob.
+    handler: async (args, opts) => {
       try {
-        const res = await client.callTool(d.name, args);
+        const res = await client.callTool(d.name, args, {
+          signal: opts?.signal,
+          timeoutMs: 60_000,
+        });
         return mcpResultToToolResult(res);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -231,8 +243,18 @@ export class McpServerBridge {
       this.server.registerTool(def.name, {
         description: def.description,
         inputSchema: (def.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
-        invoke: async (args: Record<string, unknown>) => {
-          const r = await def.handler(args);
+        // L6 (W19): the inbound MCP bridge is the inverse of
+        // the outbound path. The outbound side now forwards
+        // the per-call signal from `IToolsPort.execute` (L6)
+        // and the per-call timeout (L14). The inbound side
+        // re-uses the *local* tool definition's handler, so
+        // the signal is whatever the MCP client (Cursor,
+        // Claude Desktop, etc.) decides to pass. We forward
+        // `opts.signal` as a best-effort cancellation hook —
+        // the local handler may or may not honour it, but the
+        // signature is satisfied.
+        invoke: async (args: Record<string, unknown>, opts?: { signal?: AbortSignal }) => {
+          const r = await def.handler(args, opts);
           if (typeof r === 'string') {
             return { content: [{ type: 'text' as const, text: r }] };
           }

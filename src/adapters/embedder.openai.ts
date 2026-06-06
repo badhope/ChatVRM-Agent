@@ -50,16 +50,26 @@ export class OpenAIEmbedder implements Embedder {
     }
   }
 
-  async embed(text: string): Promise<Float32Array> {
-    const res = await this.embedBatch([text]);
+  async embed(text: string, options?: { signal?: AbortSignal }): Promise<Float32Array> {
+    const res = await this.embedBatch([text], options);
     return res[0];
   }
 
-  async embedBatch(texts: string[]): Promise<Float32Array[]> {
+  async embedBatch(texts: string[], options?: { signal?: AbortSignal }): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
     if (!this.apiKey) {
       throw new Error('OpenAIEmbedder: apiKey missing (set OPENAI_API_KEY or pass options)');
     }
+    // M10 (W19): the parent signal and the embedder's own 60s
+    // timeout are combined so a slow embedder request gets
+    // killed either when the user cancels (`options.signal`)
+    // or when the request itself hangs. `AbortSignal.any` is
+    // the documented way to compose two signals and short-
+    // circuits to the first one to fire.
+    const sig = AbortSignal.any([
+      options?.signal ?? new AbortController().signal,
+      AbortSignal.timeout(60_000),
+    ]);
     const resp = await this.fetchImpl(`${this.baseUrl}/embeddings`, {
       method: 'POST',
       headers: {
@@ -67,10 +77,7 @@ export class OpenAIEmbedder implements Embedder {
         authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({ model: this.model, input: texts }),
-      // Bound the call so a hang on the embed endpoint doesn't stall
-      // the whole ReAct / ingestion pipeline. 60s is generous for
-      // batches of <= 100 chunks.
-      signal: AbortSignal.timeout(60_000),
+      signal: sig,
     });
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');

@@ -53,11 +53,20 @@ export class HashingEmbedder implements Embedder {
     this.sublinear = opts.sublinear ?? true;
   }
 
-  async embed(text: string): Promise<Float32Array> {
+  async embed(text: string, _options?: { signal?: AbortSignal }): Promise<Float32Array> {
     return this.embedOne(text);
   }
 
-  async embedBatch(texts: string[]): Promise<Float32Array[]> {
+  async embedBatch(texts: string[], _options?: { signal?: AbortSignal }): Promise<Float32Array[]> {
+    // M10 (W19): the hashing embedder is purely CPU-bound; it
+    // can't actually be cancelled. We still accept the signal
+    // for API uniformity, and check it once per batch so a
+    // caller that's been waiting on a 100k-row batch gets an
+    // early `AbortError` if the parent cancelled mid-loop. The
+    // per-token check would be too expensive.
+    if (_options?.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
     return texts.map((t) => this.embedOne(t));
   }
 

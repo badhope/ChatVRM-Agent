@@ -53,7 +53,7 @@ export function webhooksRoutes(): Router {
     res.json({ webhooks: out, total: out.length });
   });
 
-  router.post('/', (req: Request, res: Response) => {
+  router.post('/', async (req: Request, res: Response) => {
     const parsed = RegisterSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'invalid_request', issues: parsed.error.issues });
@@ -64,13 +64,33 @@ export function webhooksRoutes(): Router {
       res.status(409).json({ error: 'duplicate_name', name: parsed.data.name });
       return;
     }
-    const w = rt.webhookRouter.register(parsed.data);
-    res.status(201).json({
-      name: w.name,
-      url: w.url,
-      events: w.events,
-      method: w.method,
-    });
+    // M13 (W19): the router's `register` is now async because it
+    // awaits the SSRF pre-check before binding the webhook. The
+    // route handler is naturally async, so we just `await` and
+    // surface a 400 with the underlying error if the URL is
+    // rejected (the pre-W19 code returned 201 and the SSRF
+    // error would have been swallowed inside a void Promise).
+    try {
+      const w = await rt.webhookRouter.register(parsed.data);
+      res.status(201).json({
+        name: w.name,
+        url: w.url,
+        events: w.events,
+        method: w.method,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // The SSRF pre-check throws an Error whose message starts
+      // with "refusing" or "invalid URL" / "unsupported URL
+      // scheme" — all 4xx. Anything else is a 500 (the binding
+      // itself can't really fail in a way the user can fix).
+      const isClientError =
+        /^(refusing|invalid URL|unsupported URL scheme|refusing URL)/.test(message);
+      res.status(isClientError ? 400 : 500).json({
+        error: message,
+        ssrfRefused: isClientError,
+      });
+    }
   });
 
   router.delete('/:name', (req: Request, res: Response) => {

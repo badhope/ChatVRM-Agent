@@ -303,7 +303,16 @@ export class ReActAgent {
         const toolSpan = trace ? await trace.span(`tool.${call.name}`, { input: call.arguments }) : null;
         let result: ToolResult;
         try {
-          result = await this.cfg.tools.execute(call.name, call.arguments);
+          // L6 (W19): forward the parent signal to the tool. The
+          // pre-W19 code called `execute(name, args)` with no
+          // signal, so a ReAct run that was in the middle of
+          // `webClient.fetch` (5s+ typical) or an MCP tool call
+          // (10s+ for slow servers) kept running for several
+          // seconds after the user clicked "stop" on the chat.
+          // The signal is now optional in IToolsPort, so custom
+          // tool implementations that predate the signature can
+          // still satisfy it (they'll just receive `undefined`).
+          result = await this.cfg.tools.execute(call.name, call.arguments, { signal: this.cfg.signal });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           result = { success: false, error: `Tool execution threw: ${message}` };

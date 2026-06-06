@@ -191,8 +191,8 @@ describe('WebhookRouter', () => {
     const calls: string[] = [];
     const transport: WebhookTransport = async (req) => { calls.push(JSON.parse(req.body).event); return { ok: true, status: 200 }; };
     const router = new WebhookRouter({ bus, transport });
-    router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
-    router.register({ name: 'b', url: 'http://b', events: ['react:start', 'react:done'] });
+    await router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
+    await router.register({ name: 'b', url: 'http://b', events: ['react:start', 'react:done'] });
     bus.emit('react:start', { input: 'a', toolCount: 0 });
     bus.emit('react:done', { result: { output: '', steps: [], iterations: 0, totalTokens: 0, finishReason: 'final-answer' } });
     await router.drainAll();
@@ -202,20 +202,20 @@ describe('WebhookRouter', () => {
     router.destroy();
   });
 
-  it('unregister() removes a webhook', () => {
+  it('unregister() removes a webhook', async () => {
     const bus = makeBus();
     const router = new WebhookRouter({ bus, transport: async () => ({ ok: true, status: 200 }) });
-    router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
+    await router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
     expect(router.list()).toHaveLength(1);
     expect(router.unregister('a')).toBe(true);
     expect(router.list()).toHaveLength(0);
     expect(router.unregister('a')).toBe(false);
   });
 
-  it('get() returns the named webhook', () => {
+  it('get() returns the named webhook', async () => {
     const bus = makeBus();
     const router = new WebhookRouter({ bus, transport: async () => ({ ok: true, status: 200 }) });
-    const w = router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
+    const w = await router.register({ name: 'a', url: 'http://a', events: ['react:start'] });
     expect(router.get('a')).toBe(w);
     expect(router.get('nope')).toBeUndefined();
   });

@@ -220,6 +220,23 @@ export class LLMCache {
         return hit;
       }
       const out = await port.chat(req);
+      // H11b (W19): also check the abort signal *after* the
+      // upstream call resolves but *before* we write to the
+      // cache. If the client disconnected during the upstream
+      // call, two bad things can happen if we don't check:
+      //   1. We cache a response that no one will read this
+      //      time around, polluting the LRU with an entry that
+      //      was effectively "freed" (a later caller might see
+      //      a stale, no-longer-wanted entry).
+      //   2. We return the response to a dead caller, holding
+      //      the event loop briefly while the GC collects the
+      //      sockets — wasteful.
+      // Throwing an `AbortError` here also matches what the
+      // H11 cache-hit path does, so callers can handle both
+      // cases the same way.
+      if (req.signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
       this.set(key, out);
       return out;
     };
@@ -240,6 +257,11 @@ export class LLMCache {
               return hit;
             }
             const out = await port.chatExact!(req);
+            // H11b (W19): same abort check as `chat` above — see
+            // the rationale there.
+            if (req.signal?.aborted) {
+              throw new DOMException('Aborted', 'AbortError');
+            }
             this.set(key, out);
             return out;
           })
@@ -251,13 +273,4 @@ export class LLMCache {
       isAvailable: ((...args: Parameters<ILLMPort['isAvailable']>) => port.isAvailable(...args)) as ILLMPort['isAvailable'],
     };
   }
-}
-
-/** Deterministic JSON.stringify (sorted keys). */
-function stableStringify(v: unknown): string {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v);
-  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
-  const obj = v as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
 }

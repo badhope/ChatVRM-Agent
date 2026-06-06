@@ -13,6 +13,17 @@ export interface PipelineContext {
   phaseHistory: PhaseRecord[];
   shouldConfirm: boolean;
   confirmPrompt?: string;
+  /**
+   * L12 (W19): an optional AbortSignal threaded through the
+   * pipeline. Stages that call out to slow adapters (LLM,
+   * ReAct agent, MCP tools) should forward this signal so a
+   * client disconnect cuts the network call short. The agent
+   * HTTP route populates this from its SSE close handler; the
+   * `core/pipeline.run` orchestrator may wrap it in an
+   * `AbortSignal.any` with its own internal cancel controller
+   * so a stage-timeout cancels the in-flight work too.
+   */
+  signal?: AbortSignal;
 }
 
 export interface PipelineError {

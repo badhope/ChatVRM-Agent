@@ -30,6 +30,15 @@ export interface IngestionOptions {
   loader?: Loader;
   /** Optional source tag attached to every chunk's metadata. */
   sourceTag?: string;
+  /**
+   * M10 (W19): an optional AbortSignal propagated into the
+   * embedder batch calls and the vector store writes. Useful
+   * for the RAG HTTP route to thread its request-derived
+   * signal into the long-running embed step (a 1000-chunk
+   * document can spend seconds in `embedBatch` on a CPU-only
+   * setup, and the user may cancel mid-ingest).
+   */
+  signal?: AbortSignal;
 }
 
 export interface IngestionResult {
@@ -129,6 +138,13 @@ export class IngestionPipeline {
   private readonly chunker?: RecursiveTextChunker;
   private readonly loader: Loader;
   private readonly sourceTag?: string;
+  // M10 (W19): the per-instance AbortSignal is captured at
+  // construction time and re-used for every embedder batch
+  // call. The pre-W19 class had no signal field, so the
+  // caller-supplied cancel signal was never seen by the
+  // embedder and a 30s `embedBatch` would run to completion
+  // even after the user cancelled the HTTP request.
+  private readonly signal?: AbortSignal;
   // W17 M10: monotonic per-instance counter mixed into chunk IDs to
   // guarantee uniqueness across ingestion runs of the same source.
   private idCounter = 0;
@@ -144,6 +160,7 @@ export class IngestionPipeline {
     this.chunker = opts.chunker;
     this.loader = opts.loader ?? new AutoLoader();
     this.sourceTag = opts.sourceTag;
+    this.signal = opts.signal;
   }
 
   /**
@@ -292,14 +309,16 @@ export class IngestionPipeline {
 
     // 2) embed (batched) — per-batch try/catch + length check so a
     //    misbehaving embedder cannot push `undefined` vectors into
-    //    the store.
+    //    the store. M10 (W19): thread the parent signal into
+    //    each batch so a user-cancel mid-embedding cuts the
+    //    HTTP call to OpenAI / Ollama short.
     const vectors: VectorRecord[] = [];
     const BATCH = 32;
     for (let i = 0; i < allChunks.length; i += BATCH) {
       const batch = allChunks.slice(i, i + BATCH);
       let embeddings: Float32Array[];
       try {
-        const out = await this.embedder.embedBatch(batch.map((c) => c.text));
+        const out = await this.embedder.embedBatch(batch.map((c) => c.text), { signal: this.signal });
         embeddings = out as Float32Array[];
         if (embeddings.length !== batch.length) {
           throw new Error(
@@ -332,6 +351,12 @@ export class IngestionPipeline {
     onProgress?.({ stage: 'store', current: 0, total: 1 });
     try {
       if (vectors.length > 0) {
+        // M10 (W19): forward the signal to the vector-store
+        // add. PersistentVectorStore currently uses an in-memory
+        // map + `fs.writeFile` (sync) so the signal can't be
+        // honoured mid-call, but the future IVFFlat disk scanner
+        // will be async-cancellable and the port already accepts
+        // the field.
         await this.vectorStore.add(vectors);
       }
     } catch (err) {

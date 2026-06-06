@@ -6,7 +6,18 @@ export interface ToolDefinition {
   inputSchema?: unknown;
   /** Free-form metadata (e.g. origin server, tags). */
   metadata?: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<ToolResult | string>;
+  /**
+   * L6 (W19): the second argument is the per-call options bag
+   * (currently `{ signal?: AbortSignal }`) propagated by
+   * `IToolsPort.execute` so a tool can honour a parent
+   * cancellation. The pre-W19 handler signature was single-arg
+   * `(args) => result`, so the registry's `execute` could
+   * never reach a tool with the request's signal. The
+   * signature is now `(args, opts?) => result` — the second
+   * arg is optional, so older single-arg tool implementations
+   * still satisfy the type.
+   */
+  handler: (args: Record<string, unknown>, opts?: { signal?: AbortSignal }) => Promise<ToolResult | string>;
 }
 
 export interface ToolResult {
@@ -37,7 +48,7 @@ export interface IToolsPort {
   unregister?(name: string): boolean;
   has(name: string): boolean;
   get(name: string): ToolDefinition;
-  execute(name: string, args: Record<string, unknown>): Promise<ToolResult>;
+  execute(name: string, args: Record<string, unknown>, opts?: { signal?: AbortSignal }): Promise<ToolResult>;
   listAll(): ToolDefinition[];
   /** Optional: same as listAll but included for symmetry with test mocks. */
   list?(): ToolDefinition[];

@@ -12,6 +12,7 @@
 
 import * as fs from 'node:fs/promises';
 import type { Document, Loader } from '../ports/loader.port.js';
+import { enforceBufferSizeCap, enforceFileSizeCap } from './size-cap.js';
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -65,11 +66,17 @@ export class CsvLoader implements Loader {
   }
 
   async load(path: string): Promise<Document[]> {
+    // L11b (W19): share the size cap. CSVs grow large quickly
+    // (a million-row export is not unusual), so the cap
+    // defaults to 25 MB but operators can set
+    // `PA_CSV_LOADER_MAX_BYTES` to raise it.
+    await enforceFileSizeCap(path, { envVar: 'PA_CSV_LOADER_MAX_BYTES' });
     const text = await fs.readFile(path, 'utf8');
     return this.parse(text, path);
   }
 
   async loadBuffer(buf: Buffer): Promise<Document[]> {
+    enforceBufferSizeCap(buf, { envVar: 'PA_CSV_LOADER_MAX_BYTES' });
     return this.parse(buf.toString('utf8'));
   }
 

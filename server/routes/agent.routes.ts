@@ -167,6 +167,7 @@ export function agentRoutes(deps: AgentDeps): Router {
       sseSend(res, 'llm', e);
     });
 
+    const abortController = new AbortController();
     const ctx: PipelineContext = {
       taskId: randomUUID(),
       input: task,
@@ -176,6 +177,16 @@ export function agentRoutes(deps: AgentDeps): Router {
       modifiedFiles: [],
       phaseHistory: [],
       shouldConfirm: false,
+      // L12 (W19): forward the request's AbortController
+      // signal to every stage via the PipelineContext. A
+      // client disconnect (`res.on('close', ...)`) calls
+      // `abortController.abort()` below, which propagates
+      // to any LLM call / ReAct loop / MCP tool inside a
+      // stage. Pre-W19 the signal was kept local to the
+      // route handler; stages never saw it, so a 30-second
+      // LLM call kept running for the full duration after
+      // the browser tab was closed.
+      signal: abortController.signal,
     };
 
     const stages = createDefaultStages({
@@ -192,7 +203,6 @@ export function agentRoutes(deps: AgentDeps): Router {
     sseSend(res, 'pipeline-start', { taskId: ctx.taskId, task, provider: useProvider, model: model ?? meta.defaultModel, stages: stageOrder });
 
     let aborted = false;
-    const abortController = new AbortController();
     let closeFired = false;
     const handleClose = () => {
       if (closeFired) return;

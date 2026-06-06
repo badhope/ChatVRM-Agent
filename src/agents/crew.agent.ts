@@ -367,14 +367,18 @@ class ScopedToolsPort implements IToolsPort {
     }
     return this.parent.get(name);
   }
-  async execute(name: string, args: Record<string, unknown>): Promise<ToolResult> {
+  async execute(
+    name: string,
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal },
+  ): Promise<ToolResult> {
     if (name === DELEGATE_TOOL_NAME && this.delegateExecute) {
       return this.delegateExecute(name, args);
     }
     if (!this.allowed.has(name)) {
       return { success: false, error: `Tool "${name}" not in agent's allowlist` };
     }
-    return this.parent.execute(name, args);
+    return this.parent.execute(name, args, opts);
   }
 }
 

@@ -12,6 +12,7 @@
 
 import * as fs from 'node:fs/promises';
 import type { Document, Loader } from '../ports/loader.port.js';
+import { enforceBufferSizeCap, enforceFileSizeCap } from './size-cap.js';
 
 interface Sheet2JsonOpts {
   header?: number | string[];
@@ -42,11 +43,18 @@ export class XlsxLoader implements Loader {
   readonly extensions = ['.xlsx', '.xls', '.xlsm', '.xlsb'];
 
   async load(path: string): Promise<Document[]> {
+    // M4 (W19): apply the size cap on every path. The pre-W19
+    // code did `fs.readFile(path)` with no size guard, so a
+    // 1 GB .xlsx would OOM the process before SheetJS could
+    // notice. Operators can raise the cap via
+    // `PA_XLSX_LOADER_MAX_BYTES`.
+    await enforceFileSizeCap(path, { envVar: 'PA_XLSX_LOADER_MAX_BYTES' });
     const buf = await fs.readFile(path);
     return this.parse(buf, path);
   }
 
   async loadBuffer(buf: Buffer): Promise<Document[]> {
+    enforceBufferSizeCap(buf, { envVar: 'PA_XLSX_LOADER_MAX_BYTES' });
     return this.parse(buf);
   }
 

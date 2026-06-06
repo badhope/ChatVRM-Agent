@@ -148,7 +148,11 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
     }
   }
 
-  private async request(method: string, params?: unknown): Promise<unknown> {
+  private async request(
+    method: string,
+    params?: unknown,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     const id = this.nextId++;
     const req: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
     let onTimeout: (() => void) = () => {};
@@ -168,6 +172,32 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
     });
     p.timer = setTimeout(onTimeout, this.requestTimeoutMs);
     this.pending.set(id, p);
+    // L14 (W19): if the caller supplied an AbortSignal, install
+    // a one-shot listener that rejects the pending promise with
+    // a typed AbortError. We do not call `transport.close()`
+    // here — that would tear down the entire MCP session. The
+    // remote call may still complete; its result will be
+    // dropped on the next `handleMessage()` because the entry
+    // will be gone from `this.pending`. The user-cancel path
+    // is cooperative, not forceful.
+    if (signal) {
+      const onAbort = () => {
+        if (p.timer) clearTimeout(p.timer);
+        this.pending.delete(id);
+        // L14 (W19): use the Pending-tracked `p.reject`
+        // (assigned inside the Promise executor) rather than
+        // the bare `reject` parameter, which is *only* in
+        // scope inside the executor. The closure-captured
+        // `p.reject` is the same function and works just as
+        // well from outside the executor scope.
+        p.reject(new DOMException('Aborted', 'AbortError'));
+      };
+      if (signal.aborted) {
+        onAbort();
+        return promise;
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
     try {
       await this.transport.send(req);
     } catch (err) {
@@ -185,12 +215,27 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
     return res.tools ?? [];
   }
 
-  async callTool(name: string, args: Record<string, unknown>): Promise<MCPToolResult> {
+  async callTool(
+    name: string,
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal; timeoutMs?: number },
+  ): Promise<MCPToolResult> {
+    // L14 (W19): the callTool path was the only one in the
+    // MCP bridge without a cancellation hook. The pre-W19
+    // version just awaited `this.request('tools/call', ...)`,
+    // which is bounded only by `this.requestTimeoutMs` (30s by
+    // default) and ignores any caller-supplied AbortSignal.
+    // We now (1) early-reject if the signal is already aborted,
+    // (2) combine the caller's signal with an optional
+    // per-call timeout, and (3) wire the combined signal into
+    // the underlying request so a user-cancel propagates back
+    // into the request map and tears down the pending response.
     await this.initialize();
     if (!this._capabilities.tools) {
       throw new Error(`MCPClient: server does not advertise tools capability`);
     }
-    return (await this.request('tools/call', { name, arguments: args })) as MCPToolResult;
+    const sig = buildCallSignal(opts?.signal, opts?.timeoutMs);
+    return (await this.request('tools/call', { name, arguments: args }, sig)) as MCPToolResult;
   }
 
   async listResources(): Promise<MCPResourceDescriptor[]> {
@@ -242,4 +287,22 @@ export class MCPClient extends EventEmitter<MCPClientEvents> implements IMCPClie
       await this.readerDone.catch(() => undefined);
     }
   }
+}
+
+/**
+ * L14 (W19): combine an optional caller-supplied AbortSignal
+ * with an optional per-call timeout into a single
+ * AbortSignal. The combined signal aborts on whichever fires
+ * first. We return `undefined` when neither is supplied so
+ * the request path stays sync (no `AbortSignal.any([new
+ * AbortController().signal])` overhead per call).
+ */
+function buildCallSignal(signal: AbortSignal | undefined, timeoutMs: number | undefined): AbortSignal | undefined {
+  if (signal && timeoutMs && timeoutMs > 0) {
+    return AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]);
+  }
+  if (timeoutMs && timeoutMs > 0) {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  return signal;
 }

@@ -20,6 +20,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Document, Loader } from '../ports/loader.port.js';
+import { enforceBufferSizeCap, enforceFileSizeCap } from './size-cap.js';
 
 export type JsonFormat = 'auto' | 'json' | 'jsonl';
 
@@ -27,6 +28,11 @@ export class JsonLoader implements Loader {
   readonly extensions = ['.json', '.jsonl', '.ndjson'];
 
   async load(filePath: string): Promise<Document[]> {
+    // L11b (W19): share the size cap. JSON can grow very large
+    // (a 1 GB NDJSON log is realistic), so the cap defaults to
+    // 25 MB but operators can set `PA_JSON_LOADER_MAX_BYTES`
+    // higher if their ingest pipeline requires it.
+    await enforceFileSizeCap(filePath, { envVar: 'PA_JSON_LOADER_MAX_BYTES' });
     const text = await fs.readFile(filePath, 'utf8');
     const ext = path.extname(filePath).toLowerCase();
     const format: JsonFormat =
@@ -35,6 +41,7 @@ export class JsonLoader implements Loader {
   }
 
   async loadBuffer(buf: Buffer, format: JsonFormat = 'auto'): Promise<Document[]> {
+    enforceBufferSizeCap(buf, { envVar: 'PA_JSON_LOADER_MAX_BYTES' });
     return this.parse(buf.toString('utf8'), format);
   }
 

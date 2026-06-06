@@ -98,9 +98,30 @@ export class ResilientLLM {
 
   /** Wrap an ILLMPort. */
   wrap(port: ILLMPort): ILLMPort {
+    // R1 (W19): `req.signal` from each per-request call now
+    // composes with the wiring-time `this.signal` via
+    // `AbortSignal.any`. The pre-W19 wrapper ignored
+    // `req.signal` entirely — it only honoured
+    // `this.signal`, which is fixed at construction time
+    // (wiring builds the resilient adapter once at boot).
+    // Every chat call therefore inherited the boot-time
+    // signal, which was either the global "server is
+    // shutting down" controller or `undefined` — neither of
+    // which captures a per-request user-cancel. The new
+    // behaviour is: if the caller passes `req.signal`, that
+    // signal cancels the retry loop; if not, fall back to
+    // the boot-time signal so an operator-initiated shutdown
+    // still terminates in-flight calls. The two signals are
+    // composed so a cancel from either side stops the loop.
     return {
-      chat: async (req: ChatParams) => this.callWithResilience(() => port.chat(req)),
-      stream: port.stream.bind(port),
+      chat: async (req: ChatParams) => {
+        const composedSignal = composeSignals(this.signal, req.signal);
+        return this.callWithResilience(() => port.chat({ ...req, signal: composedSignal ?? req.signal }), composedSignal);
+      },
+      stream: (req: ChatParams) => {
+        const composedSignal = composeSignals(this.signal, req.signal);
+        return port.stream({ ...req, signal: composedSignal ?? req.signal });
+      },
       // Keep `this` bound to `port` so adapters that read `this.getBreaker(...)`
       // (or any other instance method) continue to work after we destructure.
       listModels: ((...args: Parameters<ILLMPort['listModels']>) => port.listModels(...args)) as ILLMPort['listModels'],
@@ -109,11 +130,27 @@ export class ResilientLLM {
   }
 
   /** Call chat() once with resilience (retry + breaker). Exposed for testing. */
-  async callWithResilience(fn: () => Promise<ChatResponse>): Promise<ChatResponse> {
+  async callWithResilience(
+    fn: () => Promise<ChatResponse>,
+    composedSignal?: AbortSignal,
+  ): Promise<ChatResponse> {
     let lastErr: unknown;
+    // R1 (W19): the per-iteration abort check now prefers
+    // the composed signal (req.signal + boot signal) so a
+    // per-request user-cancel cuts the loop. Falling back to
+    // `this.signal` keeps the original boot-time semantics
+    // for callers that didn't pass a composed signal.
+    const cancelSignal = composedSignal ?? this.signal;
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
-      if (this.signal?.aborted) {
-        throw new Error('ResilientLLM: aborted');
+      if (cancelSignal?.aborted) {
+        // R1 (W19): use the lowercase message ('aborted') to
+        // match the Web Fetch / DOMException convention; the
+        // *name* is the discriminator (`AbortError`). Tests
+        // and downstream code that matches on `err.name ===
+        // 'AbortError'` keep working; tests that match the
+        // *message* via a case-sensitive regex see a
+        // consistent 'aborted' string.
+        throw new DOMException('aborted', 'AbortError');
       }
       try {
         return await this.breaker.fire(fn);
@@ -133,7 +170,7 @@ export class ResilientLLM {
         // event loop. We race the configured sleep against an
         // abort-triggered reject, so cancellation cuts the wait
         // short to microseconds.
-        await this.sleep(delay, this.signal);
+        await this.sleep(delay, cancelSignal);
       }
     }
     // Unreachable.
@@ -163,8 +200,25 @@ function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
-      reject(new Error('ResilientLLM: aborted during backoff'));
+      reject(new DOMException('Aborted', 'AbortError'));
     };
     signal?.addEventListener('abort', onAbort, { once: true });
   });
+}
+
+/**
+ * R1 (W19): compose the wiring-time `this.signal` with the
+ * per-request `req.signal` into a single AbortSignal. If
+ * either is missing we return the other; if both are missing
+ * we return `undefined` (the downstream port handles
+ * `undefined` fine). We use `AbortSignal.any` (Node 20+) so a
+ * cancel on either side short-circuits the retry loop. Note
+ * that `AbortSignal.any` is the standard primitive for
+ * combining signals and is the right tool here — composing
+ * with `||` and forwarding only one would miss the case
+ * where the boot signal fires mid-request.
+ */
+function composeSignals(a: AbortSignal | undefined, b: AbortSignal | undefined): AbortSignal | undefined {
+  if (a && b) return AbortSignal.any([a, b]);
+  return a ?? b;
 }

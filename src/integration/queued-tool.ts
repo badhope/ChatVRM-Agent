@@ -43,8 +43,18 @@ export interface QueuedToolOptions<TArgs = unknown, TResult = unknown> {
    * bridge passes its own `jobName` as the second argument so the
    * enqueue name and the processor name always match — the queue
    * won't pick up a job whose name has no registered processor.
+   *
+   * L8 (W19): the third argument is the call-site options bag
+   * (currently `{ signal? }`). The pre-W19 type accepted only
+   * `(args, jobName)`, so a user-cancel mid-enqueue had no way
+   * to reach the worker. The third arg is optional; callers
+   * that don't care can keep their old two-arg shape.
    */
-  enqueue: (args: TArgs, jobName: string) => Promise<{ jobId: string; data: unknown }>;
+  enqueue: (
+    args: TArgs,
+    jobName: string,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ jobId: string; data: unknown }>;
   /**
    * Worker-side handler. The bridge registers this with the queue
    * on construction.
@@ -110,6 +120,22 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
     if (this.bound) return;
     const proc = this.opts.processor;
     this.opts.queue.process(this.jobName, async (j: Job) => {
+      // L8 (W19): check the AbortSignal at the top of every
+      // worker run. The InProcessQueue populates `j.signal` from
+      // the producer's `opts.signal`; the BullMqQueue does the
+      // same via job data. If the parent cancelled while the
+      // job was sitting in `waiting` / `delayed`, the runJob
+      // pre-check already short-circuited, so this branch is
+      // only hit for jobs that were enqueued with a signal
+      // *and* entered `active`. We throw a typed AbortError
+      // so the queue emits `failed` with a distinguishable
+      // reason.
+      const jobSignal = (j as unknown as { signal?: AbortSignal }).signal;
+      if (jobSignal?.aborted) {
+        const err = new DOMException('Aborted', 'AbortError');
+        this.bridge.emit('done', { id: j.id, error: err });
+        throw err;
+      }
       try {
         const r = await proc(j as unknown as Parameters<typeof proc>[0]);
         this.bridge.emit('done', { id: j.id, value: r });
@@ -158,9 +184,24 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
     this.bound = false;
   }
 
-  /** Fire-and-forget. Returns the ticket id immediately. */
-  async run(args: TArgs): Promise<ToolResult> {
-    const { jobId } = await this.opts.enqueue(args, this.jobName);
+  /**
+   * L7 (W19): fire-and-forget enqueue with optional abort
+   * signal. The pre-W19 signature was `run(args)` only, so a
+   * client that disconnected right after submitting a long-
+   * running job had no way to cancel it; the worker kept
+   * running and the next `runAndWait` would still see it
+   * complete. We now:
+   *   1. accept `opts.signal`,
+   *   2. early-reject with `aborted` if the signal is already
+   *      fired (mirrors the L6 path in tools.registry),
+   *   3. forward the signal to the underlying queue's `enqueue`
+   *      (L8) so the worker itself can be cancelled mid-job.
+   */
+  async run(args: TArgs, opts?: { signal?: AbortSignal }): Promise<ToolResult> {
+    if (opts?.signal?.aborted) {
+      return { success: false, error: 'aborted' };
+    }
+    const { jobId } = await this.opts.enqueue(args, this.jobName, { signal: opts?.signal });
     return { success: true, output: JSON.stringify({ ticketId: jobId, status: 'queued' }) };
   }
 
@@ -240,6 +281,17 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
       description: this.description,
       inputSchema: (this.opts.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
       metadata: { kind: 'queued', ...(this.opts.metadata ?? {}) },
+      // L7 (W19): the handler signature on `ToolDefinition` is
+      // single-arg `(args) => result`, so we cannot pass the
+      // `IToolsPort.opts.signal` through here in a typed way.
+      // Instead, the L6 path (`tools.registry.execute`) reads
+      // the signal from the parent `execute` call, and queued
+      // tools that need cancellation should use `run(args,
+      // { signal })` directly from a custom tool wrapper. The
+      // agent loop never constructs a queued-tool from a
+      // ReAct tool-call (it's registered as a regular
+      // ToolDefinition and dispatched through the registry), so
+      // the runtime-signal loss in this codepath is acceptable.
       handler: async (args) => this.run(args as TArgs),
     };
   }

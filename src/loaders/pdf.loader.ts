@@ -12,6 +12,7 @@
 
 import * as fs from 'node:fs/promises';
 import type { Document, Loader } from '../ports/loader.port.js';
+import { enforceBufferSizeCap, enforceFileSizeCap } from './size-cap.js';
 
 interface PdfParseResult {
   numpages: number;
@@ -50,11 +51,20 @@ export class PdfLoader implements Loader {
   }
 
   async load(path: string): Promise<Document[]> {
+    // L11b (W19): share the size cap. PDFs are binary and
+    // often larger than text inputs (a 100 MB PDF is normal),
+    // so the cap defaults to 25 MB but operators can set
+    // `PA_PDF_LOADER_MAX_BYTES` higher. We enforce *before*
+    // readFile so a malicious 4 GB PDF doesn't even reach the
+    // parser (which would buffer the entire file in memory
+    // before noticing).
+    await enforceFileSizeCap(path, { envVar: 'PA_PDF_LOADER_MAX_BYTES' });
     const buf = await fs.readFile(path);
     return this.parse(buf, path);
   }
 
   async loadBuffer(buf: Buffer): Promise<Document[]> {
+    enforceBufferSizeCap(buf, { envVar: 'PA_PDF_LOADER_MAX_BYTES' });
     return this.parse(buf);
   }
 

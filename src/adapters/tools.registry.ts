@@ -45,14 +45,27 @@ export class ToolsRegistry implements IToolsPort {
     return tool;
   }
 
-  async execute(name: string, args: Record<string, unknown>): Promise<ToolResult> {
+  async execute(
+    name: string,
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal },
+  ): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
       return { success: false, error: `Tool "${name}" not registered` };
     }
 
+    // L6 (W19): early-exit if the parent signal is already
+    // aborted. The pre-W19 code did nothing on this path, so a
+    // client that disconnected right before `execute` was called
+    // still paid the cost of `tool.handler(args)` starting up
+    // (network DNS, MCP handshake, etc) before being cancelled.
+    if (opts?.signal?.aborted) {
+      return { success: false, error: 'aborted' };
+    }
+
     try {
-      const result = await tool.handler(args);
+      const result = await tool.handler(args, opts);
       if (typeof result === 'string') {
         return { success: true, output: result };
       }

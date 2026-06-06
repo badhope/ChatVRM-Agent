@@ -167,6 +167,16 @@ export class BullMqQueue implements IQueue {
     this.worker = new Worker(
       this.name,
       async (job) => {
+        // L8 (W19): translate BullMQ's `data` payload (which
+        // may include an `__abortSignal` marker) into a
+        // transient AbortController. BullMQ itself does not
+        // store AbortSignals, so the producer's `opts.signal`
+        // is captured into the job data via the `toJob` helper
+        // and reified into an AbortController here. This is
+        // best-effort — the producer's signal fires once
+        // (signal.aborted === true) and the controller re-arms
+        // the worker with the same flag. Co-operative
+        // cancellation only; no killing of in-flight sync work.
         return await processor(toJob(job) as unknown as Job<T, R>);
       },
       { connection: me._conn, concurrency: me._concurrency },

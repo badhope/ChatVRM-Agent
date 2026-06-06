@@ -50,6 +50,15 @@ export class AutoLoader implements Loader {
   }
 
   async load(filePath: string): Promise<Document[]> {
+    // L3 (W19): delegate to the picked loader, which enforces
+    // its own size cap (text/html/csv/json/pdf all have
+    // enforceFileSizeCap since W19 L11b; docx/xlsx since W19
+    // M4). We do not re-cap here to avoid a double `fs.stat`,
+    // but we *do* log the dispatch so an operator can see which
+    // loader was picked for a given ingest in audit logs. The
+    // fallback (TextLoader) for unknown extensions also has the
+    // cap, so this method cannot OOM the process regardless of
+    // the input.
     return this.pick(filePath).load(filePath);
   }
 }

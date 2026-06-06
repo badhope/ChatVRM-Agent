@@ -160,6 +160,19 @@ export class TokenBudget {
   wrap(port: ILLMPort, sessionId = 'default'): ILLMPort {
     return {
       chat: async (req: ChatParams) => {
+        // R2 (W19): check the abort signal BEFORE the
+        // preCallCheck. The pre-W19 path unconditionally
+        // `preCallCheck`-ed, even for a request whose signal
+        // had already fired. The side effect was two-fold: (1)
+        // the rejected request was still counted in the
+        // rate-limit window, temporarily throttling a real
+        // follow-up call; (2) the operator saw a token-budget
+        // error in their logs instead of a clean AbortError.
+        // We now surface AbortError consistently and don't
+        // consume the budget for cancelled calls.
+        if (req.signal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
         this.preCallCheck(sessionId, this.estimatePromptTokens(req));
         const out = await port.chat(req);
         if (!out.cacheHit) {
@@ -181,6 +194,11 @@ export class TokenBudget {
   withSession(port: ILLMPort, getSessionId: () => string): ILLMPort {
     return {
       chat: async (req: ChatParams) => {
+        // R2 (W19): same abort pre-check as `wrap()` — see
+        // the rationale there.
+        if (req.signal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
         const sid = getSessionId();
         this.preCallCheck(sid, this.estimatePromptTokens(req));
         const out = await port.chat(req);

@@ -284,18 +284,23 @@ export class WebhookRouter {
     return this.concurrency;
   }
 
-  register(cfg: WebhookConfig): AgentEventWebhook {
-    // L10 (W19): validate the URL at registration time. We do an
-    // async lookup via `assertSafeUrl` (which the web-client
-    // already uses) so a private-range destination is rejected
-    // synchronously (well, by the time the `await` resolves)
-    // before the webhook is stored. We cannot `await` here
-    // because `register()` is sync, so we *fire-and-forget* the
-    // validation and assume the dispatch path's re-check will
-    // catch any race. Operators who want strict registration
-    // validation should call `validateWebhookUrl(cfg.url)` from
-    // the route handler before calling `register`.
-    void this.validateWebhookUrl(cfg.url, cfg.skipSsrfCheck ?? false);
+  /**
+   * M13 (W19): register a webhook, validating the URL *before*
+   * the binding is published. The pre-W19 code did
+   * `void this.validateWebhookUrl(...)` (fire-and-forget) and
+   * synchronously returned 201, so a malicious operator could
+   * register `http://127.0.0.1/admin` and the agent's first
+   * emit() would happily POST the secret payload there while
+   * the SSRF check was still resolving in the background. We
+   * now `await` the validation; the route handler is already
+   * async-compatible (it calls `register` from inside an
+   * Express handler, so awaiting is free).
+   */
+  async register(cfg: WebhookConfig): Promise<AgentEventWebhook> {
+    // Pre-flight: refuse the URL up-front if the SSRF deny-list
+    // flags it. `skipSsrfCheck: true` is an operator override for
+    // an internal proxy that does its own egress allowlist.
+    await this.validateWebhookUrl(cfg.url, cfg.skipSsrfCheck ?? false);
     const w = new AgentEventWebhook(
       cfg,
       this.transport,

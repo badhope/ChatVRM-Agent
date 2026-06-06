@@ -39,6 +39,18 @@ export interface JobOptions {
   priority?: number;
   /** Optional dedupe key — same key re-adding replaces the pending job. */
   jobId?: string;
+  /**
+   * L8 (W19): an optional AbortSignal associated with the
+   * enqueue call. The InProcessQueue records it on the
+   * internal `Job` so the `process` callback can check
+   * `job.signal?.aborted` mid-job and short-circuit. The
+   * BullMQ port persists it as job metadata for the same
+   * reason. Note that this is a *cooperative* signal — the
+   * processor is responsible for actually checking it. A
+   * processor that never `await`s anything synchronous (e.g.
+   * a long CPU loop) will not be interrupted.
+   */
+  signal?: AbortSignal;
 }
 
 export interface Job<T = unknown, R = unknown> {

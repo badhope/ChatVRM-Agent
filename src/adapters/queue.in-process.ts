@@ -32,6 +32,15 @@ import type {
 interface InternalJob extends Job {
   opts: Required<Pick<JobOptions, 'attempts' | 'backoff' | 'priority'>> & JobOptions;
   name: string;
+  /**
+   * L8 (W19): a stored reference to the AbortSignal that
+   * accompanied the enqueue. We retain it (not the cloned
+   * object) so a user-cancel can fire `abort` at any point
+   * during the worker run, and so the `cloneJob` we hand to
+   * the processor carries the live signal. The clone is a
+   * shallow field copy so the signal reference is shared.
+   */
+  abortSignal?: AbortSignal;
 }
 
 export interface InProcessQueueOptions {
@@ -195,6 +204,20 @@ export class InProcessQueue implements IQueue {
     job.attemptsMade++;
     job.processedOn = Date.now();
     this.emitter.emit('active', this.cloneJob(job));
+    // L8 (W19): check the signal *once* on entry, before we
+    // hand the job to the processor. This is the cheapest
+    // possible early-exit for a user that cancelled while
+    // the job sat in `waiting` / `delayed`. We do not abort
+    // an in-flight synchronous CPU loop from here — that's
+    // the processor's job — but a job that hasn't even
+    // started can be skipped immediately.
+    if (job.abortSignal?.aborted) {
+      job.state = 'failed';
+      job.failedReason = 'aborted before start';
+      job.finishedOn = Date.now();
+      this.emitter.emit('failed', this.cloneJob(job), new DOMException('Aborted', 'AbortError'));
+      return;
+    }
     try {
       const result = await proc.fn(this.cloneJob(job));
       job.state = 'completed';
@@ -315,7 +338,17 @@ export class InProcessQueue implements IQueue {
       timestamp: j.timestamp,
       processedOn: j.processedOn,
       finishedOn: j.finishedOn,
-    };
+      // L8 (W19): expose the enqueue-time signal to processors
+      // via a property on the Job. The type is declared as
+      // `AbortSignal | undefined` here even though the
+      // `queue.port.ts` Job interface doesn't list it, so
+      // TypeScript will narrow on the consumer side. We do
+      // the cast to keep the port contract stable — adding
+      // `signal?` to the Job interface would be a wider
+      // API surface change that the existing implementations
+      // don't need to opt into.
+      ...(j.abortSignal ? { signal: j.abortSignal } : {}),
+    } as Job<T>;
   }
 
   async close(): Promise<void> {

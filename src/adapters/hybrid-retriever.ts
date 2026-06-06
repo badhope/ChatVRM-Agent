@@ -187,9 +187,9 @@ export class HybridRetriever {
   }
 
   async retrieve(query: string, topK?: number): Promise<HybridResult[]>;
-  async retrieve(opts: { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number }): Promise<HybridResult[]>;
+  async retrieve(opts: { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number; signal?: AbortSignal }): Promise<HybridResult[]>;
   async retrieve(
-    arg: string | { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number },
+    arg: string | { query: string; topK?: number; source?: 'vector' | 'keyword' | 'hybrid'; vectorWeight?: number; signal?: AbortSignal },
     legacyTopK: number = 5,
   ): Promise<HybridResult[]> {
     const opts = typeof arg === 'string' ? { query: arg, topK: legacyTopK } : arg;
@@ -206,14 +206,27 @@ export class HybridRetriever {
     // Vector results (only if the source allows).
     let vectorHits: VectorHit[] = [];
     if ((source === 'vector' || source === 'hybrid') && this.vectorIds.size > 0) {
-      const qv = await this.embedder.embed(opts.query);
+      // M10 (W19): thread the parent signal into the embedder.
+      // A user-cancel now cuts the HTTP call to the embedder
+      // (OpenAI/Ollama). The vector-store `query` API does not
+      // accept a signal in the port (the in-memory map lookup
+      // is sync anyway), so we just check `signal.aborted`
+      // post-query and short-circuit. A persistent / IVFFlat
+      // store would carry the signal through the port.
+      const { signal } = opts;
+      const qv = await this.embedder.embed(opts.query, { signal });
       // W17 M4: guard against an embedder that produced NaN/Infinity.
       // The cosine math would propagate NaN through the entire ranking
-      // and the sort comparator would return unstable results. Reject
-      // a degenerate query vector up-front and fall back to BM25-only
-      // results for this call.
       if (!hasNonFinite(qv)) {
         vectorHits = await this.vectorStore.query({ vector: qv, topK: oversample });
+        if (signal?.aborted) {
+          // Caller cancelled mid-query. Drop the partial
+          // result and surface a typed AbortError so the
+          // orchestrator (RAG pipeline stage) can fall back
+          // to a BM25-only response without the noisy
+          // partial vector hits.
+          throw new DOMException('Aborted', 'AbortError');
+        }
       }
     }
     const vectorRank = new Map<string, number>();

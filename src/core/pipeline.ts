@@ -75,18 +75,40 @@ export class PipelineEngine {
     return this;
   }
 
-  async run(initialInput: string): Promise<PipelineContext> {
+  async run(initialInput: string, opts?: { signal?: AbortSignal }): Promise<PipelineContext> {
     const startTime = performance.now();
+
+    // M6 (W19): accept an optional per-run AbortSignal and
+    // combine it with the pipeline's own internal cancel
+    // controller. The pre-W19 `run` signature was
+    // `run(initialInput)` only, so a caller (e.g. the agent
+    // HTTP route's SSE handler) had no way to thread its
+    // request-cancel signal into the pipeline. The signal is
+    // attached to the returned `PipelineContext.signal` so
+    // every stage that opts in can short-circuit, and the
+    // internal controller is what the `Promise.race` timeout
+    // path uses to abort any in-flight async work.
+    const parentSignal = opts?.signal;
+    const pipelineSignal = new AbortController();
+    const composedSignal = parentSignal
+      ? AbortSignal.any([parentSignal, pipelineSignal.signal])
+      : pipelineSignal.signal;
 
     const context: PipelineContext = {
       taskId: crypto.randomUUID(),
       input: initialInput,
       errors: [],
-      metadata: {},
+      metadata: { signal: composedSignal },
       createdFiles: [],
       modifiedFiles: [],
       phaseHistory: [],
       shouldConfirm: false,
+      // M6 (W19): put the composed signal on the top-level
+      // `signal` field (L12) so every stage that reads
+      // `ctx.signal` gets a fully-composed, fully-cancellable
+      // signal. We also keep the metadata.signal for the
+      // pre-W18 / L12-aware stages that read from metadata.
+      signal: composedSignal,
     };
 
     this.emitter.emit('pipeline:start', { context });
@@ -102,9 +124,20 @@ export class PipelineEngine {
     // (file writes, cache updates, observability spans) would
     // continue to fire, polluting the run summary. We attach the
     // signal to the *stage* execution by threading it through the
-    // context's `metadata.signal` so stages that opt in to the
-    // signal can short-circuit their work.
-    const stageSignal = new AbortController();
+    // context's top-level `signal` field (L12) and the legacy
+    // `metadata.signal` so pre-L12 stages that read from
+    // `metadata.signal` still see the same controller. M6
+    // (W19): the controller is now `pipelineSignal` (the same
+    // one the composed `composedSignal` was built from) — the
+    // pre-W19 code created a *separate* `stageSignal` here,
+    // which meant the run-level composed signal and the
+    // orchestrator-level signal were different objects, and
+    // stages reading `ctx.signal` would *not* see the
+    // pipeline-timeout abort. That was a real bug: the
+    // `Promise.race` timeout fired `stageSignal.abort()`, but
+    // if the composed signal that the stages were using was
+    // a different controller, the abort wouldn't propagate.
+    const stageSignal = pipelineSignal;
     const timeoutPromise = new Promise<never>((_, reject) => {
       pipelineTimeout = setTimeout(() => {
         timedOut = true;
@@ -373,6 +406,35 @@ export class PipelineEngine {
     this.emitter.emit('stage:start', { stage: stage.name, context });
 
     const stageStart = performance.now();
+    // M6 (W19): the per-stage abort controller is a CHILD of
+    // the pipeline-level controller. The Promise.race timeout
+    // below aborts *this* controller, which propagates back
+    // through the composed signal tree. Without this nesting,
+    // a stage that finished microseconds before the timeout
+    // fired would still see `signal.aborted === true` and
+    // error out, because the parent controller's abort fires
+    // synchronously and is observable in the same tick. The
+    // nested controller is the right place to bound this
+    // specific stage's work.
+    const stageLocalController = new AbortController();
+    const inheritedSignal = context.signal ?? (context.metadata['signal'] as AbortSignal | undefined);
+    if (inheritedSignal) {
+      if (inheritedSignal.aborted) {
+        stageLocalController.abort(inheritedSignal.reason);
+      } else {
+        inheritedSignal.addEventListener(
+          'abort',
+          () => {
+            try {
+              stageLocalController.abort(inheritedSignal.reason);
+            } catch {
+              /* already aborted */
+            }
+          },
+          { once: true },
+        );
+      }
+    }
     const phaseRecord: PhaseRecord = {
       // L8 (W18): the field is named `startTime` but stores a
       // `Date.now()` epoch-millis value, not a `Date` object.
@@ -388,11 +450,34 @@ export class PipelineEngine {
     context.phaseHistory.push(phaseRecord);
 
     try {
-      const stagePromise = stage.execute(context);
+      // M6 (W19): pass the stage-local controller's signal
+      // to the stage via the context. Stages that read
+      // `ctx.signal` (L12) will see a per-stage composable
+      // signal, not the raw pipeline-level one. The stage
+      // timeout below aborts this same controller, so a
+      // `Promise.race` loss cleanly cancels the stage's
+      // in-flight LLM / ReAct work. Pre-W19 the stage never
+      // saw any signal at all; the timeout would just reject
+      // the outer race and the stage's `await` would
+      // continue running until natural completion.
+      const stageSignal = stageLocalController.signal;
+      const ctxWithSignal: PipelineContext = {
+        ...context,
+        signal: stageSignal,
+        metadata: { ...context.metadata, signal: stageSignal },
+      };
+      const stagePromise = stage.execute(ctxWithSignal);
 
       let stageTimeout: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
         stageTimeout = setTimeout(() => {
+          // Abort the stage-local controller so any in-flight
+          // async work inside the stage can short-circuit.
+          try {
+            stageLocalController.abort(new Error(`Stage "${stage.name}" timed out after ${this.stageTimeoutMs}ms`));
+          } catch {
+            /* already aborted */
+          }
           reject(
             new Error(`Stage "${stage.name}" timed out after ${this.stageTimeoutMs}ms`),
           );
