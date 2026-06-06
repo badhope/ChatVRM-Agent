@@ -47,6 +47,25 @@ function getToken(): string | null {
   return null;
 }
 
+/**
+ * H3 (W19): single-shot startup banner. The earlier `warned` flag
+ * is a module-level boolean that gets set on the *first* call and
+ * never re-emitted — which means a server that re-uses the same
+ * process for multiple boots (e.g. `tsx watch`) would silently
+ * suppress the warning on subsequent restarts. We expose a
+ * dedicated function so an explicit "auth startup banner" is
+ * re-emitted on every server boot, and we call it from
+ * `app.ts` / `index.ts` once at boot. The function is idempotent
+ * within a single boot because the first `getToken()` call also
+ * prints the legacy line, so the two paths don't double-print.
+ */
+export function authStartupBanner(): void {
+  const token = process.env[TOKEN_ENV];
+  const hasToken = typeof token === 'string' && token.length > 0;
+  const line = `[auth] ${TOKEN_ENV}=${hasToken ? 'set' : 'UNSET'} (mode=${hasToken ? 'authenticated' : 'open-loopback'})`;
+  process.stderr.write(`${line}\n`);
+}
+
 function getWorkspaceRoots(): string[] {
   const raw = process.env[ALLOWLIST_ENV];
   const fallback = resolvePath(process.cwd());
@@ -93,14 +112,46 @@ function gcBuckets(now: number): void {
     if (v.resetAt < now) buckets.delete(k);
   }
 }
+/**
+ * C7 (W19) / H1 (W19) / H10 (W19): proper LRU eviction.
+ *
+ * JavaScript `Map` preserves insertion order, so the first key in
+ * iteration is the *oldest* entry — the LRU. The earlier
+ * implementation did naive FIFO (`for (k of buckets.keys()) delete(k)`),
+ * which is FIFO, not LRU: an entry that was just touched remained
+ * at the head of the iteration order, and a hot entry that had been
+ * sitting in the map for a long time was evicted first.
+ *
+ * We now:
+ *   1. In `checkRateLimit` (the hit path), delete + re-insert the
+ *      touched bucket so it moves to the *tail* of the map.
+ *   2. In `evictOldest`, iterate from the head and delete the
+ *      oldest entries until the size is back under the cap.
+ *   3. After eviction, assert the size invariant in a `while` loop
+ *      so a single eviction call can never leave the map at
+ *      `cap + 1` if a concurrent goroutine added in the meantime.
+ */
 function evictOldest(targetSize: number): void {
-  // Naive FIFO eviction: drop the first 10% of entries.
-  const dropCount = Math.max(1, Math.floor(targetSize * 0.1));
+  // Evict the oldest 10% of entries (per the pre-W19 heuristic,
+  // preserved here). The while loop guarantees `size <= targetSize`
+  // even if `targetSize` was reduced between calls or other
+  // concurrent code added entries.
+  let dropCount = Math.max(1, Math.floor(targetSize * 0.1));
   let dropped = 0;
   for (const k of buckets.keys()) {
     buckets.delete(k);
     dropped += 1;
     if (dropped >= dropCount) break;
+  }
+  // H10 (W19): belt-and-braces — if a single eviction pass is not
+  // enough (e.g. many entries were added between the size check
+  // and the eviction call), keep dropping until we're back under
+  // the cap. Otherwise the map can grow unbounded if eviction is
+  // racing with high-volume writes.
+  while (buckets.size > targetSize) {
+    const firstKey = buckets.keys().next().value;
+    if (firstKey === undefined) break;
+    buckets.delete(firstKey);
   }
 }
 function checkRateLimit(ip: string): { ok: true } | { ok: false; retryAfter: number } {
@@ -108,15 +159,21 @@ function checkRateLimit(ip: string): { ok: true } | { ok: false; retryAfter: num
   // Opportunistic GC — only do a full scan when the map is large.
   if (buckets.size > BUCKET_HARD_CAP) gcBuckets(now);
   if (buckets.size >= BUCKET_HARD_CAP) evictOldest(BUCKET_HARD_CAP);
-  const bucket = buckets.get(ip);
-  if (!bucket || bucket.resetAt < now) {
+  const existing = buckets.get(ip);
+  if (!existing || existing.resetAt < now) {
     buckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     return { ok: true };
   }
-  if (bucket.count >= RATE_LIMIT_MAX) {
-    return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+  if (existing.count >= RATE_LIMIT_MAX) {
+    return { ok: false, retryAfter: Math.ceil((existing.resetAt - now) / 1000) };
   }
-  bucket.count++;
+  // C7 (W19): touch the bucket on every successful hit so it
+  // moves to the *tail* of the Map and becomes the most recently
+  // used entry. Without this, the iterator-order-based LRU in
+  // `evictOldest` would consider an actively-used IP "stale"
+  // and evict it.
+  buckets.delete(ip);
+  buckets.set(ip, { count: existing.count + 1, resetAt: existing.resetAt });
   return { ok: true };
 }
 
@@ -188,7 +245,31 @@ function clientIp(req: Request): string {
 export function requireAuth(): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
     const token = getToken();
-    if (token === null) return next();
+
+    // H2 (W19): rate-limit every request, regardless of whether
+    // a token is configured. The previous ordering applied the
+    // rate limit only *after* a successful bearer-token check, so
+    // a server running without `PA_API_TOKEN` (the default
+    // "open laptop" mode) had effectively no rate limit: an
+    // attacker could flood `/api/agent/run` until the LLM budget
+    // was exhausted. We now do the IP rate-limit first, then
+    // optionally check the token. The limit is the same in both
+    // cases (120 req/min/IP) so authenticated callers see no
+    // behaviour change.
+    const ip = clientIp(req);
+    const rl = checkRateLimit(ip);
+    if (!rl.ok) {
+      res.setHeader('Retry-After', String(rl.retryAfter));
+      res.status(429).json({ error: 'rate limit exceeded', retryAfter: rl.retryAfter });
+      return;
+    }
+
+    if (token === null) {
+      // No token configured: open mode for local dev. The rate
+      // limit above still bounds concurrent damage.
+      next();
+      return;
+    }
 
     const auth = req.headers['authorization'];
     let presented: string | null = null;
@@ -198,15 +279,6 @@ export function requireAuth(): RequestHandler {
     }
     if (!presented || !safeEqual(presented, token)) {
       res.status(401).json({ error: 'authentication required (Authorization: Bearer <token>)' });
-      return;
-    }
-
-    // Rate limit applies even to authenticated callers.
-    const ip = clientIp(req);
-    const rl = checkRateLimit(ip);
-    if (!rl.ok) {
-      res.setHeader('Retry-After', String(rl.retryAfter));
-      res.status(429).json({ error: 'rate limit exceeded', retryAfter: rl.retryAfter });
       return;
     }
     next();

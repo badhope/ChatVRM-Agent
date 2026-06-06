@@ -85,15 +85,36 @@ export class TokenBudget {
 
   /** Record a single call's usage. Returns the updated total. */
   record(sessionId: string, model: string, usage: ChatResponse['usage']): TokenUsage {
+    // M17 (W19): guard against a missing or malformed `usage`
+    // payload. The pre-W19 code did `usage.promptTokens` and a
+    // missing field would throw `TypeError: Cannot read property
+    // of undefined`. That would propagate up to the LLM adapter
+    // caller (chat.routes / agent.routes) and crash the SSE stream
+    // before the LLM response was even flushed. We now coerce every
+    // field to a number and bail out cleanly with a no-cost record
+    // (i.e. calls is not incremented) if the payload is structurally
+    // invalid (e.g. a streaming event that happened to fire with no
+    // usage at all). We do NOT throw, because an over-aggressive
+    // budget enforcement would tank the user's experience for a
+    // single zero-cost event.
+    const safeUsage = (usage && typeof usage === 'object' ? usage : null) as
+      | { promptTokens?: number; completionTokens?: number; totalTokens?: number }
+      | null;
+    if (safeUsage === null) {
+      return this.get(sessionId);
+    }
+    const prompt = typeof safeUsage.promptTokens === 'number' ? safeUsage.promptTokens : 0;
+    const completion = typeof safeUsage.completionTokens === 'number' ? safeUsage.completionTokens : 0;
+    const total = typeof safeUsage.totalTokens === 'number' ? safeUsage.totalTokens : prompt + completion;
     const price = this.prices.get(model);
     const usd = price
-      ? (usage.promptTokens / 1000) * price.promptPer1k + (usage.completionTokens / 1000) * price.completionPer1k
+      ? (prompt / 1000) * price.promptPer1k + (completion / 1000) * price.completionPer1k
       : 0;
     const cur = this.sessions.get(sessionId) ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0, usd: 0, calls: 0 };
     const next: TokenUsage = {
-      promptTokens: cur.promptTokens + usage.promptTokens,
-      completionTokens: cur.completionTokens + usage.completionTokens,
-      totalTokens: cur.totalTokens + usage.totalTokens,
+      promptTokens: cur.promptTokens + prompt,
+      completionTokens: cur.completionTokens + completion,
+      totalTokens: cur.totalTokens + total,
       usd: cur.usd + usd,
       calls: cur.calls + 1,
     };

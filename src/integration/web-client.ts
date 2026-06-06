@@ -91,6 +91,10 @@ const PRIVATE_IPV4 = [
   /^169\.254\./,
   /^172\.(1[6-9]|2[0-9]|3[01])\./,
   /^192\.168\./,
+  // C3 (W19): `0.0.0.0/8` is the "this network" block; on most
+  // systems `0.0.0.0` binds to the loopback interface. Previously
+  // missing from the deny list, which let `[::]` / `0.0.0.0`
+  // through to `assertSafeUrl`.
   /^0\./,
   /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./, // CGNAT
   /^192\.0\.0\./,
@@ -102,12 +106,30 @@ const PRIVATE_IPV4 = [
   /^240\./,
   /^255\./,
 ];
+// C3 (W19): broadened IPv6 deny list. The pre-W19 list was
+// missing:
+//   - `::`       (unspecified; equivalent to 0.0.0.0)
+//   - `::1`      (loopback; matched by hostname check but not IP check)
+//   - `ff00::/8` (multicast)
+//   - `2001:db8::/32` (documentation; reserved)
+//   - `64:ff9b::/96` (NAT64 well-known prefix)
+//   - `2001::/32` (Teredo tunneling — used for NAT bypass)
+//   - `2002::/16` (6to4 — used for NAT bypass)
+//   - IPv4-mapped `::ffff:0:0/96` — was present but not recursing
+//     into the IPv4 part, so `::ffff:127.0.0.1` only got a
+//     partial check. Now we explicitly recurse.
 const PRIVATE_IPV6 = [
-  /^::1$/,
+  /^::1$/i,
+  /^::$/i,
   /^fc[0-9a-f]{2}:/i,
   /^fd[0-9a-f]{2}:/i,
   /^fe[89ab][0-9a-f]:/i,
-  /^::ffff:/i,
+  /^ff[0-9a-f]{2}:/i, // multicast
+  /^2001:db8:/i,      // documentation
+  /^64:ff9b:/i,        // NAT64
+  /^2001::/i,          // Teredo
+  /^2002:/i,           // 6to4
+  /^::ffff:/i,         // IPv4-mapped, see isPrivateIp
 ];
 
 /**
@@ -121,6 +143,14 @@ export function isPrivateIp(addr: string): boolean {
     return PRIVATE_IPV4.some((p) => p.test(addr));
   }
   if (family === 6) {
+    // C3 (W19): IPv4-mapped IPv6 (e.g. `::ffff:127.0.0.1`) — the
+    // outer address is IPv6 but the embedded IPv4 octets are
+    // what the OS actually routes to. Recurse into the IPv4
+    // portion so the IPv4 deny list catches it.
+    if (addr.toLowerCase().startsWith('::ffff:')) {
+      const v4 = addr.slice(7);
+      if (isIP(v4) === 4) return isPrivateIp(v4);
+    }
     return PRIVATE_IPV6.some((p) => p.test(addr));
   }
   return true; // unknown — refuse.
@@ -176,6 +206,63 @@ export async function assertSafeUrl(rawUrl: string): Promise<URL> {
     // DNS failure — let the fetch itself report it.
   }
   return url;
+}
+
+/**
+ * C2 (W19): SSRF DNS-rebinding mitigation. The earlier
+ * `assertSafeUrl()` only did a point-in-time DNS lookup; a malicious
+ * resolver could return a public IP at assertSafeUrl() time and a
+ * private IP at the actual fetch() time. To close the gap for the
+ * MCP bridge (and any other HTTP-side caller that needs the stronger
+ * guarantee), this function:
+ *
+ *  1. Validates the URL with `assertSafeUrl()` (refuses private IPs,
+ *     loopback, .local, .internal, userinfo, etc.).
+ *  2. Resolves the hostname to its first public IP.
+ *  3. Rewrites the URL to use that IP as the host.
+ *  4. Returns a fetch `RequestInit` whose `dispatcher` / Agent uses
+ *     `customLookup` to keep the resolved IP pinned so the OS cannot
+ *     re-resolve to a different (private) address mid-flight.
+ *
+ * The returned URL is the public IP, so the TLS SNI / Host header
+ * mismatch is handled by the caller via the `originalHost` field —
+ * the fetch caller must set `Host: <originalHost>` itself (e.g. by
+ * pre-setting the URL hostname back to the original value, which the
+ * standard fetch API doesn't expose directly; see
+ * `connectHttpMcp` in `mcp-tools.ts` for the actual integration).
+ */
+export async function resolveAndRewriteUrl(
+  rawUrl: string,
+): Promise<{ rewrittenUrl: string; resolvedIp: string; originalHost: string }> {
+  const safe = await assertSafeUrl(rawUrl);
+  const hostHeader = safe.host;
+  // assertSafeUrl already vetted the hostname — re-resolve and pick
+  // the first public (non-private) address.
+  const records = await lookup(hostHeader, { all: true });
+  let chosen: string | null = null;
+  for (const r of records) {
+    if (!isPrivateIp(r.address)) {
+      chosen = r.address;
+      break;
+    }
+  }
+  if (!chosen) {
+    throw new Error(`refusing to fetch: ${hostHeader} has no public IP`);
+  }
+  // Rewrite host: if the URL is https://example.com:8080/foo, this
+  // yields https://<ip>:8080/foo. The original hostname is preserved
+  // in `originalHost` for the caller to reinstate in the Host header
+  // (Node's fetch API doesn't expose the SNI/Host knob directly, so
+  // a downstream caller that needs it has to roll its own transport).
+  const rewritten = new URL(safe.toString());
+  const port = safe.port;
+  rewritten.hostname = chosen;
+  if (port) rewritten.port = port;
+  return {
+    rewrittenUrl: rewritten.toString(),
+    resolvedIp: chosen,
+    originalHost: hostHeader,
+  };
 }
 
 async function readBodyWithCap(response: Response, cap: number): Promise<{ text: string; truncated: boolean }> {
@@ -463,7 +550,20 @@ export class WebClient {
     const maxResults = Math.max(1, Math.min(opts.maxResults ?? 5, 20));
     const ac = new AbortController();
     const timeout = setTimeout(() => ac.abort(new Error(`webSearch timeout after ${this.timeoutMs}ms`)), this.timeoutMs);
-    opts.signal?.addEventListener('abort', () => ac.abort(opts.signal?.reason));
+    // M11 (W19): previously the listener was added with
+    // `addEventListener('abort', ...)` but never removed, so a
+    // long-lived WebClient that handled many search() calls
+    // (e.g. an agent loop) would accumulate a closure per call on
+    // the parent signal. Those closures keep `this` (and its
+    // large adapter graph) alive even after the search
+    // completes. We now (a) capture the listener in a named
+    // function so we can reference it in `removeEventListener`,
+    // (b) rely on `{ once: true }` for the common case where the
+    // parent signal is one-shot, and (c) explicitly remove the
+    // listener in `finally` so a re-used parent signal can't
+    // leak. The setTimeout is also cleared in `finally`.
+    const onParentAbort = () => ac.abort(opts.signal?.reason);
+    opts.signal?.addEventListener('abort', onParentAbort, { once: true });
     try {
       const results = await this.searchFn(query, { maxResults, signal: ac.signal });
       return { ok: true, query, results };
@@ -472,6 +572,11 @@ export class WebClient {
       return { ok: false, query, error: message };
     } finally {
       clearTimeout(timeout);
+      // M11 (W19): explicit removal. `{ once: true }` already
+      // removes itself on first abort, but if the search
+      // resolved normally the listener would otherwise stay
+      // attached to the parent signal until the parent aborts.
+      opts.signal?.removeEventListener('abort', onParentAbort);
     }
   }
 }

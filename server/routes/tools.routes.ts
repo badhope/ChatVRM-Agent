@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import type { IToolsPort } from '../../src/ports/tools.port.js';
 import type { ILLMPort } from '../../src/ports/llm.port.js';
 import type { IStoragePort } from '../../src/ports/storage.port.js';
@@ -202,6 +203,35 @@ const TEMPLATE_STORE: { items: Map<string, ToolTemplate> } = {
 };
 
 const SNAKE_CASE = /^[a-z][a-z0-9_]{0,40}$/;
+const TEMPLATE_NAME_RE = /^.+$/; // 1-64 chars; full check is in the zod schema below.
+
+/**
+ * H7 (W19): strict zod schema for `POST /api/tools/templates`.
+ * The previous hand-rolled validator only checked `typeof` and
+ * a max-length. It allowed (a) empty `description`, (b) arbitrary
+ * unicode (including control characters and bidi overrides) in
+ * the template name, (c) unbounded `params` array, and (d) any
+ * `id` that the snake-case regex happened to accept but that
+ * still collided with built-in IDs. We centralise the rules
+ * here and use `z.parse()` to return a single 400 with a precise
+ * issue list.
+ */
+const TemplateParamSchema = z.object({
+  name: z.string().min(1).max(40).regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, 'param name must be an identifier'),
+  type: z.enum(['string', 'number', 'boolean', 'array', 'object']),
+  description: z.string().max(200),
+  required: z.boolean().optional().default(false),
+  default: z.unknown().optional(),
+});
+
+const CreateTemplateBodySchema = z.object({
+  id: z.string().min(1).max(40).regex(SNAKE_CASE, 'id must be snake_case (≤40 chars, start with letter)'),
+  name: z.string().min(1).max(64).regex(TEMPLATE_NAME_RE, 'name is required'),
+  description: z.string().min(1).max(2000),
+  category: z.enum(['productivity', 'data', 'dev', 'web', 'misc', 'custom']).optional(),
+  params: z.array(TemplateParamSchema).max(16),
+  instructions: z.string().max(2000).optional(),
+});
 
 function isValidTemplateId(id: string): boolean {
   return SNAKE_CASE.test(id);
@@ -333,44 +363,40 @@ export function toolsRoutes(deps: ToolDeps): Router {
    * Body: { id, name, description, category, params, instructions }
    */
   r.post('/templates', (req: Request, res: Response) => {
-    const body = req.body as {
-      id?: string;
-      name?: string;
-      description?: string;
-      category?: string;
-      params?: unknown;
-      instructions?: string;
-    };
-    const id = typeof body.id === 'string' ? body.id.trim() : '';
-    if (!isValidTemplateId(id)) {
-      res.status(400).json({ error: 'id must be snake_case (≤40 chars, start with letter)' });
+    // H7 (W19): strict zod validation. We surface a 400 with the
+    // first issue so the client can fix the bad field without
+    // round-tripping for each one.
+    const parsed = CreateTemplateBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      res.status(400).json({
+        error: first ? `${first.path.join('.') || '<root>'}: ${first.message}` : 'invalid body',
+        issues: parsed.error.issues.map((i) => ({ path: i.path, message: i.message })),
+      });
       return;
     }
+    const body = parsed.data;
+    const id = body.id;
     if (TEMPLATE_STORE.items.has(id)) {
       res.status(409).json({ error: `template "${id}" already exists` });
       return;
     }
-    if (typeof body.name !== 'string' || body.name.trim().length === 0) {
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
+
     const paramsResult = validateTemplateParams(body.params);
     if (typeof paramsResult === 'string') {
       res.status(400).json({ error: paramsResult });
       return;
     }
-    const category = (['productivity', 'data', 'dev', 'web', 'misc', 'custom'] as const).find(
-      (c) => c === body.category,
-    ) ?? 'custom';
+    const category = body.category ?? 'custom';
 
     const ts = now();
     const tpl: ToolTemplate = {
       id,
-      name: body.name.trim().slice(0, 80),
-      description: typeof body.description === 'string' ? body.description.slice(0, 200) : '',
+      name: body.name.trim().slice(0, 64),
+      description: body.description.slice(0, 2000),
       category,
       params: paramsResult,
-      instructions: typeof body.instructions === 'string' ? body.instructions.slice(0, 600) : '',
+      instructions: body.instructions?.slice(0, 2000) ?? '',
       builtin: false,
       createdAt: ts,
       updatedAt: ts,

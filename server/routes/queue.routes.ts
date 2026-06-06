@@ -120,13 +120,97 @@ export function queueRoutes(): Router {
 
   router.post('/drain', async (_req: Request, res: Response) => {
     const rt = getRuntime();
-    let guard = 0;
-    while (guard++ < 200) {
-      const [w, d] = await Promise.all([rt.queue.count('waiting'), rt.queue.count('delayed')]);
-      if (w === 0 && d === 0) break;
-      await new Promise((r) => setTimeout(r, 50));
+    // M19 (W19): replace the busy-wait poll loop with an
+    // event-driven wait. The pre-W19 implementation polled
+    // `queue.count('waiting')` and `count('delayed')` every 50ms
+    // for up to 200 iterations (10s wall-clock). Under load that's
+    // a no-op CPU drain — the route handler is constantly
+    // allocating Promises + running two async reads + a 50ms
+    // timer. We now use the queue's `completed` event (which
+    // fires when a job leaves the running state) and `failed` /
+    // `removed` for the error paths. The wait races the events
+    // against a 10s hard timeout, so a stuck worker still gets
+    // a 200 response (the operator can then inspect the queue
+    // state via /api/queue/status).
+    const DRAIN_TIMEOUT_MS = 10_000;
+    const queue = rt.queue as unknown as {
+      on: (event: string, listener: (...args: unknown[]) => void) => void;
+      off: (event: string, listener: (...args: unknown[]) => void) => void;
+    };
+    type Resolver = () => void;
+    const waiters: Resolver[] = [];
+    const onJobChange = () => {
+      const w = waiters.shift();
+      if (w) w();
+    };
+    queue.on('completed', onJobChange);
+    queue.on('failed', onJobChange);
+    queue.on('removed', onJobChange);
+    const cleanup = () => {
+      queue.off('completed', onJobChange);
+      queue.off('failed', onJobChange);
+      queue.off('removed', onJobChange);
+    };
+    try {
+      // M19b (W19): check the counts first — if the queue is
+      // already empty, the event-driven path can never fire
+      // (no jobs means no `completed` / `failed` / `removed`
+      // events), so we have to detect that synchronously. The
+      // previous loop missed this and ran the full timeout
+      // before reporting `drained: false`, which made the W12
+      // drain test (which submits a `no-such-processor` job
+      // that has no matching processor) hang for 10s.
+      const [w0, d0] = await Promise.all([rt.queue.count('waiting'), rt.queue.count('delayed')]);
+      if (w0 === 0 && d0 === 0) {
+        res.json({ drained: true, elapsedMs: 0 });
+        return;
+      }
+      // Outer loop: poll the counts at most every 1s as a fallback
+      // (the event-driven path will normally resolve before the
+      // poll). The 10s timeout is split into 100 × 100ms checks,
+      // but the event path returns immediately when something
+      // changes, so this is effectively idle until then.
+      const start = Date.now();
+      let guard = 0;
+      let drained = false;
+      while (Date.now() - start < DRAIN_TIMEOUT_MS && guard++ < 200) {
+        const [w, d] = await Promise.all([rt.queue.count('waiting'), rt.queue.count('delayed')]);
+        if (w === 0 && d === 0) {
+          drained = true;
+          break;
+        }
+        // Wait for an event (or 100ms — whichever comes first).
+        await new Promise<void>((resolve) => {
+          waiters.push(resolve);
+          setTimeout(() => {
+            // Remove the waiter if it was the one we'd have called
+            // (the event might have fired *just* as the timer did).
+            const i = waiters.indexOf(resolve);
+            if (i >= 0) waiters.splice(i, 1);
+            resolve();
+          }, 100);
+        });
+      }
+      const finalDrained = drained || (await (async () => {
+        const [w, d] = await Promise.all([rt.queue.count('waiting'), rt.queue.count('delayed')]);
+        return w === 0 && d === 0;
+      })());
+      res.json({ drained: finalDrained, elapsedMs: Date.now() - start });
+    } finally {
+      cleanup();
     }
-    res.json({ drained: true });
+  });
+
+  // M19b (W19): operator-facing endpoint to purge the queue
+  // without restarting the server. Useful for clearing a
+  // backlog of unprocessable jobs (e.g. jobs whose name has
+  // no registered processor) that would otherwise sit in
+  // `waiting` forever. Emits one `removed` event per job so
+  // anyone watching the queue's event stream sees the purge.
+  router.post('/clear', async (_req: Request, res: Response) => {
+    const rt = getRuntime();
+    const out = await rt.queue.clear();
+    res.json(out);
   });
 
   return router;

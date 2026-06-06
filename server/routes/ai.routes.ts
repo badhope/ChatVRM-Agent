@@ -167,7 +167,21 @@ export function aiRoutes(deps: AIDeps): Router {
       return;
     }
 
-    const resolvedProvider = (provider ?? (await deps.config.getDefaultProvider())) as ProviderType;
+    // L1 (W19): fetch the config (which carries both the
+    // default provider and the default model) once, instead of
+    // issuing two separate awaits. The pre-W19 code did
+    //   const resolvedProvider = ... await deps.config.getDefaultProvider() ...
+    //   ...
+    //   const resolvedModel = ... await deps.config.getChatConfig() ...
+    // which made two round-trips to the config store (each
+    // a `localStorage` read on the browser, or a file read on
+    // the server). We now issue both reads in parallel and
+    // then resolve provider/model from the single snapshot.
+    const [defaultProvider, chatConfig] = await Promise.all([
+      deps.config.getDefaultProvider(),
+      deps.config.getChatConfig(),
+    ]);
+    const resolvedProvider = (provider ?? defaultProvider) as ProviderType;
     const meta = PROVIDER_META.find((p) => p.id === resolvedProvider);
     if (!meta) {
       res.status(400).json({ ok: false, error: `unknown provider "${resolvedProvider}"` });
@@ -191,7 +205,7 @@ export function aiRoutes(deps: AIDeps): Router {
       ?? 'You are a helpful assistant. Respond in clear, well-structured text.';
 
     const resolvedModel = model
-      ?? (await deps.config.getChatConfig())?.model
+      ?? chatConfig?.model
       ?? meta.defaultModel;
 
     const startedAt = Date.now();

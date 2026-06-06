@@ -183,10 +183,33 @@ export class NoopObservability implements IObservability {
     /* no-op */
   }
 
-  /** Test-only: return and clear the captured ring buffer. */
-  drainRecords(): CapturedRecord[] {
+  /**
+   * L6 (W19): read-only accessor. Returns a copy of the
+   * current ring buffer *without* clearing it. Tests that want
+   * to assert on what was captured up to a point in time can
+   * call this to inspect the state and then call
+   * `consume()` to clear it. The pre-W19 test-helper exported
+   * only `drainRecords()` (which both read and cleared), so
+   * the next test that ran would see an empty buffer even if
+   * it expected to see the previous test's leftovers. The
+   * split into `peek` (read) / `consume` (clear) is the
+   * classical queue pattern.
+   */
+  peek(): CapturedRecord[] {
+    return this.ringBuffer.slice();
+  }
+
+  /** Test-only: clear the captured ring buffer and return what was in it. */
+  consume(): CapturedRecord[] {
     const out = this.ringBuffer.slice();
     this.ringBuffer.length = 0;
     return out;
+  }
+
+  /** Test-only: return and clear the captured ring buffer. */
+  drainRecords(): CapturedRecord[] {
+    // L6 (W19): alias for `consume()`. Kept for backward
+    // compatibility with the W18 test suite.
+    return this.consume();
   }
 }

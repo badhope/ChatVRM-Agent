@@ -74,6 +74,19 @@ export interface ReActConfig {
   /** Use streaming chat when supported. Tokens are emitted on the
    *  `react:token` event. Default false (callers opt in). */
   stream?: boolean;
+  /**
+   * L13 (W19): free-form description of the agent's role. When
+   * supplied, the agent prepends it to the system prompt as
+   * `You are a <role> agent that ...`. The previous code
+   * accepted any string (or no string) silently, so a caller
+   * could pass an empty / whitespace / 1 MB string and get
+   * either an unhelpful prompt or a 4 MB chat request that
+   * the LLM provider would reject. We now trim + bound the
+   * length to a realistic 200 chars (matching the system
+   * prompt cap in `chat.routes.ts`) and reject empty input
+   * up-front.
+   */
+  role?: string;
 }
 
 export const DEFAULT_REACT_SYSTEM_PROMPT = `You are a capable agent that solves problems by reasoning step-by-step and calling tools.
@@ -109,7 +122,25 @@ export class ReActAgent {
   private bus: EventEmitter<ReActEvents>;
 
   constructor(cfg: ReActConfig) {
-    this.cfg = cfg;
+    // L13 (W19): normalise + bound the `role` field. The
+    // prompt-construction path will splice it verbatim into
+    // the system prompt, so we trim and cap to 200 chars
+    // before any caller can see the original value. Empty
+    // strings are accepted (they mean "no role override") but
+    // whitespace-only strings are coerced to empty so the
+    // prepended `You are a ... agent that ...` sentence never
+    // contains just spaces. The check is intentionally
+    // permissive on Unicode (an emoji-only role is fine)
+    // — the cap is a hard size limit, not a content filter.
+    if (typeof cfg.role === 'string') {
+      const trimmed = cfg.role.trim();
+      if (trimmed.length > 200) {
+        throw new Error('ReAct: cfg.role exceeds 200 characters after trim');
+      }
+      this.cfg = { ...cfg, role: trimmed };
+    } else {
+      this.cfg = cfg;
+    }
     this.bus = cfg.eventBus ?? new EventEmitter<ReActEvents>();
   }
 

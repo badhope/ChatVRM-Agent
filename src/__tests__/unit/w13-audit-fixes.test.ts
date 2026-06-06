@@ -80,10 +80,14 @@ describe('WebhookRouter bounded concurrency', () => {
       return { ok: true, status: 200, body: '' };
     };
     const router = new WebhookRouter({ bus, transport: slowTransport, concurrency: 2 });
-    router.register({ name: 't', url: 'http://localhost/1', events: ['e'] });
-    router.register({ name: 't2', url: 'http://localhost/2', events: ['e'] });
-    router.register({ name: 't3', url: 'http://localhost/3', events: ['e'] });
-    router.register({ name: 't4', url: 'http://localhost/4', events: ['e'] });
+    // L10 (W19): the W19 SSRF guard rejects `localhost` URLs.
+    // This test uses a custom in-process transport that never
+    // hits the network, so the URL is just an opaque key —
+    // pass `skipSsrfCheck: true` to opt out of the guard.
+    router.register({ name: 't', url: 'http://localhost/1', events: ['e'], skipSsrfCheck: true });
+    router.register({ name: 't2', url: 'http://localhost/2', events: ['e'], skipSsrfCheck: true });
+    router.register({ name: 't3', url: 'http://localhost/3', events: ['e'], skipSsrfCheck: true });
+    router.register({ name: 't4', url: 'http://localhost/4', events: ['e'], skipSsrfCheck: true });
 
     bus.emit('e', {});
     await new Promise((r) => setTimeout(r, 200));

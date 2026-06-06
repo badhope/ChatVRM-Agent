@@ -278,6 +278,29 @@ export class InProcessQueue implements IQueue {
     return j ? this.cloneJob(j) : null;
   }
 
+  /**
+   * M19b (W19): synchronously drain waiting/delayed/active jobs.
+   * Mirrors the BullMQ `Queue.remove()` semantics — the jobs are
+   * gone but their ids are emitted on `removed` so any operator
+   * UI watching the stream can show them as "purged". The
+   * returned count lets the caller report how many were
+   * dropped.
+   */
+  async clear(): Promise<{ removed: number }> {
+    let removed = 0;
+    const all = [...this.waiting, ...this.delayed.map((d) => d.job)];
+    for (const job of all) {
+      if (this.jobs.delete(job.id)) {
+        removed++;
+        this.emitter.emit('removed', this.cloneJob(job));
+      }
+    }
+    this.waiting.length = 0;
+    this.delayed.length = 0;
+    if (removed > 0) this.emitter.emit('drained');
+    return { removed };
+  }
+
   private cloneJob<T = unknown>(j: InternalJob): Job<T> {
     return {
       id: j.id,

@@ -58,7 +58,18 @@ const AgentSpecSchema = z.object({
   role: z.string().min(1),
   goal: z.string().min(1),
   backstory: z.string().optional(),
-  toolNames: z.array(z.string()).optional().default([]),
+  // L15 (W19): cap `toolNames` at 32 to keep a single agent
+  // from pulling in the whole tool registry (which would blow
+  // the prompt budget in `react.agent.run()` and the LLM
+  // schema-validation step in the OpenAI provider). The
+  // previous code accepted any-length array, so a malicious /
+  // buggy caller could request 10k tools and crash the
+  // request with a 4 MB prompt. 32 is well above the
+  // realistic upper bound (the actual tool registry in
+  // `src/integration/tools-setup.ts` ships with 25) and
+  // matches what the registered tool registry itself is
+  // bounded at.
+  toolNames: z.array(z.string()).max(32).optional().default([]),
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxIterations: z.number().int().positive().max(50).optional().default(4),

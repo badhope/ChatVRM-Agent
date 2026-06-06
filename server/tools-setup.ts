@@ -290,14 +290,55 @@ export function registerDefaultTools(opts: Tools): void {
         }
       }
       // path/output positional for ops that need it (sandboxed)
+      // H4 (W19): the sandbox module supports an `allowAbsolute` mode
+      // that re-checks the resolved path against the configured
+      // workspace-roots allowlist (PA_WORKSPACE_ROOTS) — that check
+      // was previously dead code because every tool here called
+      // `sandboxPath(path)` without the option, so the allowlist
+      // branch in sandbox.ts was unreachable. We now opt in, so a
+      // user who points wordProcess at `/srv/data/foo.docx` is
+      // explicitly vetted against the allowlist. The default
+      // behaviour for non-allow-listed callers is still to reject
+      // (the sandbox still returns `ok: false` for paths that don't
+      // resolve under the configured root).
+      //
+      // H9 (W19): explicit mutual-exclusion check. The old code
+      // silently dropped `output` when both `path` and `output`
+      // were set, because the `if/else` branch only kept the
+      // first one. A user who passes both is almost certainly
+      // confused (or, worse, the second value was meant to be a
+      // separate flag). We now return a 400-style error explaining
+      // the conflict instead of letting one path be ignored.
+      if (typeof args.path === 'string' && typeof args.output === 'string') {
+        return { success: false, error: 'wordProcess: pass either `path` or `output`, not both' };
+      }
       if (typeof args.path === 'string') {
-        const safe = sandboxPath(args.path);
+        const safe = sandboxPath(args.path, { allowAbsolute: true });
         if (!safe.ok) return { success: false, error: safe.error };
         cliArgs.push(safe.resolved);
       } else if (typeof args.output === 'string') {
-        const safe = sandboxPath(args.output);
+        const safe = sandboxPath(args.output, { allowAbsolute: true });
         if (!safe.ok) return { success: false, error: safe.error };
         cliArgs.push(safe.resolved);
+      }
+      // M2 (W19): a per-tool AbortController that we link to the
+      // executor stage's signal via the agent pipeline. The agent
+      // stage passes a signal to the tool handler; we honour it
+      // by killing the python child (and its process group) when
+      // the user aborts the run. Without this, a long python
+      // script keeps running for 60s after the user has
+      // disconnected — the timeout above is the only cleanup
+      // path, and that timer doesn't start until the request
+      // reaches us.
+      const abortController = new AbortController();
+      const maybeSignal = (args as { signal?: AbortSignal }).signal;
+      if (maybeSignal) {
+        if (maybeSignal.aborted) {
+          return { success: false, error: 'wordProcess: aborted before start' };
+        }
+        maybeSignal.addEventListener('abort', () => {
+          try { abortController.abort(); } catch { /* ignore */ }
+        }, { once: true });
       }
       return await new Promise<{ success: boolean; output?: string; error?: string }>((res) => {
         // `detached: true` makes the child a process-group leader on
@@ -323,8 +364,20 @@ export function registerDefaultTools(opts: Tools): void {
           killGroup();
           res({ success: false, error: `wordProcess timed out after 60s` });
         }, 60_000);
+        // M2 (W19): if the local AbortController is signalled
+        // (because the agent or HTTP client disconnected), kill
+        // the child immediately and resolve with a clean error
+        // rather than waiting for the 60s timeout.
+        let aborted = false;
+        abortController.signal.addEventListener('abort', () => {
+          if (aborted) return;
+          aborted = true;
+          killGroup();
+          res({ success: false, error: 'wordProcess: aborted by caller' });
+        });
         proc.on('close', (code) => {
           clearTimeout(timer);
+          if (aborted) return; // already resolved
           if (code === 0) {
             // word_process.py always returns a JSON payload on
             // stdout. Surface the parsed object so the agent can
@@ -346,6 +399,7 @@ export function registerDefaultTools(opts: Tools): void {
         });
         proc.on('error', (err) => {
           clearTimeout(timer);
+          if (aborted) return;
           res({ success: false, error: `spawn failed: ${err.message}` });
         });
       });
@@ -390,7 +444,10 @@ export function registerDefaultTools(opts: Tools): void {
             cliArgs.push(flag, v.join(','));
           } else {
             if (PATH_KEYS.has(k) && typeof v === 'string') {
-              const safe = sandboxPath(v);
+              // H4 (W19): see the comment on the wordProcess path/output
+              // branch — we pass `allowAbsolute: true` so the allowlist
+              // check in sandbox.ts actually runs.
+              const safe = sandboxPath(v, { allowAbsolute: true });
               if (!safe.ok) return { success: false, error: safe.error };
               cliArgs.push(flag, safe.resolved);
             } else {
@@ -498,7 +555,11 @@ export function registerDefaultTools(opts: Tools): void {
       const content = explicitContent && explicitContent.length > 0 ? explicitContent : previousOutput;
       if (!filePath) return { success: false, error: 'filePath is required' };
       if (!content) return { success: false, error: 'No content provided (neither args.content nor previous step output)' };
-      const safe = sandboxPath(filePath);
+      // H4 (W19): opt in to the absolute-path allowlist branch so an
+      // operator-configured PA_WORKSPACE_ROOTS is actually consulted
+      // when the tool is given an absolute path. Without this the
+      // sandbox was effectively a "workspace-root only" check.
+      const safe = sandboxPath(filePath, { allowAbsolute: true });
       if (!safe.ok) return { success: false, error: safe.error };
       await storage.write(safe.resolved, content);
       return { success: true, output: `Written ${content.length} bytes to ${safe.resolved}` };
@@ -515,7 +576,10 @@ export function registerDefaultTools(opts: Tools): void {
       const v = parsed.args as { path?: string; filePath?: string };
       const filePath = v.filePath ?? v.path ?? '';
       if (!filePath) return { success: false, error: 'filePath is required' };
-      const safe = sandboxPath(filePath);
+      // H4 (W19): see writeFile above — pass `allowAbsolute: true`
+      // so the operator-configured workspace-root allowlist is
+      // consulted.
+      const safe = sandboxPath(filePath, { allowAbsolute: true });
       if (!safe.ok) return { success: false, error: safe.error };
       if (!(await storage.exists(safe.resolved))) {
         return { success: false, error: `File not found: ${filePath}` };

@@ -166,3 +166,41 @@ export function getRuntime(): Runtime {
   if (!_instance) _instance = new Runtime();
   return _instance;
 }
+
+/**
+ * C6 (W19): drop the cached singleton so the next `getRuntime()`
+ * call returns a fresh instance. Used by the test harness to keep
+ * per-test state isolated — the previous code only had
+ * `_resetWiringForTests()` which nulled the wiring's reference to
+ * the runtime, but the runtime itself was retained, so
+ * event-bus listeners, hydration state, and observability traces
+ * leaked between tests. The reset:
+ *   1. Removes all listeners from the current bus (and the bus of
+ *      the wiring adapter that points at it) so a stale test
+ *      doesn't keep firing events.
+ *   2. Drains the observability ring buffer.
+ *   3. Nulls the singleton so the next `getRuntime()` rebuilds.
+ */
+export function _resetRuntimeForTests(): void {
+  if (_instance) {
+    try {
+      _instance.eventBus.removeAllListeners();
+    } catch {
+      /* ignore */
+    }
+    try {
+      // Drain the observability ring buffer so the next test
+      // starts with an empty trace log.
+      if (typeof _instance.observability.flush === 'function') {
+        void _instance.observability.flush();
+      }
+      const obs = _instance.observability as unknown as { drainRecords?: () => unknown };
+      if (typeof obs.drainRecords === 'function') {
+        obs.drainRecords();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  _instance = null;
+}

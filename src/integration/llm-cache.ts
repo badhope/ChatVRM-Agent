@@ -61,29 +61,63 @@ export class LLMCache {
   }
 
   /** Compute the cache key for a request. */
+  /**
+   * Recursive, type-stable serialiser for cache-key normalisation.
+   *
+   * M16 (W19): the previous `keyOf` used `JSON.stringify` directly,
+   * which (a) blows up on circular references, (b) gives different
+   * strings for `Date`s (`"2025-01-01T00:00:00.000Z"` vs an ISO
+   * string vs a number) and (c) treats `Map`/`Set` as `{}` or `{}`
+   * with no keys. Two semantically-equivalent requests — one
+   * passing `Date.now()` and one passing a fresh `Date(...)` — would
+   * land in different cache buckets, the cache hit-rate metric
+   * drops, and (worse) the agent re-bills the LLM. We now:
+   *   - Detect cycles via a `WeakSet`
+   *   - Coerce `Date` to its `toISOString()` form
+   *   - Sort object keys alphabetically
+   *   - Render `Map` and `Set` as sorted `[k, v]` arrays
+   * The output is a stable string that matches what the on-disk
+   * cache file would contain, so a hit on a process restart
+   * reuses the on-disk entry.
+   */
+  private static stableStringify(v: unknown, seen: WeakSet<object> = new WeakSet()): string {
+    if (v === null) return 'null';
+    if (v === undefined) return 'undefined';
+    const t = typeof v;
+    if (t === 'number' || t === 'boolean') return JSON.stringify(v);
+    if (t === 'string') return JSON.stringify(v);
+    if (t === 'bigint') return JSON.stringify(v.toString());
+    if (t === 'function' || t === 'symbol') return JSON.stringify(String(v));
+    // From here on, `v` is an object. Detect cycles.
+    if (seen.has(v as object)) return '"[Circular]"';
+    seen.add(v as object);
+    if (v instanceof Date) return JSON.stringify(v.toISOString());
+    if (Array.isArray(v)) {
+      return '[' + v.map((x) => LLMCache.stableStringify(x, seen)).join(',') + ']';
+    }
+    if (v instanceof Map) {
+      // Sort by key-string for determinism.
+      const entries = Array.from(v.entries()).map(([k, vv]) => [k, vv] as [unknown, unknown]);
+      entries.sort((a, b) => JSON.stringify(a[0]).localeCompare(JSON.stringify(b[0])));
+      return '[' + entries.map(([k, vv]) => `${LLMCache.stableStringify(k, seen)}:${LLMCache.stableStringify(vv, seen)}`).join(',') + ']';
+    }
+    if (v instanceof Set) {
+      const arr = Array.from(v).map((x) => LLMCache.stableStringify(x, seen));
+      arr.sort();
+      return '[' + arr.join(',') + ']';
+    }
+    // Plain object: sort keys.
+    const obj = v as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    return '{' + keys.map((k) => `${JSON.stringify(k)}:${LLMCache.stableStringify(obj[k], seen)}`).join(',') + '}';
+  }
+
   static keyOf(req: ChatParams): string {
-    const norm = {
-      provider: req.provider ?? null,
-      model: req.model ?? null,
-      temperature: req.temperature ?? 0,
-      maxTokens: req.maxTokens ?? null,
-      toolChoice: req.toolChoice ?? null,
-      parallelToolCalls: req.parallelToolCalls ?? null,
-      // Sampling parameters affect the output distribution; omitting them
-      // would cause cache hits across requests with different sampling,
-      // returning a wrong answer. Include them.
-      topP: req.topP ?? null,
-      presencePenalty: req.presencePenalty ?? null,
-      frequencyPenalty: req.frequencyPenalty ?? null,
-      messages: req.messages.map((m) => ({ role: m.role, content: m.content, toolCallId: m.toolCallId, name: m.name, toolCalls: m.toolCalls })),
-      tools: (req.tools ?? []).map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
-    };
-    // H9 (W18): sha256 hash of the canonical JSON. The old stable
-    // stringifier concatenated keys in-place and produced a single
-    // string the size of the request, which the cache then had to
-    // compare lexicographically on every lookup. The hash is a
-    // 64-char string and constant-time to compare.
-    return createHash('sha256').update(stableStringify(norm)).digest('hex');
+    // M16 (W19): use the stable serialiser. `req.signal` is
+    // deliberately excluded — an AbortSignal is mutable state, not
+    // request identity.
+    const { signal: _signal, ...rest } = req as ChatParams & { signal?: AbortSignal };
+    return LLMCache.stableStringify(rest);
   }
 
   get size(): number { return this.map.size; }
@@ -166,15 +200,50 @@ export class LLMCache {
    * Streaming is always passed through (uncached).
    */
   wrap(port: ILLMPort): ILLMPort {
+    const cachedChat = async (req: ChatParams): Promise<unknown> => {
+      const key = LLMCache.keyOf(req);
+      const hit = this.get(key);
+      if (hit) {
+        // H11 (W19): respect the request's AbortSignal. A cache
+        // hit is a synchronous-style return path — the cost of
+        // re-running the LLM is replaced with a Map lookup, but
+        // a client that has already disconnected should not
+        // receive a "successful" response with content they
+        // will never see. Without this check, a long-poll
+        // client that times out while we were computing the
+        // key would still get the full cached payload back and
+        // (worse) the cache would still record the hit, so
+        // subsequent retries would be falsely cache-hit.
+        if (req.signal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+        return hit;
+      }
+      const out = await port.chat(req);
+      this.set(key, out);
+      return out;
+    };
     return {
-      chat: async (req: ChatParams) => {
-        const key = LLMCache.keyOf(req);
-        const hit = this.get(key);
-        if (hit) return hit;
-        const out = await port.chat(req);
-        this.set(key, out);
-        return out;
-      },
+      chat: cachedChat as ILLMPort['chat'],
+      // H12 (W19): cache `chatExact` too, using the same lookup
+      // table. Without this, the AI route's `chatExact ?? chat`
+      // branch would silently bypass the cache for the
+      // "no-fallback" health-check path, leading to the same
+      // request being billed twice (once via `chat`, once via
+      // `chatExact`) and the cache hit-rate metric being wrong.
+      chatExact: port.chatExact
+        ? (async (req: ChatParams) => {
+            const key = LLMCache.keyOf(req);
+            const hit = this.get(key);
+            if (hit) {
+              if (req.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+              return hit;
+            }
+            const out = await port.chatExact!(req);
+            this.set(key, out);
+            return out;
+          })
+        : undefined,
       stream: port.stream.bind(port),
       // Keep `this` bound to `port` so instance methods like
       // `getBreaker` on the underlying adapter keep working.

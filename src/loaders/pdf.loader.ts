@@ -60,8 +60,42 @@ export class PdfLoader implements Loader {
 
   private async parse(buf: Buffer, source?: string): Promise<Document[]> {
     const parse = await importPdfParse();
-    const result = await parse(buf);
+    // L12 (W19): surface parse failures. The pre-W19 code did
+    // `await parse(buf)` and the surrounding route handler
+    // would log a generic "PDF load failed". The user had no
+    // way to distinguish a "malformed PDF" from a "permission
+    // error" or an "out-of-memory parser crash". We now log
+    // the structured `result` and let the original error
+    // propagate, and add a minimal sanity check (the parser
+    // returning `numpages: 0` is a clear sign that the file
+    // was not parsed as a PDF).
+    let result: PdfParseResult;
+    try {
+      result = await parse(buf);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Surface the source path in the error so an operator
+      // staring at a log line knows which document is the
+      // problem. Don't replace the error — re-throw with the
+      // original cause attached.
+      const wrapped = new Error(`pdf loader: failed to parse ${source ?? '<buffer>'}: ${msg}`);
+      (wrapped as Error & { cause?: unknown }).cause = err;
+      throw wrapped;
+    }
     const text: string = result.text ?? '';
+    // L12 (W19): catch the silent-empty-page case. A
+    // password-protected PDF or a non-PDF file (e.g. someone
+    // renamed a .jpg to .pdf) can produce a `numpages: 0`
+    // result. The pre-W19 loader would happily return an
+    // empty `Document[]` and the chunker would then have
+    // nothing to embed — the user would see a successful
+    // ingestion that retrieved 0 chunks. Throw instead so the
+    // route handler returns 500 with a useful message.
+    if (typeof result.numpages === 'number' && result.numpages <= 0) {
+      throw new Error(
+        `pdf loader: ${source ?? '<buffer>'} parsed to 0 pages (corrupted, encrypted, or non-PDF?)`,
+      );
+    }
     if (!this.perPage) {
       return [
         {

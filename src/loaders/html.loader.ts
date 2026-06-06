@@ -39,7 +39,22 @@ export class HtmlLoader implements Loader {
 
   private parse(raw: string, source?: string): Document[] {
     let text = raw;
+    // Strip comments and CDATA sections.
+    text = text.replace(/<!--[\s\S]*?-->/g, ' ');
+    text = text.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, ' ');
     // Strip script and style blocks.
+    // L4 (W19): a self-closing tag like `<script src=.../>`
+    // (XHTML-style) is intentionally NOT matched by the regex
+    // below — it has no `</script>` end, so the block-replace is
+    // a no-op for that element. The pre-W19 loader would happily
+    // leave the entire body of an XHTML page in the chunk text
+    // if every `<script/>` was self-closed (some embedded
+    // template engines emit that form). The mitigation here is
+    // a follow-up tag-strip: even if a `<script src=.../>` slips
+    // through, the generic `<[^>]+>` replace at line 52 will
+    // remove the tag. Note that the *contents* of any inline
+    // `<script src=...>...</script>` would still be in the text
+    // — operators should consider pre-processing XHTML inputs.
     text = text.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ');
     text = text.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ');
     // Extract title.

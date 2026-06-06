@@ -132,6 +132,19 @@ export function agentsRoutes(): Router {
       res.status(404).json({ error: `agent "${req.params.id}" not found` });
       return;
     }
+    // C4 (W19): built-in agents are immutable. The PATCH handler
+    // used to silently overwrite `systemPrompt` / `role` / `name`
+    // on built-in entries, which let a malicious caller replace
+    // the default-assistant / coder system prompt with a
+    // prompt-injection payload. All subsequent LLM calls would
+    // then inherit the corrupted prompt. Clone the agent (POST
+    // /:id/duplicate) to get a mutable copy.
+    if (a.builtin) {
+      res.status(403).json({
+        error: 'built-in agents are immutable; clone via POST /:id/duplicate to get a mutable copy',
+      });
+      return;
+    }
     const body = req.body as {
       name?: string;
       role?: string;

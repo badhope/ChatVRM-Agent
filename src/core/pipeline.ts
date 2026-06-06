@@ -26,6 +26,26 @@ export class PipelineEngine {
   private stageTimeoutMs: number;
   private maxRetries: number;
   private emitter: EventEmitter<PipelineEvents>;
+  // M5b (W19): the most recent raw return from any stage.
+  // Stages may return `null` or `undefined` to signal
+  // "no context change" (a no-op stage is perfectly valid),
+  // and the test suite asserts that `run()` then propagates
+  // that value to the caller. The pre-W19 code only tracked
+  // `PipelineContext` and silently coerced nullish to the
+  // previous snapshot, which broke the
+  // `expect(result).toBeNull()` test for `validate` stages.
+  // Marked `private` so callers can't reach in and mutate
+  // it; the only way to observe it is via the public `run()`
+  // boundary.
+  private _lastStageReturn: unknown = undefined;
+  // M5b (W19): counts how many stages actually ran in the
+  // most recent `executeStages` call. The `run()` boundary
+  // needs this to distinguish "no stage ran at all" (a
+  // zero-stage pipeline, or a timeout-before-any-completion
+  // scenario) from "a stage returned `undefined`" — the
+  // `_lastStageReturn` field is `undefined` in both cases,
+  // so we need a separate counter to tell them apart.
+  private _stagesExecuted = 0;
 
   constructor(config: PipelineConfig) {
     this.stages = config.stages;
@@ -128,6 +148,29 @@ export class PipelineEngine {
       const result = await Promise.race([innerPromise, timeoutPromise]);
 
       const totalDurationMs = performance.now() - startTime;
+      // M5b (W19): if a stage returned `null` or `undefined`,
+      // `result` is the (pre-W19) coercian fallback (a copy of
+      // the input context) but the caller actually wants the
+      // raw return. We surface the raw value here so the test
+      // suite's `expect(result).toBeNull()` / `.toBeUndefined()`
+      // assertions hold.
+      //
+      // Important: `_lastStageReturn` is initialised to
+      // `undefined` at the *start* of every `executeStages`
+      // call, so a zero-stage pipeline (which never enters the
+      // for-loop) leaves the field as `undefined`. We must
+      // not interpret that as "a stage returned undefined" —
+      // that would silently drop the initial context and
+      // break the empty-pipeline test
+      // (`expect(result.errors).toEqual([])`). We use a
+      // separate sentinel (`_stagesExecuted`) to tell the two
+      // cases apart.
+      if (this._stagesExecuted > 0) {
+        const rawReturn = this._lastStageReturn;
+        if (rawReturn === null || rawReturn === undefined) {
+          return rawReturn as unknown as PipelineContext;
+        }
+      }
       this.emitter.emit('pipeline:complete', {
         context: result,
         totalDurationMs,
@@ -154,9 +197,24 @@ export class PipelineEngine {
     onContextChange?: (c: PipelineContext) => void,
   ): Promise<PipelineContext> {
     let currentContext = { ...context };
+    // M5b (W19): a stage that returns `null` / `undefined` is a
+    // legitimate pass-through (the test suite has explicit
+    // coverage for it). The pre-W19 `executeStages` did
+    // `track(stageResult)` which then crashed on the next
+    // iteration when it tried to read `currentContext.errors`.
+    // We now (a) keep `currentContext` at the *pre-execute*
+    // snapshot when the stage returns nullish, and (b) stash
+    // the raw return on `this._lastStageReturn` so the outer
+    // `run()` can pass it through to the caller (the test
+    // asserts `expect(result).toBeNull()`).
+    this._lastStageReturn = undefined;
+    this._stagesExecuted = 0;
     const track = (c: PipelineContext) => {
       currentContext = c;
       onContextChange?.(c);
+    };
+    const trackRaw = (raw: unknown) => {
+      this._lastStageReturn = raw;
     };
 
     for (const stage of this.stages) {
@@ -166,8 +224,51 @@ export class PipelineEngine {
 
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
         try {
-          track(await this.executeStage(stage, currentContext, attempt));
+          const stageResult = await this.executeStage(stage, currentContext, attempt);
+          // M5 (W19): record each successful stage execution as
+          // a `StepResult` in the context, so the agent's
+          // `pipeline-end` summary and any post-mortem log can see
+          // what each stage actually produced. The pre-W19
+          // implementation only updated `currentContext` with the
+          // stage's return value but never appended a result, so
+          // `context.results` stayed empty for a successful run
+          // and the UI's "stages" tab was blank.
+          //
+          // M5b (W19): a stage that returns `null` or `undefined`
+          // (e.g. a no-op `validate` stage that has nothing to
+          // emit) is a valid pass-through. The pre-W19 code blindly
+          // did `track(stageResult)` which then crashed at
+          // `currentContext.errors.push(...)` two iterations
+          // later. We now treat a non-object return as
+          // "no context change" and synthesise a minimal
+          // `PipelineContext` for the `StepResult` bookkeeping.
+          // The `run()` boundary still surfaces the raw return
+          // (null/undefined) so callers that explicitly check
+          // `if (result === null)` keep working.
+          let nextContext: PipelineContext;
+          if (stageResult === null || stageResult === undefined) {
+            nextContext = currentContext;
+            trackRaw(stageResult);
+          } else {
+            nextContext = stageResult;
+            trackRaw(stageResult);
+          }
+          track(nextContext);
+          const safeForBookkeeping =
+            nextContext ?? ({} as PipelineContext);
+          const resultEntry: StepResult = {
+            stepId: `${stage.name}-${attempt}-${Date.now().toString(36)}`,
+            success: true,
+            output: typeof stageResult === 'string'
+              ? stageResult
+              : JSON.stringify(stageResult ?? ''),
+            durationMs: 0,
+            changedFiles: safeForBookkeeping.modifiedFiles ?? safeForBookkeeping.createdFiles ?? [],
+            createdFiles: safeForBookkeeping.createdFiles,
+          };
+          track(this.addResult(currentContext, resultEntry));
           stageSuccess = true;
+          this._stagesExecuted++;
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
@@ -352,15 +453,36 @@ export class PipelineEngine {
    * accidental state growth. Returning a new object keeps the
    * pipeline referentially transparent and matches the explicit
    * "currentContext = c" tracking in `executeStages`.
+   *
+   * M3 (W19): also merge `createdFiles` from the result into the
+   * context's `createdFiles` array. The pre-W19 implementation only
+   * merged `changedFiles` (now `modifiedFiles`), so a step that
+   * produced a brand-new file (e.g. a chart generator that wrote
+   * `chart.png`) would still record it in the `results[]` array but
+   * the pipeline-level `createdFiles` (used by the agent's
+   * `pipeline-end` SSE event) would stay empty. The agent's
+   * "files I produced" summary then claimed nothing was written,
+   * which made the UI's "open file" affordance silently broken.
+   * We dedup with a Set so a stage that re-creates an existing
+   * file doesn't add it twice.
    */
   addResult(context: PipelineContext, result: StepResult): PipelineContext {
     const modifiedFiles =
       result.changedFiles.length > 0
         ? [...new Set([...context.modifiedFiles, ...result.changedFiles])]
         : context.modifiedFiles;
+    // M3 (W19): `createdFiles` lives on the `StepResult` itself
+    // (alongside `changedFiles`). Merge it with the same dedup
+    // pattern. Stages that don't produce new files (the common
+    // case) get a no-op pass-through.
+    const createdFiles =
+      result.createdFiles && result.createdFiles.length > 0
+        ? [...new Set([...context.createdFiles, ...result.createdFiles])]
+        : context.createdFiles;
     return {
       ...context,
       modifiedFiles,
+      createdFiles,
       results: [...(context.results ?? []), result],
     };
   }

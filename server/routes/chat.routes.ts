@@ -168,6 +168,26 @@ export function chatRoutes(deps: ChatDeps): Router {
       }
     });
 
+    // C5 (W19) / M18 (W19): SSE keep-alive heartbeat. Long LLM
+    // streams can spend 30+ seconds emitting nothing, which makes
+    // intermediaries (nginx, ALB, Cloudflare) silently drop the
+    // connection. We send a `:keep-alive` SSE comment every 15s.
+    // The agent.routes.ts handler ships the same heartbeat
+    // pattern; we replicate it here so /api/chat/stream behaves
+    // the same way.
+    const HEARTBEAT_MS = 15_000;
+    const heartbeat = setInterval(() => {
+      if (aborted || res.writableEnded) return;
+      try {
+        res.write(':keep-alive\n\n');
+      } catch {
+        /* best-effort */
+      }
+    }, HEARTBEAT_MS);
+    const stopHeartbeat = () => clearInterval(heartbeat);
+    res.on('close', stopHeartbeat);
+    res.on('finish', stopHeartbeat);
+
     sseSend(res, 'assistant-start', { id: assistantId, provider: useProvider, model: model ?? meta.defaultModel });
 
     try {
@@ -199,6 +219,31 @@ export function chatRoutes(deps: ChatDeps): Router {
       provider: useProvider,
       model: model ?? meta.defaultModel,
     };
+    // H13 (W19): when the client disconnects mid-stream, the SSE
+    // write of `assistant-end` is the only signal that the loop
+    // ended. The assistant message still gets appended to the
+    // session (so the user sees it on reload), but the content is
+    // truncated. A subsequent turn would have no idea the
+    // previous turn was a user-initiated abort, so the model
+    // would happily continue from a context that looks complete.
+    // We append a system note to the session's history so the
+    // next turn's prompt carries the "[response truncated by
+    // user abort]" annotation. We only do this when the abort
+    // actually happened (so a normal stream end is unaffected).
+    if (aborted) {
+      const note: ChatMessage = {
+        id: randomUUID(),
+        role: 'system',
+        content: '[response truncated by user abort]',
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await deps.sessions.appendMessage(session.id, note);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[chat] abort-note append failed: ${msg}\n`);
+      }
+    }
     await deps.sessions.appendMessage(session.id, assistantMsg);
     sseSend(res, 'assistant-end', { id: assistantId, length: accumulated.length });
 

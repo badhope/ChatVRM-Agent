@@ -65,7 +65,22 @@ export class PersistentVectorStore implements VectorStore {
       const raw = await fs.readFile(this.file, 'utf8');
       const parsed = JSON.parse(raw) as Persisted;
       if (parsed.dim !== this.dim) {
-        throw new Error(`dim mismatch: file=${parsed.dim} store=${this.dim}`);
+        // M7 (W19): refuse to silently proceed with a dim mismatch.
+        // The pre-W19 code logged a warning and continued, which
+        // meant a server started with a 768-dim OpenAI key after
+        // running with a 1536-dim key on the same `path` would
+        // produce a vector file with mismatched dimensions and the
+        // cosine-similarity results would be garbage (NaN, then
+        // silently rejected by Qdrant-style backends). We now
+        // throw with a clear remediation message. The operator
+        // can either (a) re-ingest against the new dim, (b)
+        // back-up and delete the on-disk file, or (c) change the
+        // dim back to match.
+        throw new Error(
+          `vector store dim mismatch: on-disk file at ${this.file} has dim=${parsed.dim} ` +
+            `but adapter is configured for dim=${this.dim}. Either re-ingest or delete the ` +
+            `existing file at ${this.file}.`,
+        );
       }
       // C3 (W18): read either v1 (vector: number[]) or v2
       // (vectorB64: base64). v1 is silently migrated to v2 on the
@@ -137,8 +152,51 @@ export class PersistentVectorStore implements VectorStore {
     };
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.tmp`;
+    // M9 (W19): best-effort cleanup of a stale tmp file from a
+    // previous crash. A leftover `*.tmp` from an interrupted
+    // `fs.rename` (e.g. process killed mid-write) would block
+    // future writes because the next `fs.writeFile(tmp, ...)`
+    // would happily overwrite it, but the parent `this.file`
+    // would be left untouched. We proactively remove it so a
+    // crash-recovery boot starts with a clean slate.
+    try { await fs.unlink(tmp); } catch { /* ENOENT or permission — both are fine */ }
     await fs.writeFile(tmp, JSON.stringify(out), 'utf8');
-    await fs.rename(tmp, this.file);
+    // M8 (W19): the "atomic" rename is only atomic on the same
+    // filesystem. On Windows, `fs.rename` will fail with EPERM
+    // when the source and destination are on different drives —
+    // which is exactly what happens if the data dir is on a
+    // network share or a Docker volume mounted with a different
+    // backing device. We branch on platform: POSIX keeps the
+    // fast `rename` path, Windows falls back to a copy +
+    // unlink so a write can never silently leave the store
+    // half-updated.
+    if (process.platform === 'win32') {
+      try {
+        await fs.copyFile(tmp, this.file);
+      } finally {
+        // M9 (W19): always try to remove the tmp file. A failed
+        // unlink (e.g. the tmp was already removed by a previous
+        // crash) is silently swallowed so the next persist
+        // attempt doesn't see a stale leftover.
+        try { await fs.unlink(tmp); } catch { /* ignore */ }
+      }
+    } else {
+      try {
+        await fs.rename(tmp, this.file);
+      } catch (err) {
+        // M8 (W19): if rename fails on POSIX (e.g. cross-device
+        // link), fall back to copy + unlink so the call still
+        // succeeds.
+        try {
+          await fs.copyFile(tmp, this.file);
+          try { await fs.unlink(tmp); } catch { /* ignore */ }
+        } catch (fallbackErr) {
+          // M9 (W19): clean up tmp on failure too.
+          try { await fs.unlink(tmp); } catch { /* ignore */ }
+          throw err;
+        }
+      }
+    }
     this.dirty = false;
   }
 }

@@ -18,6 +18,28 @@ import type { Document, Loader } from '../../ports/loader.port.js';
 import type { VectorStore } from '../../ports/vector-store.port.js';
 import type { Embedder } from '../../ports/embeddings.port.js';
 
+// C1 (W19): the temp dir is now under the workspace root so the
+// sandbox check accepts it. The pre-W19 test used `/tmp/...`
+// which `sandboxPath` refused because it was outside the
+// workspace. We use a sibling of the project root (resolved
+// absolutely) and register it as a `PA_WORKSPACE_ROOTS` entry
+// via the env, so the sandbox's `allowAbsolute` path is happy.
+const WORKSPACE_ROOT = path.resolve(process.cwd(), '.ingest-test-tmp');
+async function mkTempDir(): Promise<string> {
+  const d = path.join(WORKSPACE_ROOT, `case-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
+  await mkdir(d, { recursive: true });
+  return d;
+}
+
+// C1 (W19): register the temp dir as an allowed root for the
+// lifetime of the test process. The sandbox reads this at call
+// time, so the env override is enough — no module-mock needed.
+if (!process.env['PA_WORKSPACE_ROOTS']) {
+  process.env['PA_WORKSPACE_ROOTS'] = WORKSPACE_ROOT;
+} else if (!process.env['PA_WORKSPACE_ROOTS'].split(':').includes(WORKSPACE_ROOT)) {
+  process.env['PA_WORKSPACE_ROOTS'] = `${process.env['PA_WORKSPACE_ROOTS']}:${WORKSPACE_ROOT}`;
+}
+
 describe('IngestionPipeline', () => {
   let dir: string;
   beforeEach(async () => {
@@ -54,7 +76,10 @@ describe('IngestionPipeline', () => {
       async load() { return [{ text: 'in-memory load', source: 'memo' }]; },
     };
     const pipeline = new IngestionPipeline({ embedder, vectorStore: store, loader });
-    const r = await pipeline.ingestPath(file);
+    // C1 (W19): opt into the wider allowlist (multi-workspace mode)
+    // so the test's /tmp path passes the sandbox check. Tests that
+    // want to assert sandbox enforcement use `sandboxPath` directly.
+    const r = await pipeline.ingestPath(file, undefined, { allowAbsolute: true });
     expect(r.documents).toBe(1);
     expect(r.chunks).toBe(1);
   });
@@ -66,7 +91,7 @@ describe('IngestionPipeline', () => {
     const store = new InMemoryVectorStore(64);
     const chunker = new RecursiveTextChunker({ chunkSize: 50, chunkOverlap: 10 });
     const pipeline = new IngestionPipeline({ embedder, vectorStore: store, chunker });
-    const r = await pipeline.ingestPath(file);
+    const r = await pipeline.ingestPath(file, undefined, { allowAbsolute: true });
     expect(r.documents).toBe(1);
     expect(r.chunks).toBeGreaterThan(0);
     expect(r.errors).toEqual([]);
@@ -79,7 +104,7 @@ describe('IngestionPipeline', () => {
     const store = new InMemoryVectorStore(64);
     const pipeline = new IngestionPipeline({ embedder, vectorStore: store });
     const seen: IngestionProgress[] = [];
-    await pipeline.ingestPath(file, (p) => seen.push({ ...p }));
+    await pipeline.ingestPath(file, (p) => seen.push({ ...p }), { allowAbsolute: true });
     const stages = seen.map((s) => s.stage);
     expect(stages).toContain('load');
     expect(stages).toContain('chunk');
@@ -99,7 +124,7 @@ describe('IngestionPipeline', () => {
       async load() { throw new Error('nope'); },
     };
     const pipeline = new IngestionPipeline({ embedder, vectorStore: store, loader: broken });
-    const r = await pipeline.ingestPath(file);
+    const r = await pipeline.ingestPath(file, undefined, { allowAbsolute: true });
     expect(r.documents).toBe(0);
     expect(r.errors).toHaveLength(1);
     expect(r.errors[0]?.error).toBe('nope');
@@ -135,8 +160,3 @@ describe('IngestionPipeline', () => {
   });
 });
 
-async function mkTempDir(): Promise<string> {
-  const base = path.join(os.tmpdir(), `ingest-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  await mkdir(base, { recursive: true });
-  return base;
-}

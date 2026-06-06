@@ -50,6 +50,14 @@ export interface StepResult {
   error?: string;
   durationMs: number;
   changedFiles: string[];
+  // M3 (W19): track files the step *created* (as opposed to
+  // modified). The pipeline's `createdFiles` accumulator is the
+  // canonical "what did this run produce on disk" record, and a
+  // stage that only fills `changedFiles` will underreport
+  // creation. Pre-W19 the field didn't exist and stages had to
+  // hand-roll `state.createdFiles.push(...)` outside the result
+  // contract.
+  createdFiles?: string[];
 }
 
 export interface Stage {

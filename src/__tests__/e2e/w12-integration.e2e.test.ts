@@ -15,7 +15,7 @@
  * fixture mode that returns a final-answer from the first iteration.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import type { Server } from 'node:http';
 
@@ -218,7 +218,13 @@ describe('W12 server integration: RAG + Webhooks + Queue + Observability + Agent
 
     it('registers a webhook with a stub transport and surfaces it on GET', async () => {
       // Use a localhost endpoint that will never receive a request —
-      // we just need the registration to succeed.
+      // we just need the registration to succeed. L10 (W19):
+      // `skipSsrfCheck: true` is required because the W19 SSRF
+      // guard rejects private/loopback URLs by default, and the
+      // server route (which we exercise here) doesn't expose a
+      // skip flag — the test reaches into the route's internal
+      // path by passing a never-resolving transport instead.
+      // The webhook registration itself is what we're verifying.
       const res = await request(app)
         .post('/api/webhooks')
         .send({
@@ -227,6 +233,7 @@ describe('W12 server integration: RAG + Webhooks + Queue + Observability + Agent
           events: ['react:done'],
           maxAttempts: 1,
           timeoutMs: 200,
+          skipSsrfCheck: true,
         });
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('stub');
@@ -306,6 +313,21 @@ describe('W12 server integration: RAG + Webhooks + Queue + Observability + Agent
   });
 
   describe('POST /api/queue/pause + resume + drain', () => {
+    // M19b (W19): earlier tests in this file submit jobs (e.g.
+    // `no-such-processor`, `lookup-me`) that have no registered
+    // processor, so they sit in `waiting` forever. The W19
+    // drain route now returns `drained: false` when the queue
+    // still has jobs — the W12 implementation was the opposite
+    // (always-true best-effort). The pre-W19 test passed by
+    // accident because the response was unconditional. We now
+    // explicitly purge via the new `queue.clear()` API before
+    // asserting, which both keeps the test isolated and
+    // exercises the new operator-facing endpoint behaviour.
+    beforeEach(async () => {
+      const clear = await request(app).post('/api/queue/clear');
+      expect(clear.status).toBe(200);
+      expect(typeof clear.body.removed).toBe('number');
+    });
     it('flips the paused flag', async () => {
       const pause = await request(app).post('/api/queue/pause');
       expect(pause.status).toBe(200);

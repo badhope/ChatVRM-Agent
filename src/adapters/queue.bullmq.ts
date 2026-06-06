@@ -215,6 +215,39 @@ export class BullMqQueue implements IQueue {
     const j = (await this.queue!.getJob(id)) as BullJob | null;
     return j ? toJob(j) : null;
   }
+  /**
+   * M19b (W19): purge every job from the BullMQ queue. The adapter
+   * doesn't expose a single-shot `drain` on the BullMQ side, so we
+   * page through the non-terminal states and remove each batch.
+   * Each removal emits `removed` on our own emitter so callers
+   * using the IQueueEvents contract still see the purge.
+   */
+  async clear(): Promise<{ removed: number }> {
+    if (!this.queue) return { removed: 0 };
+    let removed = 0;
+    const q = this.queue as unknown as {
+      getJobs: (states: string[], start?: number, end?: number) => Promise<Array<{ id?: string; remove: () => Promise<void> }>>;
+      remove: (id: string) => Promise<void>;
+    };
+    for (const state of ['waiting', 'delayed', 'active', 'paused'] as const) {
+      const jobs = await q.getJobs([state], 0, 1000);
+      for (const job of jobs) {
+        if (!job.id) continue;
+        try {
+          if (typeof job.remove === 'function') {
+            await job.remove();
+          } else {
+            await q.remove(job.id);
+          }
+          removed++;
+        } catch {
+          /* best-effort */
+        }
+      }
+    }
+    if (removed > 0) this.emitter.emit('drained');
+    return { removed };
+  }
   async close(): Promise<void> {
     if (this.worker) await this.worker.close();
     if (this.queue) await this.queue.close();

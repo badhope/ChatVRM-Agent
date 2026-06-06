@@ -70,6 +70,12 @@ export interface IQueueEvents {
   failed: (job: Job, err: Error) => void;
   progress: (job: Job, progress: number) => void;
   error: (err: Error) => void;
+  // M19b (W19): emitted by `queue.clear()` (and by any
+  // future removal path) for each job that was purged. The
+  // caller can use this to log "stale job X dropped" without
+  // having to listen on `drained` and guess which ids were
+  // involved.
+  removed: (job: Job) => void;
   drained: () => void;
   paused: () => void;
   resumed: () => void;
@@ -87,6 +93,15 @@ export interface IQueue {
   /** Number of jobs in the given state (default all). */
   count(state?: JobState): Promise<number>;
   getJob(id: string): Promise<Job | null>;
+  /**
+   * M19b (W19): drop every job in `waiting` / `delayed` /
+   * `active` without running them. Used by the test harness to
+   * keep drain tests isolated, and by `/api/queue/clear` (a
+   * new admin endpoint) to let an operator purge a stuck queue
+   * without restarting the server. Emits `removed` for each
+   * job so listeners on the event stream can see the purge.
+   */
+  clear(): Promise<{ removed: number }>;
   close(): Promise<void>;
 }
 

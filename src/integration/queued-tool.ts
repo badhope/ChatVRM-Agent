@@ -64,7 +64,17 @@ export interface RunAndWaitOptions {
 interface PendingWaiter {
   resolve(v: unknown): void;
   reject(e: Error): void;
+  // H6 (W19) / M5 (W19): distinct from `reject`, a `fail` settlement
+  // turns a worker error into a `{ success: false, error }` result
+  // instead of a real rejected promise. The integration test
+  // contract distinguishes "system failure" (timeout, abort — reject)
+  // from "worker failure" (processor throws — failed ToolResult),
+  // and a single `reject` callback can't satisfy both.
+  fail(e: Error): void;
   timer: ReturnType<typeof setTimeout> | null;
+  /** H6 (W19): single-shot guard for the waiter so concurrent
+   *  timer/abort/done callbacks can only settle the promise once. */
+  settled: boolean;
 }
 
 /**
@@ -118,7 +128,7 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
       if (w) {
         if (w.timer) clearTimeout(w.timer);
         this.waiters.delete(p.id);
-        if (p.error) w.reject(p.error);
+        if (p.error) w.fail(p.error);
         else w.resolve(p.value);
       } else {
         // `done` arrived for a job no one is waiting on — either a
@@ -159,46 +169,67 @@ export class QueuedTool<TArgs = unknown, TResult = unknown> {
     const { jobId } = await this.opts.enqueue(args, this.jobName);
     const timeoutMs = options.timeoutMs ?? this.opts.defaultTimeoutMs ?? 60_000;
     return new Promise<ToolResult>((resolve, reject) => {
-      const w: PendingWaiter = { resolve: () => {}, reject: () => {}, timer: null };
-      const onAbort = () => {
-        // M2 (W18): always clear the timer when abort fires, even
-        // if it had already fired. clearTimeout on a fired timer is
-        // a no-op, so this is safe. We null the reference so a
-        // later `done` event (from a worker that ignored the
-        // abort) cannot accidentally resolve an aborted promise.
+      // H6 (W19): all three settlement paths (timer / abort / done
+      // event) route through a single `finish` helper guarded by a
+      // `settled` flag. Without the guard, a `done` event and a
+      // timer expiry that both fire within the same microtask could
+      // race: the worker callback would `w.resolve` and then the
+      // timer's `reject` would run, leaving the outer promise
+      // in an inconsistent state. The flag makes the second call
+      // a no-op.
+      const w: PendingWaiter = {
+        resolve: () => {},
+        reject: () => {},
+        fail: () => {},
+        timer: null,
+        settled: false,
+      };
+      const finish = (kind: 'resolve' | 'reject' | 'fail', value?: unknown) => {
+        if (w.settled) return;
+        w.settled = true;
         if (w.timer) {
           clearTimeout(w.timer);
           w.timer = null;
         }
+        if (options.signal) options.signal.removeEventListener('abort', onAbort);
         this.waiters.delete(jobId);
-        reject(new Error(`QueuedTool: aborted waiting for ${jobId}`));
+        // H6 (W19) / M5 (W19): three terminal kinds, not two.
+        //
+        //   resolve: the worker returned a value. Wrap as
+        //            `{ success: true, output }`.
+        //   reject:  a *system* failure that is the caller's fault
+        //            (timeout, abort). Surface as a real rejected
+        //            promise so the caller can `try { ... } catch
+        //            (e) { /* user-visible error */ }`. The
+        //            queued-tool.integration.test.ts contract
+        //            ("rejects toThrow /timed out/") requires this.
+        //   fail:    a *worker* failure (processor threw, queue
+        //            report error). Surface as a successful
+        //            ToolResult with `success: false` so callers
+        //            can pattern-match on `success` without a
+        //            try/catch. The w13-audit-fixes contract
+        //            ("resolves with a failed ToolResult when the
+        //            processor throws") requires this.
+        if (kind === 'resolve') {
+          resolve({ success: true, output: typeof value === 'string' ? value : JSON.stringify(value) });
+        } else if (kind === 'fail') {
+          const msg = value instanceof Error ? value.message : String(value);
+          resolve({ success: false, output: '', error: msg });
+        } else {
+          reject(value instanceof Error ? value : new Error(String(value)));
+        }
       };
+      const onAbort = () => finish('reject', new Error(`QueuedTool: aborted waiting for ${jobId}`));
       if (options.signal) {
         if (options.signal.aborted) return onAbort();
         options.signal.addEventListener('abort', onAbort, { once: true });
       }
       w.timer = setTimeout(() => {
-        w.timer = null;
-        this.waiters.delete(jobId);
-        if (options.signal) options.signal.removeEventListener('abort', onAbort);
-        reject(new Error(`QueuedTool: timed out after ${timeoutMs}ms waiting for ${jobId}`));
+        finish('reject', new Error(`QueuedTool: timed out after ${timeoutMs}ms waiting for ${jobId}`));
       }, timeoutMs);
-      w.resolve = (v) => {
-        if (w.timer) {
-          clearTimeout(w.timer);
-          w.timer = null;
-        }
-        if (options.signal) options.signal.removeEventListener('abort', onAbort);
-        resolve({ success: true, output: typeof v === 'string' ? v : JSON.stringify(v) });
-      };
-      w.reject = (e) => {
-        if (w.timer) {
-          clearTimeout(w.timer);
-          w.timer = null;
-        }
-        if (options.signal) options.signal.removeEventListener('abort', onAbort);
-        resolve({ success: false, error: e.message });
-      };
+      w.resolve = (v) => finish('resolve', v);
+      w.reject = (e) => finish('reject', e);
+      w.fail = (e) => finish('fail', e);
       this.waiters.set(jobId, w);
     });
   }

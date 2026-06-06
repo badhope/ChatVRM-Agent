@@ -95,6 +95,31 @@ const STORE: { items: Map<string, Skill> } = {
   items: new Map(BUILTIN_SKILLS.map((s) => [s.id, s])),
 };
 
+// L16 (W19): serialise every read-then-write of the STORE so
+// two concurrent POSTs to `/api/skills/:id/duplicate` (or a
+// POST + DELETE racing) can't both pass the "does the id
+// exist?" check and then both call `.set()`. Express runs
+// route handlers synchronously in the same event-loop turn
+// for in-memory I/O, but the moment a handler does *any*
+// `await` (a future DB call, a log flush, etc.) two requests
+// can interleave. We don't await here, so the lock is
+// effectively a no-op today — but the contract it enforces
+// ("at most one mutation runs at a time") keeps the next
+// person who adds a `await` from silently corrupting the
+// store. The queue is an in-place FIFO; an attempt that
+// arrives while the lock is held is enqueued and runs after
+// the in-flight mutation settles.
+let _storeLock: Promise<void> = Promise.resolve();
+function withStoreLock<T>(fn: () => T): Promise<T> {
+  const release = _storeLock;
+  let resolveNext!: () => void;
+  const next = new Promise<void>((resolve) => {
+    resolveNext = resolve;
+  });
+  _storeLock = next;
+  return release.then(() => fn()).finally(() => resolveNext());
+}
+
 const SLUG_RE = /^[a-z][a-z0-9-]{0,40}$/;
 const ID_RE = /^[a-z][a-z0-9_]{0,40}$/;
 
@@ -131,6 +156,11 @@ export function skillsRoutes(): Router {
   });
 
   r.post('/', (req: Request, res: Response) => {
+    void withStoreLock(() => {
+      doPostSkill(req, res);
+    });
+  });
+  function doPostSkill(req: Request, res: Response): void {
     const body = req.body as {
       id?: string;
       name?: string;
@@ -204,9 +234,14 @@ export function skillsRoutes(): Router {
     };
     STORE.items.set(id, skill);
     res.status(201).json({ ok: true, ...skill });
-  });
+  }
 
   r.patch('/:id', (req, res) => {
+    void withStoreLock(() => {
+      doPatchSkill(req, res);
+    });
+  });
+  function doPatchSkill(req: Request, res: Response): void {
     const s = STORE.items.get(req.params.id);
     if (!s) {
       res.status(404).json({ error: `skill "${req.params.id}" not found` });
@@ -260,9 +295,14 @@ export function skillsRoutes(): Router {
     }
     s.updatedAt = now();
     res.json({ ok: true, ...s });
-  });
+  }
 
   r.delete('/:id', (req, res) => {
+    void withStoreLock(() => {
+      doDeleteSkill(req, res);
+    });
+  });
+  function doDeleteSkill(req: Request, res: Response): void {
     const s = STORE.items.get(req.params.id);
     if (!s) {
       res.status(404).json({ error: `skill "${req.params.id}" not found` });
@@ -274,9 +314,14 @@ export function skillsRoutes(): Router {
     }
     STORE.items.delete(req.params.id);
     res.json({ ok: true, removed: req.params.id });
-  });
+  }
 
   r.post('/:id/duplicate', (req, res) => {
+    void withStoreLock(() => {
+      doDuplicateSkill(req, res);
+    });
+  });
+  function doDuplicateSkill(req: Request, res: Response): void {
     const s = STORE.items.get(req.params.id);
     if (!s) {
       res.status(404).json({ error: `skill "${req.params.id}" not found` });
@@ -306,7 +351,7 @@ export function skillsRoutes(): Router {
     };
     STORE.items.set(newId, cloned);
     res.status(201).json({ ok: true, ...cloned });
-  });
+  }
 
   // Silence unused-var warnings
   void randomUUID; void isSkill;

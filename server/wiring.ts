@@ -136,4 +136,26 @@ export function buildWiring(adapters: WiringAdapters): Wiring {
 /** Drop the cached wiring (tests only). */
 export function _resetWiringForTests(): void {
   cached = null;
+  // C6 (W19) / H14 (W19) / L5 (W19): a single reset entry-point.
+  // The runtime owns state that the wiring depends on (event bus,
+  // observability, vector store hydration), so resetting the wiring
+  // alone leaves a half-initialised cache pointing at a runtime
+  // whose listeners may be firing into a dead wiring. Forward to
+  // the runtime reset for a clean slate. The reset is fire-and-
+  // forget: tests don't need to await the runtime teardown, and
+  // the next `getRuntime()` call re-creates the singleton
+  // synchronously.
+  try {
+    void (async () => {
+      try {
+        const mod = await import('./runtime.js');
+        mod._resetRuntimeForTests?.();
+      } catch {
+        /* ignore — runtime module may not be importable in
+         * some test runners; the wiring reset itself succeeded. */
+      }
+    })();
+  } catch {
+    /* ignore */
+  }
 }

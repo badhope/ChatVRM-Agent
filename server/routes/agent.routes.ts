@@ -41,6 +41,25 @@ function sseSend(res: Response, event: string, data: unknown) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+/**
+ * C5 (W19): write a SSE frame with a try/catch so a single failed
+ * `res.write` (e.g. socket already closed mid-flight) does not crash
+ * the agent loop and prevent the final `pipeline-end` from being
+ * delivered. The function is silent on failure — the surrounding
+ * `finally` in the route handler is responsible for the
+ * `pipeline-end` finalisation. Returns true on success, false on
+ * failure (so callers can short-circuit subsequent writes).
+ */
+function safeWrite(res: Response, event: string, data: unknown): boolean {
+  if (res.writableEnded) return false;
+  try {
+    sseSend(res, event, data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function listWorkspaceFiles(cwd: string, max = 100): Promise<string[]> {
   async function walk(dir: string, depth: number, out: string[]): Promise<void> {
     if (out.length >= max || depth > 3) return;
@@ -231,84 +250,111 @@ export function agentRoutes(deps: AgentDeps): Router {
     let currentCtx: PipelineContext = ctx;
     let failed: string | null = null;
     let failedErr: string | null = null;
+    let pipelineEndSent = false;
 
-    for (const stage of stages) {
-      if (aborted) break;
-      try {
-        currentCtx = await stage.execute(currentCtx);
+    try {
+      for (const stage of stages) {
+        if (aborted) break;
+        try {
+          currentCtx = await stage.execute(currentCtx);
 
-        if (stage.name === 'understand' && currentCtx.intent) {
-          sseSend(res, 'understand', { intent: currentCtx.intent });
-        }
-        if (stage.name === 'plan' && currentCtx.plan) {
-          sseSend(res, 'plan', {
-            steps: currentCtx.plan.map((s) => ({
-              id: s.id,
-              description: s.description,
-              tool: s.tool,
-              status: s.status,
-            })),
-          });
-        }
-        if (stage.name === 'execute') {
-          const files = await listWorkspaceFiles(workdir, 50);
-          sseSend(res, 'workspace', { files });
-        }
-        if (stage.name === 'reflect') {
-          try {
-            await deps.memory.remember({
-              input: task,
-              output: currentCtx.plan?.map((p) => p.result).filter(Boolean).join('\n').slice(0, 1500) ?? '',
-              provider: useProvider,
-              model: model ?? meta.defaultModel,
-              tags: ['agent', currentCtx.intent ?? 'task', useProvider],
-            });
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            process.stderr.write(`[agent] memory write failed: ${msg}\n`);
+          if (stage.name === 'understand' && currentCtx.intent) {
+            safeWrite(res, 'understand', { intent: currentCtx.intent });
           }
+          if (stage.name === 'plan' && currentCtx.plan) {
+            safeWrite(res, 'plan', {
+              steps: currentCtx.plan.map((s) => ({
+                id: s.id,
+                description: s.description,
+                tool: s.tool,
+                status: s.status,
+              })),
+            });
+          }
+          if (stage.name === 'execute') {
+            const files = await listWorkspaceFiles(workdir, 50);
+            safeWrite(res, 'workspace', { files });
+          }
+          if (stage.name === 'reflect') {
+            try {
+              await deps.memory.remember({
+                input: task,
+                output: currentCtx.plan?.map((p) => p.result).filter(Boolean).join('\n').slice(0, 1500) ?? '',
+                provider: useProvider,
+                model: model ?? meta.defaultModel,
+                tags: ['agent', currentCtx.intent ?? 'task', useProvider],
+              });
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              process.stderr.write(`[agent] memory write failed: ${msg}\n`);
+            }
+          }
+        } catch (err) {
+          failed = stage.name;
+          failedErr = err instanceof Error ? err.message : String(err);
+          safeWrite(res, 'stage', { stage: stage.name, status: 'failed', error: failedErr });
+          // M16 (W18): emit a top-level `failed` event in addition to
+          // the per-stage `stage:failed` payload. The client code in
+          // `web-ui/src/...` listens for `failed` to switch the UI
+          // into an error state without having to inspect
+          // `pipeline-end`. Without this top-level event, a route
+          // that crashes *before* the `pipeline-end` is sent (e.g.
+          // a crash in the SSE write itself) leaves the client
+          // stuck on the "running" state forever.
+          safeWrite(res, 'failed', {
+            taskId: ctx.taskId,
+            stage: stage.name,
+            error: failedErr,
+          });
+          break;
         }
-      } catch (err) {
-        failed = stage.name;
-        failedErr = err instanceof Error ? err.message : String(err);
-        sseSend(res, 'stage', { stage: stage.name, status: 'failed', error: failedErr });
-        // M16 (W18): emit a top-level `failed` event in addition to
-        // the per-stage `stage:failed` payload. The client code in
-        // `web-ui/src/...` listens for `failed` to switch the UI
-        // into an error state without having to inspect
-        // `pipeline-end`. Without this top-level event, a route
-        // that crashes *before* the `pipeline-end` is sent (e.g.
-        // a crash in the SSE write itself) leaves the client
-        // stuck on the "running" state forever.
-        sseSend(res, 'failed', {
-          taskId: ctx.taskId,
-          stage: stage.name,
-          error: failedErr,
-        });
-        break;
+      }
+    } catch (err) {
+      // C5 (W19): the stage loop is the only place pipelineEnd is
+      // normally fired; an uncaught throw from a tool or a stage
+      // would skip that path and leave the client spinning. Surface
+      // the error to the SSE stream here so the client always sees
+      // a terminal event.
+      const msg = err instanceof Error ? err.message : String(err);
+      failed = failed ?? 'unknown';
+      failedErr = failedErr ?? msg;
+      safeWrite(res, 'failed', { taskId: ctx.taskId, stage: failed, error: msg });
+    } finally {
+      // C5 (W19): always emit the final pipelineEnd frame, even when
+      // the loop was aborted (client disconnect) or crashed. The
+      // safeWrite helper is a no-op if the response is already
+      // closed, so this is safe to call unconditionally.
+      const endPayload: Record<string, unknown> = {
+        taskId: ctx.taskId,
+        success: !failed && !aborted,
+        failed,
+        error: failedErr,
+        aborted,
+        createdFiles: currentCtx.createdFiles,
+        modifiedFiles: currentCtx.modifiedFiles,
+        phaseHistory: currentCtx.phaseHistory,
+        toolCalls,
+      };
+      if (safeWrite(res, 'pipeline-end', endPayload)) {
+        pipelineEndSent = true;
       }
     }
 
-    sseSend(res, 'pipeline-end', {
-      taskId: ctx.taskId,
-      success: !failed,
-      failed,
-      error: failedErr,
-      createdFiles: currentCtx.createdFiles,
-      modifiedFiles: currentCtx.modifiedFiles,
-      phaseHistory: currentCtx.phaseHistory,
-      toolCalls,
-    });
-
-    if (failed) {
-      incrementAgentRun();
-      updateEmotionFromInteraction({ intensity: 8, name: 'frustrated' });
-    } else {
-      incrementAgentRun();
-      updateEmotionFromInteraction({ intensity: 12, name: 'confident' });
+    if (pipelineEndSent) {
+      if (failed) {
+        incrementAgentRun();
+        updateEmotionFromInteraction({ intensity: 8, name: 'frustrated' });
+      } else {
+        incrementAgentRun();
+        updateEmotionFromInteraction({ intensity: 12, name: 'confident' });
+      }
     }
 
-    res.end();
+    try {
+      res.end();
+    } catch {
+      // Best-effort: socket may already be closed by the client.
+    }
   });
 
   return r;

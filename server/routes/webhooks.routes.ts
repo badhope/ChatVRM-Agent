@@ -22,6 +22,13 @@ const RegisterSchema = z.object({
   maxAttempts: z.number().int().positive().max(20).optional().default(3),
   timeoutMs: z.number().int().positive().max(60_000).optional().default(5000),
   queueMode: z.boolean().optional().default(false),
+  // L10 (W19): when the caller passes `skipSsrfCheck: true`,
+  // the URL is accepted even if it points at a private / loopback
+  // address. The route forwards the flag to the WebhookRouter
+  // so the L10 fire-and-forget validation does not reject the
+  // registration. Use only for in-process tests; production
+  // callers should set this to `false` (or omit it).
+  skipSsrfCheck: z.boolean().optional().default(false),
 });
 
 const TestSchema = z.object({

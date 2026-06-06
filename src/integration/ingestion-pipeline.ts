@@ -21,6 +21,7 @@ import type { VectorRecord, VectorStore } from '../ports/vector-store.port.js';
 import type { RecursiveTextChunker } from '../adapters/text-chunker.js';
 import { AutoLoader } from '../loaders/auto.loader.js';
 import type { Loader, Document } from '../ports/loader.port.js';
+import { sandboxPath } from '../shared/sandbox.js';
 
 export interface IngestionOptions {
   embedder: Embedder;
@@ -80,6 +81,48 @@ function dedupSourceLabel(a: string | undefined, b: string | undefined): string 
   return ax || bx || '<unknown>';
 }
 
+/**
+ * H8 (W19): process-wide semaphore for ingestion concurrency.
+ * We use a chained-promise wait list so callers awaiting a
+ * slot don't busy-loop. The cap is intentionally modest (4) —
+ * a flood of concurrent ingestions would otherwise pin all
+ * CPU cores on embedding work and starve the LLM call the
+ * agent may be making in parallel.
+ */
+class IngestSemaphore {
+  private active = 0;
+  private waiters: Array<() => void> = [];
+  constructor(private readonly max: number) {}
+  async acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active++;
+      return;
+    }
+    return new Promise<void>((resolve) => this.waiters.push(resolve));
+  }
+  release(): void {
+    this.active = Math.max(0, this.active - 1);
+    const next = this.waiters.shift();
+    if (next) {
+      this.active++;
+      next();
+    }
+  }
+}
+
+const ingestSemaphore = new IngestSemaphore(4);
+
+export function _resetIngestSemaphoreForTests(): void {
+  // Drain active and pending waiters. Used by the test harness
+  // to keep per-test state isolated.
+  while ((ingestSemaphore as unknown as { active: number }).active > 0) {
+    ingestSemaphore.release();
+  }
+  const w = (ingestSemaphore as unknown as { waiters: Array<() => void> }).waiters;
+  for (const resolve of w) resolve();
+  w.length = 0;
+}
+
 export class IngestionPipeline {
   private readonly embedder: Embedder;
   private readonly vectorStore: VectorStore;
@@ -106,24 +149,77 @@ export class IngestionPipeline {
   /**
    * Ingest one file. Useful as the CLI primitive (`ingest <file>`)
    * and inside a streaming ETL that watches a directory.
+   *
+   * C1 (W19): the path is sandboxed through `sandboxPath` before
+   * the loader sees it. Previously the loader received the raw
+   * caller-supplied path and read whatever the process had
+   * permission to read, including `/etc/passwd`, the user's SSH
+   * keys, and the keychain sqlite blob. The default is to refuse
+   * absolute paths outside the workspace; a caller that needs the
+   * wider allowlist (multi-workspace mode) passes
+   * `{ allowAbsolute: true }` via `sandboxPathOpts` below.
    */
-  async ingestPath(path: string, onProgress?: (p: IngestionProgress) => void): Promise<IngestionResult> {
+  async ingestPath(
+    path: string,
+    onProgress?: (p: IngestionProgress) => void,
+    sandboxPathOpts: { allowAbsolute?: boolean } = {},
+  ): Promise<IngestionResult> {
+    // H8 (W19): gate every ingest call through the global
+    // semaphore. We acquire *before* the sandbox check so a
+    // malicious caller can't starve the limiter by passing a
+    // path that would otherwise be rejected — instead, even a
+    // refused path consumes a slot for as long as it takes to
+    // run the sandbox check (microseconds), keeping the back-
+    // pressure honest. The slot is released in `finally` so
+    // exceptions don't leak it.
+    await ingestSemaphore.acquire();
+    try {
+      return await this._ingestPathInner(path, onProgress, sandboxPathOpts);
+    } finally {
+      ingestSemaphore.release();
+    }
+  }
+
+  private async _ingestPathInner(
+    path: string,
+    onProgress: ((p: IngestionProgress) => void) | undefined,
+    sandboxPathOpts: { allowAbsolute?: boolean },
+  ): Promise<IngestionResult> {
     const t0 = performance.now();
     const errors: Array<{ document: string; error: string }> = [];
 
-    onProgress?.({ stage: 'load', current: 0, total: 1, detail: path });
+    // C1 (W19): sandbox the path before any FS work. The resolved
+    // path is what the loader actually reads, not the caller
+    // string. The error surface here is the same as
+    // `writeFile blocked:` — the loader never sees an unsafe
+    // path, so a malicious LLM output cannot exfiltrate files
+    // through the document ingestion path.
+    const safe = sandboxPath(path, sandboxPathOpts);
+    if (!safe.ok) {
+      onProgress?.({ stage: 'done', current: 0, total: 1, detail: 'path blocked' });
+      return {
+        documents: 0,
+        chunks: 0,
+        vectors: 0,
+        errors: [{ document: path, error: safe.error }],
+        durationMs: Math.round(performance.now() - t0),
+      };
+    }
+    const safePath = safe.resolved;
+
+    onProgress?.({ stage: 'load', current: 0, total: 1, detail: safePath });
     let documents: Document[];
     try {
-      documents = await this.loader.load(path);
+      documents = await this.loader.load(safePath);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      errors.push({ document: path, error });
+      errors.push({ document: safePath, error });
       onProgress?.({ stage: 'done', current: 1, total: 1, detail: 'load failed' });
       return { documents: 0, chunks: 0, vectors: 0, errors, durationMs: Math.round(performance.now() - t0) };
     }
     onProgress?.({ stage: 'load', current: 1, total: 1, detail: `${documents.length} document(s)` });
 
-    const result = await this.ingestDocuments(documents, onProgress, path);
+    const result = await this.ingestDocuments(documents, onProgress, safePath);
     return {
       documents: documents.length,
       chunks: result.chunks,

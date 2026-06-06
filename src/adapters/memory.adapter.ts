@@ -48,6 +48,16 @@ export class MemoryAdapter implements IMemoryPort {
   private _totalTokens: number = 0;
   private _cachePromise: Promise<MemoryRecord[]> | null = null;
 
+  // M14 (W19): secondary index from record-id → cache position.
+  // The pre-W19 `forget(id)` did a linear `this._cache.find(...)`
+  // over every cached record. With MAX_RECORDS=1000 a forget was
+  // O(N) in cache size, which is fine for a single call but
+  // became a hot path when the agent loop consolidated many
+  // memory writes per task. The index is rebuilt whenever the
+  // cache is rebuilt (`getCachedRecords`); writes (remember /
+  // forget) keep it in sync.
+  private _idIndex: Map<string, number> | null = null;
+
   private async ensureInit(): Promise<void> {
     if (this.initialized) return;
     if (this._initializing) {
@@ -168,8 +178,38 @@ export class MemoryAdapter implements IMemoryPort {
       // consistent with the on-disk state. We *append* to the
       // cache so `recall()` doesn't have to walk the disk.
       if (this._cache) {
-        this._cache.push(full);
-        this._cache.sort((a, b) => b.timestamp - a.timestamp);
+        // M14 (W19): the cache is sorted by timestamp
+        // descending, so the right place to insert is the first
+        // position whose timestamp is older than the new
+        // record. We splice there (so the array stays sorted)
+        // and update the id index accordingly. A linear `push`
+        // followed by `sort` would be O(N log N) per write
+        // and would require a full index rebuild; a binary
+        // search + splice is O(log N) + O(N) for the tail-
+        // shift, which matches the cost of the sort-based
+        // approach but avoids the O(N) index rebuild.
+        const ts = full.timestamp;
+        let lo = 0;
+        let hi = this._cache.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if ((this._cache[mid] as MemoryRecord).timestamp > ts) lo = mid + 1;
+          else hi = mid;
+        }
+        const insertAt = lo;
+        this._cache.splice(insertAt, 0, full);
+        // Rebuild the tail of the id index (positions >= insertAt)
+        // and add the new entry. We do this unconditionally
+        // because (a) `this._idIndex` is null if the cache has
+        // never been read, in which case the next read will
+        // rebuild it from scratch, and (b) a partial index is
+        // worse than no index because lookups would return
+        // stale positions.
+        if (this._idIndex) {
+          for (let i = insertAt; i < this._cache.length; i++) {
+            this._idIndex.set(this._cache[i]!.id, i);
+          }
+        }
       } else {
         this._cache = [full];
       }
@@ -230,11 +270,28 @@ export class MemoryAdapter implements IMemoryPort {
    * (`remember`, `forget`, `update`, `consolidate`).
    */
   private async getCachedRecords(): Promise<MemoryRecord[]> {
-    if (this._cache) return this._cache;
+    if (this._cache) {
+      // M14 (W19): lazily rebuild the id index on first read so
+      // the index is always ready by the time the first forget
+      // runs. The cost is O(N) once per cache lifetime.
+      if (!this._idIndex) {
+        this._idIndex = new Map();
+        for (let i = 0; i < this._cache.length; i++) {
+          this._idIndex.set(this._cache[i]!.id, i);
+        }
+      }
+      return this._cache;
+    }
     if (this._cachePromise) return this._cachePromise;
     this._cachePromise = (async () => {
       const records = await this.loadAllRaw();
       this._cache = records;
+      // M14 (W19): rebuild the id index immediately on cold cache
+      // load, so the first forget after boot is O(1).
+      this._idIndex = new Map();
+      for (let i = 0; i < records.length; i++) {
+        this._idIndex.set(records[i]!.id, i);
+      }
       // Re-derive the token counter if the cache was cold — this
       // catches the case where a process imports a hand-edited
       // corpus.
@@ -264,7 +321,16 @@ export class MemoryAdapter implements IMemoryPort {
       const filePath = path.join(MEMORY_DIR, `${id}.json`);
       // W17 M2: track the record we're removing so we can update
       // the running token counter.
-      const removed = this._cache?.find((r) => r.id === id) ?? null;
+      // M14 (W19): look up the record position via the id index
+      // instead of a linear scan. The index is rebuilt on cache
+      // load and is kept in sync by `remember`/`forget`/`update`.
+      // We still call `getCachedRecords()` to warm the cache
+      // and the index in case no one has read the cache yet.
+      await this.getCachedRecords();
+      const idx = this._idIndex?.get(id);
+      const removed = idx !== undefined && idx >= 0 && idx < (this._cache?.length ?? 0)
+        ? (this._cache as MemoryRecord[])[idx] ?? null
+        : null;
       try {
         await fs.unlink(filePath);
       } catch (err) {
@@ -272,6 +338,20 @@ export class MemoryAdapter implements IMemoryPort {
           return false;
         }
         throw err;
+      }
+
+      // M14 (W19): keep the id index in sync with the cache
+      // array. After splicing `idx` out of the array, every
+      // later position's stored index is off-by-one, so we
+      // decrement those entries. This is O(amortised) because
+      // the splice is followed by a tail-rewrite that touches
+      // each entry exactly once.
+      if (idx !== undefined && this._cache && this._idIndex) {
+        this._cache.splice(idx, 1);
+        for (let i = idx; i < this._cache.length; i++) {
+          this._idIndex.set(this._cache[i]!.id, i);
+        }
+        this._idIndex.delete(id);
       }
 
       if (this.searchEngine) {
@@ -386,17 +466,34 @@ export class MemoryAdapter implements IMemoryPort {
       // the cache to be filtered by *un-unlinked* ids, desyncing
       // memory and disk until the next restart.
       const unlinkedIds = new Set<string>();
-      for (const record of toRemove) {
-        try {
-          await fs.unlink(path.join(MEMORY_DIR, `${record.id}.json`));
-          unlinkedIds.add(record.id);
-          totalTokensRemoved += tokensFor(record);
-        } catch {
-          // W17 M1 / C8: keep search index consistent with disk. If
-          // the disk delete failed we MUST NOT remove from the
-          // search index, otherwise we'd return a hit that the user
-          // can no longer read. Skip the id from `unlinkedIds`.
-        }
+      // M15 (W19): batch the unlinks. The pre-W19 implementation
+      // fired one `fs.unlink` per record, in series. For a
+      // 30-day-old corpus with the MAX_RECORDS=1000 cap reached,
+      // that's 1000 sequential round-trips to the FS. We
+      // chunk them into batches of 64 and run each batch with
+      // `Promise.all` so a slow disk doesn't dominate the call.
+      // We deliberately keep the per-call shape (each call still
+      // touches every record, just in parallel), because the
+      // consolidation output is bounded by the FS latency on a
+      // single user machine, not by CPU.
+      const UNLINK_BATCH = 64;
+      for (let i = 0; i < toRemove.length; i += UNLINK_BATCH) {
+        const batch = toRemove.slice(i, i + UNLINK_BATCH);
+        await Promise.all(
+          batch.map(async (record) => {
+            try {
+              await fs.unlink(path.join(MEMORY_DIR, `${record.id}.json`));
+              unlinkedIds.add(record.id);
+              totalTokensRemoved += tokensFor(record);
+            } catch {
+              // W17 M1 / C8: keep search index consistent with
+              // disk. If the disk delete failed we MUST NOT
+              // remove from the search index, otherwise we'd
+              // return a hit that the user can no longer read.
+              // Skip the id from `unlinkedIds`.
+            }
+          }),
+        );
       }
 
       if (this.searchEngine && unlinkedIds.size > 0) {
@@ -412,6 +509,15 @@ export class MemoryAdapter implements IMemoryPort {
       // NOT the original `toRemove` array.
       if (this._cache) {
         this._cache = this._cache.filter((r) => !unlinkedIds.has(r.id));
+        // M14 (W19): rebuild the id index after a batched
+        // removal. `filter` produces a new array, so every
+        // stored position is off. A full rebuild is O(N) and
+        // only runs once per consolidate, so the amortised
+        // cost is negligible.
+        this._idIndex = new Map();
+        for (let i = 0; i < this._cache.length; i++) {
+          this._idIndex.set(this._cache[i]!.id, i);
+        }
       }
       this._totalTokens = Math.max(0, this._totalTokens - totalTokensRemoved);
 

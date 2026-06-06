@@ -77,7 +77,25 @@ export class CircuitBreaker {
     // public API; it is, however, the documented hook for the exact
     // use-case of "I aborted this call, please don't count it as a
     // failure".
-    (this.breaker as unknown as { success: () => void }).success();
+    //
+    // L2 (W19): wrap the type-asserted call in a try/catch. A future
+    // opossum upgrade could rename or remove `success`, and the
+    // `as unknown as` cast would then throw at runtime — and that
+    // throw would propagate up to the agent caller, turning a
+    // benign "abort" into a hard error. We swallow the failure and
+    // emit a one-shot warning so an operator can spot the version
+    // mismatch in the logs.
+    try {
+      (this.breaker as unknown as { success: () => void }).success();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!(this as unknown as { _compensateWarned?: boolean })._compensateWarned) {
+        (this as unknown as { _compensateWarned?: boolean })._compensateWarned = true;
+        process.stderr.write(
+          `[circuit-breaker] compensate() failed (opossum API drift?): ${msg}\n`,
+        );
+      }
+    }
   }
 
   getState(): CircuitState {
