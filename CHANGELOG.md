@@ -44,6 +44,43 @@ predates v2.0.
 - Replaced repetitive tutorial-style code in `examples/04-tool-execution.ts` with a loop over a tool/args table
 - Added `.trae/`, `.cursor/`, `.ai/`, `.claude/` to `.gitignore` so AI-assistant session metadata never lands in the repo
 
+### W17 — Deep audit (pass 1)
+- 13 high + 14 medium + 6 low findings remediated
+- Vector store hardening: `PersistentVectorStore` now uses temp-file + atomic `rename` for `persist()`, holds a `Promise`-mutex so concurrent writes cannot interleave, flushes on `SIGTERM` / `beforeExit` so container restarts don't lose the last batch
+- Ingestion pipeline: per-batch try/catch around `embedder.embedBatch` with a length check so a misbehaving embedder cannot push `undefined` vectors into the store; per-instance monotonic `idCounter` mixed into chunk IDs to guarantee cross-run uniqueness; bounded output size with `MAX_OUTPUT_BYTES`
+- ReAct agent: tool name validation, argument schema validation, replan on validation failure, depth cap with a single `final` action enforcement, per-call timeout
+- Trust gate: domain + path + argument validation; per-rule cap (`maxMatches`); `readFileSafe` with size cap
+- Mermaid/dot sanitisation: now strips event handlers (`onclick=`, `onerror=`, `onload=`, `onmouseover=`), `javascript:` URLs, data-URI scripts, raw `<script>` and `<iframe>` tags before SVG render
+- LLM cache: typed `cachedChat` / `cachedChatExact` wrappers with both read-side and write-side `signal.aborted` checks so a cancelled request never resolves a cached value
+- Port contract: `IQueue` got `removed` + `done` events and a `clear()` method; `InProcessQueue` and `BullMqQueue` implement both; new `POST /api/queue/clear` route for the dashboard
+- Skill loaders (`csv`, `json`, `html`, `pdf`, `text`) all apply a size cap via the shared `size-cap.ts` helper with a per-format `PA_<FORMAT>_LOADER_MAX_BYTES` env var (25 MB default)
+
+### W18 — Deep audit (pass 2)
+- 8 critical + 17 high + 23 medium + 14 low findings remediated
+- Webhook delivery: fire-and-forget SSRF pre-check at registration time, exponential backoff with jitter, per-webhook concurrency slot (`withSlot`), typed `WebhookDeliveryError` so callers can distinguish 4xx (no retry) from 5xx (retry)
+- LLM cache: `keyOf` now uses a stable `stableStringify` (sorted keys) so `{a:1,b:2}` and `{b:2,a:1}` produce the same key; also key by `requestId` if the caller provides one for `cachedChatExact`
+- Token budget: distinguishes "rate-limited" from "hard-cap-exceeded"; records the actual `usage` only when `cacheHit === false` so a cache hit doesn't double-count
+- Pipeline: per-stage timeout aborts the stage-local `AbortController`, which is wired into every async call; pre-W18 the timeout was a `Promise.race` that rejected but the in-flight LLM call had no way to know
+- ReAct: max iterations enforced; per-iteration LLM call gets a fresh `AbortController` with a per-iteration timeout; plan-validation errors degrade gracefully instead of throwing
+- Web-client: bounded response size (`MAX_DOWNLOAD_BYTES`), per-host rate limit, retry with backoff for 429/5xx, schema validation for the JSON content-mode path
+- MCP server bridge: per-client `initialize` handshake with capability advertisement; tool registrations mirror the local port; `tools/call` returns `{content:[{type:'text',...}], isError?:true}`
+
+### W19 — Deep audit (pass 3)
+- 7 critical + 14 high + 19 medium + 16 low findings remediated in `4b127e2`
+- W19 final cleanup in `3aa58e7` filled in the M-tier (`M4, M6, M10, M12, M13`) and L-tier (`L3, L4, L6, L7, L8, L12, L14`) gaps that the W19 commit message claimed but didn't ship, plus three new findings from a follow-up audit (resilient-llm固化signal, token-budget signal pre-check, dead `stableStringify`)
+- Embedder port: `embed` / `embedBatch` now accept `opts?: { signal?: AbortSignal }`; OpenAI and Ollama adapters combine the caller's signal with a per-call timeout (`AbortSignal.any`) so a hang on the embed endpoint gets killed either when the user cancels or when the per-call deadline fires; Hashing embedder checks the signal once per batch
+- Pipeline context: top-level `signal` field (L12) populated from the SSE route's `AbortController.signal`; per-stage controller aborts when the parent does *and* when the stage timeout fires
+- Webhooks: `register()` is now `async`; it `await`s the SSRF pre-check before binding the webhook to the bus. The pre-W19 code did `void validateWebhookUrl(...)` and synchronously returned 201, so a malicious URL would silently start receiving events. The route handler surfaces a 400 with the underlying SSRF error.
+- ReAct tool signal: `IToolsPort.execute(name, args, opts?)` accepts a signal; `ToolDefinition.handler(args, opts?)` is the matching second-arg signature; `ReActAgent` forwards `this.cfg.signal` to every tool call
+- QueuedTool: `run(args, opts?)` accepts a signal; the `InProcessQueue` stashes it on the internal `Job` and clones it onto the `Job` the processor receives; `runJob` early-fails with an `AbortError` if the signal is already aborted at pickup
+- MCP tools: `MCPClient.callTool(name, args, opts?)` now accepts `{ signal?, timeoutMs? }` (60s default) composed via `AbortSignal.any` and wired into the underlying `request()` so a user-cancel propagates back into the JSON-RPC request map
+- Resilient LLM: `wrap()` composes the boot-time `this.signal` with the per-request `req.signal` via `AbortSignal.any`; pre-W19 the per-request signal was silently ignored
+- Token budget: `wrap()` and `withSession()` early-throw an `AbortError` *before* `preCallCheck` consumes the rate-limit budget; pre-W19 a cancelled call was still counted in the budget window and would throttle a real follow-up
+- DOCX/XLSX loaders: now call `enforceFileSizeCap` / `enforceBufferSizeCap` (M4); the W19 L11 cap was only on `text.loader.ts`
+- HTML loader: `parseError: 'empty_after_strip'` metadata when the input is non-empty but no text survives tag-strip; downstream chunkers can filter the ghost chunk
+- Size-cap helper consolidated: `src/loaders/size-cap.ts` exports `enforceFileSizeCap` / `enforceBufferSizeCap`; all 7 loaders use it with per-format env vars
+- 1141/1141 vitest tests pass; `tsc --noEmit` clean; `eslint .` 0 errors
+
 ### Documentation overhaul
 - **`docs/ARCHITECTURE.md`** — rewritten to describe the current 6-layer Clean Architecture (domain / ports / adapters / core / stages / frontends) instead of the obsolete 4-layer DDD plan
 - **`docs/SETUP.md`** — rewritten around real scripts (`npm run server` / `npm run web:dev`), real engines range (>=20 <25), real test count (707 across 40 files), real ESLint flat config; dropped the fake `.env.example` and `.eslintrc.cjs` references
