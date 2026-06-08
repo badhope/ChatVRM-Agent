@@ -19,6 +19,8 @@ secrets.json
 Thumbs.db
 .vscode/
 .idea/
+.project/
+.settings/
 *.swp
 *.swo
 *~
@@ -47,19 +49,6 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 .vitest/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.project/
-.settings/
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Logs
 logs/
@@ -97,13 +86,13 @@ packages/
 # Skills
 .skills/
 
-# Python (legacy)
+# Python
 __pycache__/
 *.py[cod]
 venv/
 ENV/
 
-# E2E test artifacts (generated files for verification runs)
+# E2E test artifacts
 e2e-output/
 output.docx
 *.e2e-out

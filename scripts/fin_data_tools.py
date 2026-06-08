@@ -10,8 +10,6 @@ Subcommands (all output JSON to stdout):
                    --output PNG                   → render bar chart
   chart-line    --x LBL,.. --series "name=1,2,3|name2=2,3,4"
                    --output PNG                   → render line chart
-  report-build  --uploads DIR [--out DIR] [--charts DIR]
-                   [--company NAME] [--quarter 2025Q2] → build full bundle
 """
 from __future__ import annotations
 
@@ -110,30 +108,6 @@ def cmd_chart_line(args) -> int:
     _json_out({"ok": True, "output": args.output, "type": "line", "n_series": len(series)})
     return 0
 
-def cmd_report_build(args) -> int:
-    # Delegate to fin_report.py via a subprocess to keep concerns separated
-    import subprocess
-    script = Path(__file__).parent / "fin_report.py"
-    if not script.exists():
-        _json_out({"ok": False, "error": f"fin_report.py not found at {script}"})
-        return 2
-    cmd = [
-        "python3", str(script),
-        "--uploads", args.uploads,
-        "--out",     args.out,
-        "--charts",  args.charts,
-        "--company", args.company,
-    ]
-    if args.quarter:
-        cmd += ["--quarter", args.quarter]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        _json_out({"ok": False, "error": proc.stderr or proc.stdout, "returncode": proc.returncode})
-        return proc.returncode
-    # fin_report.py prints the summary as JSON — surface it directly
-    sys.stdout.write(proc.stdout)
-    return 0
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -161,13 +135,6 @@ def main() -> int:
     p.add_argument("--output", required=True)
     p.add_argument("--title",  default=None)
     p.add_argument("--ylabel", default=None); p.set_defaults(fn=cmd_chart_line)
-
-    p = sub.add_parser("report-build")
-    p.add_argument("--uploads", required=True)
-    p.add_argument("--out",     default="e2e-output/fin-report/reports")
-    p.add_argument("--charts",  default="e2e-output/fin-report/charts")
-    p.add_argument("--company", default="Globex Technologies Inc.")
-    p.add_argument("--quarter", default=None); p.set_defaults(fn=cmd_report_build)
 
     args = ap.parse_args()
     return args.fn(args)

@@ -3,7 +3,6 @@
 operations on .docx files. Used by:
 
   * scripts/word-cli.mjs         — Node CLI wrapper
-  * scripts/word.ps1             — PowerShell wrapper
   * server wordProcess tool      — Agent runtime tool
 
 Exit code: 0 on success, non-zero on error. Output is JSON on stdout.
