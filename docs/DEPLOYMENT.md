@@ -123,7 +123,21 @@ docker run -d \
   personal-assistant
 ```
 
-A `docker-compose.yml` is provided at [`docker-compose.yml`](../docker-compose.yml).
+A sample `docker-compose.yml`:
+
+```yaml
+version: "3.8"
+services:
+  personal-assistant:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./data:/home/node/.config/personal-assistant-nodejs
+    restart: unless-stopped
+```
 
 ## systemd
 

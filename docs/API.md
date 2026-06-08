@@ -214,7 +214,7 @@ bus.on('pipeline-end', (e) => console.log(e.success ? 'OK' : `FAILED @ ${e.faile
 | POST   | `/api/chat/stream`            | SSE stream of a chat completion       |
 | POST   | `/api/agent/run`              | SSE stream of a 6-stage pipeline run  |
 
-See [examples/08-server-api.ts](../examples/08-server-api.ts) for a working client.
+See [examples/07-server-api.ts](../examples/07-server-api.ts) for a working client.
 
 ## Server SSE streams
 

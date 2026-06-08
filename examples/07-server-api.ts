@@ -4,7 +4,7 @@
  * Personal-Assistant without depending on the npm package.
  *
  *   npm run dev:server     # in another terminal
- *   npx tsx examples/08-server-api.ts
+ *   npx tsx examples/07-server-api.ts
  */
 
 const BASE = process.env.PA_BASE ?? 'http://localhost:4317';

@@ -30,9 +30,9 @@ Personal-Assistant/
 │   ├── infrastructure/ # Cross-cutting (logging, circuit-breaker, secrets)
 │   ├── machines/       # XState machine describing the agent FSM
 │   ├── cli/            # `personal-assistant` command-line entry point
-│   └── __tests__/      # Unit, integration, e2e suites (707 tests)
-├── server/             # Express + SSE backend (15 .ts files)
-├── frontend/           # React 18 + Vite + Tailwind web UI (8 pages)
+│   └── __tests__/      # Unit, integration, e2e suites
+├── server/             # Express + SSE backend
+├── frontend/           # React 18 + Vite + Tailwind web UI (13 pages)
 ├── sdk/                # Standalone npm package (@personal-assistant/sdk)
 ├── examples/           # 7 runnable example scripts
 ├── docs/               # This folder
@@ -206,19 +206,19 @@ Three frontends share the same core and emit the same events:
   persisted to `~/.config/personal-assistant-nodejs/config.json`
   (0600). The CLI subscribes to the event bus and prints
   stage-by-stage output to stdout.
-- **Web UI** (`frontend/`) — React 18 + Vite + Tailwind. Eight
-  pages: Chat, Agent, Tools, Memory, Graph, Config, Settings,
-  Dashboard. i18n is handled by `react-i18next` with 348 keys across
+- **Web UI** (`frontend/`) — React 18 + Vite + Tailwind. Thirteen
+  pages: Dashboard, Chat, Agent, Tools, Memory, Graph, Config, Settings,
+  Agents, Emotion, Personality, Skills, ToolTemplates. i18n is handled by `react-i18next` with 348 keys across
   English and Simplified Chinese. The web UI talks to the server
   over the REST + SSE surface documented in [API.md](API.md).
-- **VS Code extension** (`vscode/`) — thin client wrapping the SDK
+- **VS Code extension** — thin client wrapping the SDK
   (`@personal-assistant/sdk`). It uses the same ports and emits the
   same events; the host is just a different renderer.
 
 ## Server
 
 `server/` is an Express 4.21 application that exposes the core over
-HTTP. It has 15 source files:
+HTTP. Key files:
 
 - `app.ts` — Express app wiring, CORS, static hosting of
   `frontend/dist`, error handler.
@@ -227,9 +227,8 @@ HTTP. It has 15 source files:
 - `tools-setup.ts` — bridges the CLI's `ToolsRegistry` to the server.
 - `providers.ts` — provider metadata for the dashboard.
 - `types.ts` — request/response shared types.
-- `routes/` — 9 route modules, one per resource: agent, chat,
-  config, dashboard, emotion, graph, memory, personality, tools.
-- `sse/` — Server-Sent Event helpers.
+- `routes/` — route modules for each resource: agent, chat,
+  config, dashboard, emotion, graph, memory, personality, tools, and more.
 
 The server holds no state of its own beyond the in-memory session
 store — persistence is the responsibility of the adapters.
@@ -247,7 +246,7 @@ not on the CLI, server, or frontends. See [SDK.md](SDK.md).
 - `npm run dev` — `tsc --watch` (typecheck only, no dev server)
 - `npm run server` — `tsx watch server/index.ts` (backend, port 3000)
 - `npm run web:dev` — Vite dev server for the React UI
-- `npm test` — Vitest single run (707 tests across 40 files)
+- `npm test` — Vitest single run
 - `npm run lint` — ESLint flat config (`eslint.config.js`)
 - `npm run docs` — TypeDoc → static HTML
 
@@ -263,7 +262,7 @@ Two reasons:
    Coupling to a framework would force three different cores.
 2. **Testability.** Domain logic and pipeline logic are tested with
    in-memory fakes; no mocks, no network, no `await new Promise(...)`
-   in the suite. 707 tests run in under four seconds on a laptop.
+   in the suite. The full test suite runs in under four seconds on a laptop.
 
 The trade-off is more boilerplate at the boundary (you do write
 adapters), but the boundary is small and the gain compounds.

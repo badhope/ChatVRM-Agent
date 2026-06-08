@@ -11,10 +11,10 @@ Assistant — backend, CLI, and web UI.
 | **npm**     | 10+ (bundled with Node 20) | Yarn / pnpm work but are untested         |
 | **Git**     | 2.30+                      | for the Git adapter and checkpoints       |
 
-`.nvmrc` pins the project to Node 20.20.2. If you use `nvm`:
+`.nvmrc` pins the project to Node 22. If you use `nvm`:
 
 ```bash
-nvm install 20.20.2
+nvm install 22
 nvm use
 ```
 
@@ -37,7 +37,7 @@ A `verify` script is also provided for one-shot CI-style validation
 without running the server:
 
 ```bash
-npm run verify          # lint + 707 tests + tsc build + frontend build
+npm run verify          # lint + tests + tsc build + frontend build
 ```
 
 If `verify` exits 0, the full build pipeline is green and the backend
@@ -102,7 +102,7 @@ call.
 ## 6. Run the tests
 
 ```bash
-npm test               # vitest run   (707 tests across 40 files)
+npm test               # vitest run
 ```
 
 The full suite runs in under four seconds on a developer laptop; it
@@ -247,7 +247,7 @@ curl -N -X POST http://localhost:3000/api/agent/run \
   -d '{"task": "introduce yourself", "provider": "openai"}'
 ```
 
-The CI workflow at [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
-runs the install, lint, 707-test suite, both builds, and the first
+The CI workflow at [`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)
+runs the install, lint, test suite, both builds, and the first
 ten smoke tests above on every push. Green CI is the proof that the
 stack is real.

@@ -3,8 +3,7 @@
 `@personal-assistant/sdk` is a small, dependency-free npm package
 that exposes the agent runner and a few standalone utilities
 (parser, editor, plugin loader) for embedding Personal Assistant
-in third-party applications. The bundled VS Code extension
-(`vscode/`) is itself a thin wrapper around it.
+in third-party applications.
 
 The SDK lives in [`sdk/`](../sdk/) and is independently buildable
 via `tsc`. It is published to npm with the same version cadence as

@@ -1,32 +1,27 @@
 # Personal-Assistant
 
-A personal AI agent built around a 6-stage pipeline. Ships with a CLI and a React web UI that talk to the same core.
-
-10 LLM providers, 7 real tools, real SSE streaming, no mock layer.
+A personal AI agent that plans, reasons, and acts through a 6-stage pipeline. Ships with a CLI and a React web UI that both talk to the same core — 10 LLM providers, 7 real tools, real SSE streaming, no mock layer.
 
 [中文文档](README_zh.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
 
 ---
 
-## Table of contents
+## What is this?
 
-- [Quick start](#quick-start)
-- [Web UI pages](#web-ui-pages)
-- [LLM providers](#llm-providers)
-- [CLI commands](#cli-commands)
-- [Pipeline architecture](#pipeline-architecture)
-- [Built-in tools](#built-in-tools)
-- [No mock layer](#no-mock-layer)
-- [Project structure](#project-structure)
-- [i18n](#i18n)
-- [Examples](examples/README.md)
-- [Deployment](docs/DEPLOYMENT.md)
-- [API](docs/API.md)
-- [Development commands](#development-commands)
-- [Troubleshooting](#troubleshooting)
-- [Protocol details](#protocol-details)
-- [Contributing](#contributing)
-- [License](#license)
+Personal-Assistant is a self-hosted AI agent you can run locally or deploy behind a reverse proxy. Give it a task in natural language, and it goes through six stages — understand, plan, execute, validate, reflect — using real tools (file I/O, shell, memory, web search) to get things done.
+
+Unlike chat-only wrappers, every tool call hits the real adapter: files are written to disk, shell commands run in a real process, memory is persisted to disk. There is no mock layer, no stub, no synthetic "success" path. If something fails, you see the real error.
+
+### Key features
+
+- **6-stage pipeline** — understand → plan → execute → validate → reflect, with live progress events
+- **10 LLM providers** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow, Aliyun, Zhipu, Baidu, Ollama, LM Studio
+- **7 real tools** — writeFile, readFile, shell, search, remember, analyze, respond
+- **React web UI** — 13 pages with SSE streaming, knowledge graph, personality switcher, emotion state
+- **CLI** — interactive chat and one-shot agent tasks
+- **SDK** — `@personal-assistant/sdk` for embedding in your own app
+- **i18n** — English and Simplified Chinese (348 keys)
+- **Clean Architecture** — ports, adapters, pure domain logic; the core has zero framework dependencies
 
 ---
 
@@ -43,9 +38,7 @@ npm run web:build
 npm run server          # Express on :3000, override with PORT
 ```
 
-Open <http://localhost:3000>.
-
-If you just want to know the build is green: `npm run verify` runs lint + 707 tests + tsc + frontend build and exits non-zero on the first failure.
+Open http://localhost:3000.
 
 ### CLI
 
@@ -74,11 +67,16 @@ node dist/cli/index.js chat
 | `/dashboard` | Counts: chats, memories, agent runs, provider readiness | `/api/dashboard`, `/api/config/snapshot` |
 | `/chat`, `/chat/:id` | Real SSE streaming, 10-model switcher | `/api/chat/stream` (SSE) |
 | `/agent` | 6-stage pipeline with live progress | `/api/agent/run` (SSE) |
+| `/agents` | Agent management and configuration | `/api/agents` |
 | `/tools` | The 7 tools, with execute buttons | `/api/tools`, `/api/tools/execute` |
+| `/tool-templates` | Pre-built tool templates for common tasks | `/api/tool-templates` |
 | `/memory` | Browse / search / tag-filter / delete / clear long-term memory | `/api/memory/*` |
 | `/config` | 10 providers, key management, live connectivity test | `/api/config/*` |
 | `/graph` | Canvas 2D force-directed knowledge graph | `/api/graph` |
 | `/settings` | 4 personality switcher, emotion state, theme | `/api/personality`, `/api/emotion` |
+| `/personality` | Personality configuration and system prompts | `/api/personality` |
+| `/emotion` | Emotion state visualization and history | `/api/emotion` |
+| `/skills` | Skill management and configuration | `/api/skills` |
 
 ---
 
@@ -243,14 +241,15 @@ Every LLM call is a real `fetch` to the vendor's endpoint.
 ```
 Personal-Assistant/
 ├── src/                          # Core (Clean Architecture)
-│   ├── adapters/                 # LLM / Config / Memory / Storage / Shell / Tools / ToolsRegistry
+│   ├── adapters/                 # LLM / Config / Memory / Storage / Shell / Tools / Git / Context
 │   ├── core/                     # Pipeline + EventBus
 │   ├── stages/                   # 6 stages: init / understand / plan / execute / validate / reflect
 │   ├── ports/                    # Interface contracts
-│   ├── domain/                   # personality / memory / trust / tool / emotion
-│   ├── infrastructure/           # Circuit Breaker (opossum), logger
+│   ├── domain/                   # personality / memory / trust / emotion
+│   ├── infrastructure/           # Circuit Breaker (opossum), logger, secret storage
+│   ├── machines/                 # XState agent FSM
 │   ├── cli/                      # CLI entry (chat / agent / config)
-│   └── __tests__/                # 707 tests (40 files)
+│   └── __tests__/                # Unit + integration + e2e tests
 ├── server/                       # Express backend
 │   ├── index.ts                  # Entry
 │   ├── app.ts                    # Routes + static hosting of frontend/dist
@@ -263,7 +262,7 @@ Personal-Assistant/
 │   │   ├── api/                  # fetch client + sseStream()
 │   │   ├── stores/               # zustand: theme / config / locale
 │   │   ├── i18n/                 # EN / 中文 translations
-│   │   ├── pages/                # 8 pages
+│   │   ├── pages/                # 13 pages
 │   │   ├── components/           # Layout + UI components
 │   │   ├── types/                # TypeScript types
 │   │   └── styles/               # Tailwind + CSS variables
@@ -295,7 +294,7 @@ Personal-Assistant/
 
 ## i18n
 
-The web UI ships in English and Simplified Chinese. The globe icon in the header switches between them; the choice is persisted to `localStorage` and survives page refreshes. Both locales cover the same 348 keys across all 8 pages.
+The web UI ships in English and Simplified Chinese. The globe icon in the header switches between them; the choice is persisted to `localStorage` and survives page refreshes. Both locales cover the same 348 keys across all 13 pages.
 
 Translation files live in [`frontend/src/i18n/`](frontend/src/i18n/) and follow the standard i18next JSON format. To add a new language:
 
@@ -317,7 +316,7 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for:
 
 - Recommended topology (nginx / Caddy reverse proxy + TLS)
 - nginx + Caddy config snippets
-- Dockerfile + `docker-compose.yml`
+- Dockerfile + docker-compose
 - systemd unit with security hardening
 - Production security checklist
 - Backup & restore
@@ -332,10 +331,11 @@ npm run build            # Compile backend (tsc)
 npm run server           # Express with tsx watch
 npm run web:dev          # Vite frontend (HMR, /api proxy → :3000)
 npm run web:build        # Frontend production build
-npm test                 # vitest run (40 files / 707 tests)
-npm run test:coverage
+npm test                 # vitest run
+npm run test:coverage    # vitest with v8 coverage
 npm run lint             # ESLint 9.x flat config
 npm run format           # Prettier
+npm run verify           # lint + test + tsc + frontend build (CI in a box)
 ```
 
 ---

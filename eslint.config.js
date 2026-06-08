@@ -11,7 +11,6 @@ export default defineConfig([
       '**/*.js',
       'sdk/**',
       'web/**',
-      'vscode/**',
       '.devflow/**',
       '.skills/**',
       'scripts/**',

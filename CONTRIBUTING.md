@@ -49,7 +49,7 @@ git checkout -b bugfix/issue-number
 ### 3. Run Tests and Lint
 
 ```bash
-npm test           # all 707 tests must pass
+npm test           # all tests must pass
 npm run lint       # 0 ESLint errors
 npm run build      # tsc 0 errors
 ```
