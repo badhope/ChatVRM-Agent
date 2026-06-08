@@ -29,9 +29,6 @@
 # SDK (npm package)
 /sdk/                                @badhope
 
-# VS Code extension
-/vscode/                            @badhope
-
 # GitHub workflows & templates
 /.github/                            @badhope
 

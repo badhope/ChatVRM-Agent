@@ -85,4 +85,4 @@ The following are **out of scope**:
 ## Acknowledgements
 
 This project benefits from open-source security tooling including
-`npm audit`, `eslint-plugin-security`, and Dependabot.
+`npm audit` and `eslint-plugin-security`.

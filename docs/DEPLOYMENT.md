@@ -190,8 +190,7 @@ Before exposing to any non-localhost client, verify each item:
 - [ ] API keys are read from env or 0600-protected file (never env dumped)
 - [ ] Logging redaction enabled (default: yes — `*.redact=true` in config)
 - [ ] Firewall: only 443 open; 3000 bound to 127.0.0.1
-- [ ] Dependabot security updates enabled
-- [ ] `npm audit --production` clean in CI
+- [ ] `npm audit --omit=dev` clean in CI
 
 ## Monitoring & logs
 
