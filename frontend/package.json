@@ -14,7 +14,7 @@
     "clsx": "^2.1.1",
     "i18next": "^23.16.5",
     "i18next-browser-languagedetector": "^8.0.0",
-    "lucide-react": "^0.456.0",
+    "lucide-react": "^0.577.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.1.1",
