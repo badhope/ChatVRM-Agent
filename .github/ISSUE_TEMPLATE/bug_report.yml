@@ -1,0 +1,95 @@
+name: Bug Report
+description: Report something that is broken or behaves incorrectly.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in the sections below.
+        The more detail you can give, the faster we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: "When I run `...`, the app does `...` instead of `...`."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. Use a minimal example if possible.
+      placeholder: |
+        1. Install with `...`
+        2. Run `...`
+        3. Open `...`
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include stack traces / logs.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How bad is the impact?
+      options:
+        - Low — cosmetic / minor inconvenience
+        - Medium — feature broken but workaround exists
+        - High — feature broken, no workaround
+        - Critical — data loss, security issue, or service outage
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: e.g. release tag, commit SHA, or container image digest
+      placeholder: "v1.2.3 or abcdef0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: env
+    attributes:
+      label: Environment
+      description: Where did you run this?
+      options:
+        - Local (macOS)
+        - Local (Linux)
+        - Local (Windows)
+        - Docker / container
+        - CI
+        - Cloud / VM
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Additional context
+      description: Anything else that might help (logs, screenshots, links).
+    validations:
+      required: false

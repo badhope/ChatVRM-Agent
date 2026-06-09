@@ -1,0 +1,56 @@
+name: Feature Request
+description: Suggest a new feature or a meaningful improvement.
+title: "[Feat]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem you want to solve first, then the proposed
+        solution. The "why" matters more than the "how".
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user pain are you trying to solve? What is the current limitation?
+      placeholder: "Right now I have to ...; this is annoying because ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature, change, or improvement you want.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you have considered and why this one is better.
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / impact
+      description: Does this change user-facing behavior, the API, the data model, or the build? Any backward-compat risk?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: willingness
+    attributes:
+      label: Willingness to contribute
+      options:
+        - I'd be happy to submit a PR for this
+        - I can help test / review
+        - I can only describe the use case
+    validations:
+      required: false
