@@ -159,11 +159,10 @@ can install it globally with `npm link`.
 | `eslint.config.js`    | Flat-config ESLint 9 with TypeScript-ESLint 8        |
 | `.prettierrc`         | `printWidth: 100`, `singleQuote: true`, `semi: true`|
 | `.editorconfig`       | LF line endings, UTF-8, 2-space indent              |
-| `vitest.config.ts`    | Vitest 3, jsdom for component tests                  |
+| `vitest.config.ts`    | Vitest 3, node environment for unit tests            |
 | `vitest.setup.ts`     | Global test setup (env, time-mocking hooks)         |
 | `typedoc.json`        | TypeDoc entrypoints (publishes to GitHub Pages)      |
 | `codecov.yml`         | Codecov thresholds and ignore rules                  |
-| `husky/` + `.lintstagedrc` | Pre-commit: Prettier + ESLint on staged files   |
 
 There is no `.env.example` in the repository on purpose: every secret
 is read at runtime from the OS keychain, a 0600 file, or a per-provider

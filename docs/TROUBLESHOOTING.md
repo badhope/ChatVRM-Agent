@@ -59,7 +59,7 @@ You are on Node 18. The project's `engines` field requires
 `>=20.0.0 <25.0.0`. Install Node 20+ (or use `.nvmrc`):
 
 ```bash
-nvm install 20.20.2
+nvm install 22
 nvm use
 ```
 

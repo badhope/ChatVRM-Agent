@@ -18,20 +18,17 @@ predates v2.0.
   - 4 issue templates (bug / feature / docs / new_provider)
   - Pull Request template
   - `.github/CODEOWNERS` (per-area reviewers)
-  - `.github/dependabot.yml` (weekly npm + GitHub Actions updates)
-  - `.github/FUNDING.yml` (sponsorship links)
   - `SECURITY.md` (private vulnerability disclosure, supported versions, security best practices)
   - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1)
   - `.editorconfig` (cross-editor formatting)
-- **8 runnable TypeScript examples** — `examples/01-basic-chat.ts` through `examples/08-server-api.ts` plus `examples/language-demo.ts`
+- **7 runnable TypeScript examples** — `examples/01-basic-chat.ts` through `examples/07-server-api.ts`
   - `examples/README.md` documents all of them
 - **`docs/DEPLOYMENT.md`** — production deployment guide (nginx, Caddy, Docker, systemd, security checklist, backup/restore)
 - **`docs/API.md`** — full API reference (adapters, ports, pipeline, REST + SSE)
 - **README improvements**
-  - Top-of-file badge bar (license, Node, TS, React, Vite, Tailwind, CI)
   - Table of contents
   - New sections: i18n, Examples, Deployment, Contributing
-  - Expanded project structure (sdk/, vscode/, examples/, docs/DEPLOYMENT.md, etc.)
+  - Expanded project structure (sdk/, examples/, docs/DEPLOYMENT.md, etc.)
 
 ### Changed
 - `README_zh.md` — keeps parity with English README
@@ -83,7 +80,7 @@ predates v2.0.
 
 ### Documentation overhaul
 - **`docs/ARCHITECTURE.md`** — rewritten to describe the current 6-layer Clean Architecture (domain / ports / adapters / core / stages / frontends) instead of the obsolete 4-layer DDD plan
-- **`docs/SETUP.md`** — rewritten around real scripts (`npm run server` / `npm run web:dev`), real engines range (>=20 <25), real test count (707 across 40 files), real ESLint flat config; dropped the fake `.env.example` and `.eslintrc.cjs` references
+- **`docs/SETUP.md`** — rewritten around real scripts (`npm run server` / `npm run web:dev`), real engines range (>=20 <25), real ESLint flat config; dropped the fake `.env.example` and `.eslintrc.cjs` references
 - **`docs/DEPLOYMENT.md`** — port 4317 → 3000 in all 10 occurrences (architecture diagram, nginx, Caddy, Docker, systemd, health check, security checklist)
 - **`docs/TROUBLESHOOTING.md`** — replaced invented CLI flags with the real command surface (`chat`, `agent <task>`, `config {show,set-key,remove-key,set-default,providers}`) and documented real failure modes (provider 401/429, Ollama not running, keytar build, port 3000 in use, SSE buffering, memory file corruption); `DEBUG=1` env var (which never existed) replaced with `LOG_LEVEL=debug` (Pino)
 - **`docs/ADR/002`** — superseded DDD 4-layer decision; recorded the migration to 6 layers and why
@@ -92,8 +89,8 @@ predates v2.0.
 
 ### Tooling
 - **`npm run install:all`** — new top-level script. The repo is not a workspaces monorepo; root and `frontend/` each have their own `package.json`, so a single `npm install` left the web UI unbuildable (the previous README quick start had a two-line install that was easy to miss). `install:all` chains the two `npm install` calls.
-- **`npm run verify`** — new top-level script that runs `lint + 707 tests + tsc build + frontend build` and exits non-zero on the first failure, so the full pipeline is green in one command.
-- **`.github/workflows/ci.yml`** — new. Runs the same `verify` on every push / PR to `main`, then starts the backend on port 3500 and smoke-tests 10 REST endpoints + the root SPA, asserting every response is `200` and the HTML contains the expected title. This is the proof that the full stack is real, not mocked.
+- **`npm run verify`** — new top-level script that runs `lint + tests + tsc build + frontend build` and exits non-zero on the first failure, so the full pipeline is green in one command.
+- **`.github/workflows/ci-cd.yml`** — new. Runs the same `verify` on every push / PR to `main`, then starts the backend on port 3500 and smoke-tests 10 REST endpoints + the root SPA, asserting every response is `200` and the HTML contains the expected title. This is the proof that the full stack is real, not mocked.
 - **`docs/SETUP.md`** — quick start now uses `npm run install:all`; added a "Verifying the install" section that lists every endpoint, the curl to call it, and what real data you should see.
 - **`README.md`** — quick start updated to use `install:all`; added a "Why install:all?" callout so the two-package layout is no longer a surprise.
 
