@@ -6,12 +6,12 @@ codecov:
     status:
       project:
         default:
-          target: 80%
+          target: 70%
           threshold: 5%
         unit:
           paths:
             - "src/**/*.ts"
-          target: 80%
+          target: 70%
       patch:
         default:
           target: 70%

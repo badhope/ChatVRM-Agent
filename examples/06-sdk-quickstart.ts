@@ -2,7 +2,7 @@
  * Plan-then-execute via the standalone SDK. Same pipeline as
  * `03-pipeline-run.ts`, but expressed through the high-level SDK API.
  *
- *   npx tsx examples/07-sdk-quickstart.ts "Add a table of contents to README.md"
+ *   npx tsx examples/06-sdk-quickstart.ts "Add a table of contents to README.md"
  */
 
 import { planTask, executePlan } from '../sdk/src/index.js';

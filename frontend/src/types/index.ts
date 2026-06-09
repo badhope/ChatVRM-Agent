@@ -10,16 +10,6 @@ export type ProviderType =
   | 'ollama'
   | 'lmstudio';
 
-export interface ProviderMeta {
-  id: ProviderType;
-  name: string;
-  baseUrl: string;
-  defaultModel: string;
-  requiresKey: boolean;
-  protocol: 'openai' | 'anthropic' | 'google' | 'baidu';
-  description: string;
-}
-
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -162,24 +152,4 @@ export interface DashboardStats {
   recentActivity: Array<{ id: string; type: string; summary: string; createdAt: string }>;
 }
 
-export interface ConfigSnapshot {
-  defaultProvider: ProviderType;
-  apiKeys: Record<string, string>;
-  chat: {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    systemPrompt?: string;
-    fallbackModels?: string[];
-  };
-  sandbox: {
-    enabled: boolean;
-    allowedCommands?: string[];
-    timeout?: number;
-  };
-  circuitBreaker: {
-    enabled: boolean;
-  };
-  personality: string;
-  emotion: EmotionState;
-}
+

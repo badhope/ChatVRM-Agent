@@ -29,9 +29,7 @@ npm run install:all     # installs both root and frontend deps
 `npm run install:all` is a wrapper that runs `npm install` at the root
 **and** in `frontend/`. The two `package.json` files are independent
 (this is not a workspaces repo) so a single `npm install` at the root
-will leave the web UI unbuildable. The same script also triggers
-`husky install` via the `prepare` script, which wires up the
-pre-commit hook (Prettier + ESLint on staged files).
+will leave the web UI unbuildable.
 
 A `verify` script is also provided for one-shot CI-style validation
 without running the server:

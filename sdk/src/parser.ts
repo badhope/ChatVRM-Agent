@@ -171,52 +171,6 @@ export class PersonalAssistantParser {
 }
 
 /**
- * CodeIndexer - Placeholder.
- *
- * The main package does not ship a code indexer module.
- * This class is retained for API compatibility but throws on use.
- */
-export class CodeIndexer {
-  static async build(_rootDir: string): Promise<never> {
-    throw new PersonalAssistantError(
-      'CodeIndexer.build() is not available — the main package does not ship a code indexer module',
-      'NOT_IMPLEMENTED',
-      501,
-    );
-  }
-
-  static search(): never {
-    throw new PersonalAssistantError(
-      'CodeIndexer.search() is not available — the main package does not ship a code indexer module',
-      'NOT_IMPLEMENTED',
-      501,
-    );
-  }
-}
-
-/**
- * Build a code index — not available.
- */
-export async function buildCodeIndex(_rootDir: string): Promise<never> {
-  throw new PersonalAssistantError(
-    'buildCodeIndex() is not available — the main package does not ship a code indexer module',
-    'NOT_IMPLEMENTED',
-    501,
-  );
-}
-
-/**
- * Search a code index — not available.
- */
-export function searchIndex(): never {
-  throw new PersonalAssistantError(
-    'searchIndex() is not available — the main package does not ship a code indexer module',
-    'NOT_IMPLEMENTED',
-    501,
-  );
-}
-
-/**
  * ContextBuilder — use @personal-assistant/sdk/agent's ContextBuilderWrapper instead.
  *
  * Retained for API compatibility but delegates to the agent module.

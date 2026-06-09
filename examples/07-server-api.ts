@@ -7,7 +7,7 @@
  *   npx tsx examples/07-server-api.ts
  */
 
-const BASE = process.env.PA_BASE ?? 'http://localhost:4317';
+const BASE = process.env.PA_BASE ?? 'http://localhost:3000';
 
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(BASE + path);

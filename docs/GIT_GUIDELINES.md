@@ -172,14 +172,6 @@ git push -u origin feature/my-feature
 
 Open a PR on GitHub from your branch to main.
 
-## Git Hooks
-
-This project uses Husky for Git hooks:
-
-- **pre-commit**: Runs linting and formatting
-- **commit-msg** (optional): Validates commit messages
-- **pre-push** (optional): Runs tests before push
-
 ## Best Practices
 
 ### Commit Often

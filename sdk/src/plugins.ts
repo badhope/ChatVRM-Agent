@@ -5,7 +5,7 @@
  * managing and interacting with Personal Assistant plugins and MCP servers.
  */
 
-import type { PluginInfo, MCPInfo } from './types.js';
+import type { PluginInfo } from './types.js';
 
 /**
  * PersonalAssistantPlugins - Plugin and MCP management.
@@ -191,90 +191,6 @@ export class PersonalAssistantPlugins {
     }
   }
 
-  /**
-   * List all MCP servers.
-   *
-   * @returns Array of MCP server info
-   */
-  async listMCP(): Promise<MCPInfo[]> {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
-    const mcpDir = 'mcp';
-    const servers: MCPInfo[] = [];
-
-    try {
-      const entries = await fs.readdir(mcpDir, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-
-        // Try to read MCP config
-        const configPath = path.join(mcpDir, entry.name, 'config.json');
-        let enabled = true;
-        let tools: string[] = [];
-
-        try {
-          const content = await fs.readFile(configPath, 'utf8');
-          const config = JSON.parse(content);
-          enabled = config.enabled !== false;
-          tools = config.tools || [];
-        } catch {}
-
-        servers.push({
-          name: entry.name,
-          enabled,
-          tools,
-        });
-      }
-    } catch {
-      // MCP directory doesn't exist
-    }
-
-    return servers;
-  }
-
-  /**
-   * Enable an MCP server.
-   *
-   * @param name - Server name
-   */
-  async enableMCP(name: string): Promise<void> {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
-    const configPath = path.join('mcp', name, 'config.json');
-
-    try {
-      const content = await fs.readFile(configPath, 'utf8');
-      const config = JSON.parse(content);
-      config.enabled = true;
-      await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
-    } catch (error) {
-      throw new Error(`Failed to enable MCP server "${name}": ${error}`);
-    }
-  }
-
-  /**
-   * Disable an MCP server.
-   *
-   * @param name - Server name
-   */
-  async disableMCP(name: string): Promise<void> {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
-    const configPath = path.join('mcp', name, 'config.json');
-
-    try {
-      const content = await fs.readFile(configPath, 'utf8');
-      const config = JSON.parse(content);
-      config.enabled = false;
-      await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
-    } catch (error) {
-      throw new Error(`Failed to disable MCP server "${name}": ${error}`);
-    }
-  }
 }
 
 /**

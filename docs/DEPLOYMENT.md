@@ -35,8 +35,7 @@ environments, behind a reverse proxy, and with proper isolation.
                               └─────────────┘       └──────────────┘
 ```
 
-**Never expose port 3000 directly to the public internet.** There is no
-built-in auth in the current release.
+**Never expose port 3000 directly to the public internet without setting `PA_API_TOKEN`.** Auth is opt-in via the `PA_API_TOKEN` environment variable (Bearer token). If unset, the server runs in open-loopback mode for local development.
 
 ## Reverse proxy + TLS
 
@@ -227,7 +226,7 @@ The server exposes a liveness endpoint:
 
 ```bash
 curl -fsS http://127.0.0.1:3000/api/health
-# {"status":"ok","uptime":12345,"providers":{...}}
+# {"ok":true,"ts":"..."}
 ```
 
 Wire it into your monitoring system (Prometheus blackbox-exporter,

@@ -7,7 +7,7 @@
 
 import { PipelineEngine, createEventBus } from '../dist/core/index.js';
 import { createAdapters } from '../dist/adapters/index.js';
-import { AgentMachine } from '../dist/machines/agent.machine.js';
+import { createAgentMachine } from '../dist/machines/agent.machine.js';
 
 const task = process.argv.slice(2).join(' ').trim() || 'List the files in the current directory';
 
@@ -32,7 +32,7 @@ bus.on('pipeline-end', (e) => {
 });
 bus.on('error', (e) => console.error(`  error: ${e.message ?? e.error}`));
 
-const engine = new PipelineEngine({ adapters, eventBus: bus, machine: new AgentMachine() });
+const engine = new PipelineEngine({ adapters, eventBus: bus, machine: createAgentMachine('cli', task) });
 const result = await engine.run(task, { cwd: process.cwd() });
 
 process.exit(result.success ? 0 : 1);
