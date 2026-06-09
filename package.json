@@ -7,6 +7,25 @@
   "bin": {
     "personal-assistant": "./dist/cli/index.js"
   },
+  "exports": {
+    ".": "./dist/cli/index.js",
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
+    },
+    "./core/pipeline": {
+      "types": "./dist/core/pipeline.d.ts",
+      "import": "./dist/core/pipeline.js"
+    },
+    "./core/types": {
+      "types": "./dist/core/types.d.ts",
+      "import": "./dist/core/types.js"
+    },
+    "./stages": {
+      "types": "./dist/stages/index.d.ts",
+      "import": "./dist/stages/index.js"
+    }
+  },
   "scripts": {
     "install:all": "npm install && (cd frontend && npm install)",
     "build": "tsc",

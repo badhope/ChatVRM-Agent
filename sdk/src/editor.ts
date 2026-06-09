@@ -113,21 +113,10 @@ export class PersonalAssistantEditor {
    * @returns Location or null if not found
    */
   async locateSymbol(filePath: string, symbolName: string): Promise<SymbolLocation | null> {
-    const { locateEditTarget } = await import('../../dist/editor/edit-target.js');
     const fs = await import('fs/promises');
 
     try {
       const content = await fs.readFile(filePath, 'utf8');
-      const target = await locateEditTarget(filePath, { symbolName });
-
-      if (target) {
-        return {
-          line: target.startLine,
-          column: 1,
-        };
-      }
-
-      // Fallback: simple text search
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].includes(symbolName)) {
@@ -135,7 +124,6 @@ export class PersonalAssistantEditor {
           return { line: i + 1, column: col };
         }
       }
-
       return null;
     } catch {
       return null;
@@ -150,18 +138,7 @@ export class PersonalAssistantEditor {
    * @returns Array of references
    */
   async findReferences(symbolName: string, rootDir: string): Promise<SymbolReference[]> {
-    const { findReferences: coreFindReferences } = await import('../../dist/analysis/reference-finder.js');
-
-    try {
-      const refs = await coreFindReferences(symbolName, rootDir);
-      return refs.references.map((r: any) => ({
-        filePath: r.filePath,
-        line: r.line,
-      }));
-    } catch {
-      // Fallback: simple grep-based search
-      return this.simpleFindReferences(symbolName, rootDir);
-    }
+    return this.simpleFindReferences(symbolName, rootDir);
   }
 
   /**

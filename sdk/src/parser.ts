@@ -1,12 +1,13 @@
 /**
  * Personal Assistant Agent SDK - Parser Module
  *
- * Provides programmatic access to the code parsing and analysis
- * capabilities of Personal Assistant Agent.
+ * Self-contained code parsing and analysis.
+ * Uses regex-based parsing — no dependency on tree-sitter or external modules.
  */
 
 import type { ParseResult, Symbol, RepoMapOptions, RepoMapResult } from './types.js';
 import type { KnowledgeEntry, ContextBuildResult, ContextBuilderOptions } from './types.js';
+import { PersonalAssistantError, formatError } from './errors.js';
 
 /**
  * PersonalAssistantParser - Code parsing and analysis.
@@ -19,128 +20,104 @@ import type { KnowledgeEntry, ContextBuildResult, ContextBuilderOptions } from '
  * ```
  */
 export class PersonalAssistantParser {
-  private initialized = false;
-
-  /**
-   * Ensure tree-sitter languages are initialized.
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
-    const { initLanguages } = await import('../../dist/parser/languages.js');
-    await initLanguages();
-    this.initialized = true;
-  }
 
   /**
    * Parse a source file and extract its structure.
-   *
-   * @param filePath - Path to the source file
-   * @returns Parse result with symbols and metadata
    */
   async parseFile(filePath: string): Promise<ParseResult> {
-    await this.ensureInitialized();
+    const fs = await import('fs/promises');
 
-    const { parseFile: coreParseFile } = await import('../../dist/parser/engine.js');
-    const { extractSymbols } = await import('../../dist/parser/symbols.js');
-    const { estimateTokens } = await import('../../dist/parser/token-budget.js');
+    try {
+      const source = await fs.readFile(filePath, 'utf8');
+      const language = this.detectLanguage(filePath);
+      const symbols = this.extractSymbols(source, language);
+      const tokens = this.estimateTokens(source);
 
-    const result = await coreParseFile(filePath);
-    if (!result) {
-      return {
-        language: 'unknown',
-        symbols: [],
-        tokens: 0,
-        filePath,
-      };
+      return { language, symbols, tokens, filePath };
+    } catch {
+      return { language: 'unknown', symbols: [], tokens: 0, filePath };
     }
-
-    const rawSymbols = extractSymbols(result);
-    const symbols = this.convertSymbols(rawSymbols, filePath);
-
-    return {
-      language: result.language.name,
-      symbols,
-      tokens: estimateTokens(result.source),
-      filePath,
-    };
   }
 
   /**
    * Parse source code string directly.
-   *
-   * @param source - Source code text
-   * @param language - Language identifier or file extension
-   * @returns Parse result with symbols
    */
   async parseSource(source: string, language: string): Promise<ParseResult> {
-    await this.ensureInitialized();
-
-    const { parseSource: coreParseSource } = await import('../../dist/parser/engine.js');
-    const { extractSymbols } = await import('../../dist/parser/symbols.js');
-    const { estimateTokens } = await import('../../dist/parser/token-budget.js');
-
-    // Use language as a fake file path to get language detection
-    const filePath = `file.${language}`;
-    const result = coreParseSource(source, filePath);
-
-    if (!result) {
-      return {
-        language,
-        symbols: [],
-        tokens: estimateTokens(source),
-      };
-    }
-
-    const rawSymbols = extractSymbols(result);
-    const symbols = this.convertSymbols(rawSymbols, filePath);
-
-    return {
-      language: result.language.name,
-      symbols,
-      tokens: estimateTokens(source),
-    };
+    const symbols = this.extractSymbols(source, language);
+    const tokens = this.estimateTokens(source);
+    return { language, symbols, tokens };
   }
 
   /**
    * Generate a repository map for context.
-   *
-   * This creates a compact representation of the codebase structure,
-   * useful for providing context to LLMs.
-   *
-   * @param rootDir - Root directory of the project
-   * @param options - Generation options
-   * @returns Repo map result
    */
   async generateRepoMap(rootDir: string, options?: RepoMapOptions): Promise<RepoMapResult> {
-    await this.ensureInitialized();
+    const fs = await import('fs/promises');
+    const path = await import('path');
 
-    const { generateRepoMap: coreGenerateRepoMap } = await import('../../dist/parser/repo-map.js');
+    const IGNORE_DIRS = new Set([
+      'node_modules', '.git', 'dist', 'build', 'coverage',
+      '.next', '.cache', '.venv', 'venv', '__pycache__', 'target',
+    ]);
+    const CODE_EXTENSIONS = new Set([
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go',
+      '.rs', '.java', '.kt', '.c', '.cpp', '.h', '.cs', '.rb',
+      '.php', '.swift', '.vue', '.svelte', '.sh', '.sql', '.html',
+      '.css', '.json', '.yaml', '.yml', '.xml', '.toml', '.md',
+    ]);
 
-    const result = await coreGenerateRepoMap(rootDir, options);
+    const lines: string[] = [];
+    let fileCount = 0;
+    let symbolCount = 0;
+    const skippedFiles: string[] = [];
 
-    return {
-      map: result.map,
-      fileCount: result.fileCount,
-      symbolCount: result.symbolCount,
-      tokenCount: result.tokenCount,
-      skippedFiles: result.skippedFiles,
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 4) return;
+      let entries;
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+
+      for (const entry of entries) {
+        if (IGNORE_DIRS.has(entry.name) || (entry.name.startsWith('.') && entry.name !== '.env.example')) {
+          continue;
+        }
+
+        const fullPath = path.join(dir, entry.name);
+        const indent = '  '.repeat(depth);
+
+        if (entry.isDirectory()) {
+          lines.push(`${indent}${entry.name}/`);
+          await walk(fullPath, depth + 1);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (CODE_EXTENSIONS.has(ext)) {
+            lines.push(`${indent}${entry.name}`);
+            fileCount++;
+          } else {
+            skippedFiles.push(fullPath);
+          }
+        }
+      }
     };
+
+    await walk(rootDir, 0);
+
+    const map = lines.join('\n');
+    const tokenCount = this.estimateTokens(map);
+
+    return { map, fileCount, symbolCount, tokenCount, skippedFiles };
   }
 
   /**
-   * Extract symbols from source code (synchronous version).
-   *
-   * @param source - Source code text
-   * @param language - Language identifier
-   * @returns Array of symbols
+   * Extract symbols from source code (regex-based).
    */
   extractSymbols(source: string, language: string): Symbol[] {
-    // This is a simplified synchronous version
-    // For full parsing, use parseSource() instead
     const symbols: Symbol[] = [];
     const lines = source.split('\n');
 
-    // Simple regex-based extraction for common patterns
     const patterns: Record<string, RegExp> = {
       function: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/,
       class: /^(?:export\s+)?class\s+(\w+)/,
@@ -169,195 +146,101 @@ export class PersonalAssistantParser {
 
   /**
    * Get the language for a file path.
-   *
-   * @param filePath - File path to check
-   * @returns Language name or null if unsupported
    */
   async getLanguage(filePath: string): Promise<string | null> {
-    const { getLanguageByFilePath } = await import('../../dist/parser/languages.js');
-    const lang = getLanguageByFilePath(filePath);
-    return lang?.name ?? null;
+    return this.detectLanguage(filePath);
   }
 
-  private convertSymbols(rawSymbols: any[], filePath: string): Symbol[] {
-    return rawSymbols
-      .filter((s: any) => this.isValidSymbolKind(s.kind))
-      .map((s: any) => ({
-        name: s.name,
-        kind: s.kind as Symbol['kind'],
-        startLine: s.startLine + 1, // Convert 0-based to 1-based
-        endLine: s.endLine + 1,
-        signature: s.signature,
-        parent: s.parent,
-      }));
+  private detectLanguage(filePath: string): string {
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+    const map: Record<string, string> = {
+      ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+      mjs: 'javascript', cjs: 'javascript', py: 'python', go: 'go',
+      rs: 'rust', java: 'java', kt: 'kotlin', c: 'c', cpp: 'cpp',
+      h: 'c', hpp: 'cpp', cs: 'csharp', rb: 'ruby', php: 'php',
+      swift: 'swift', vue: 'vue', svelte: 'svelte', sh: 'shell',
+      sql: 'sql', html: 'html', css: 'css', json: 'json',
+      yaml: 'yaml', yml: 'yaml', xml: 'xml', toml: 'toml', md: 'markdown',
+    };
+    return map[ext] ?? 'unknown';
   }
 
-  private isValidSymbolKind(kind: string): boolean {
-    const validKinds = ['function', 'class', 'interface', 'method', 'variable', 'type', 'enum'];
-    return validKinds.includes(kind);
+  private estimateTokens(source: string): number {
+    return Math.ceil(source.length / 4);
   }
 }
 
 /**
- * CodeIndexer - Code index building and search.
+ * CodeIndexer - Placeholder.
  *
- * @example
- * ```typescript
- * import { buildCodeIndex, searchIndex } from '@personal-assistant/sdk/parser';
- *
- * // Build an index for the codebase
- * const index = await buildCodeIndex('./src');
- *
- * // Search for symbols
- * const results = searchIndex(index, 'authentication', { maxResults: 10 });
- * console.log(results);
- * ```
+ * The main package does not ship a code indexer module.
+ * This class is retained for API compatibility but throws on use.
  */
 export class CodeIndexer {
-  /**
-   * Build a code index for a project.
-   *
-   * @param rootDir - Root directory to index
-   * @returns The built code index
-   */
-  static async build(rootDir: string): Promise<any> {
-    const { buildCodeIndex } = await import('../../dist/analysis/code-indexer.js');
-    return buildCodeIndex(rootDir);
+  static async build(_rootDir: string): Promise<never> {
+    throw new PersonalAssistantError(
+      'CodeIndexer.build() is not available — the main package does not ship a code indexer module',
+      'NOT_IMPLEMENTED',
+      501,
+    );
   }
 
-  /**
-   * Search the code index.
-   *
-   * @param index - The code index
-   * @param query - Search query
-   * @param options - Search options
-   * @returns Matching index entries
-   */
-  static search(index: any, query: string, options?: { maxResults?: number; typeFilter?: string[] }): any[] {
-    // Note: This is a placeholder - the actual implementation uses the imported searchIndex
-    return [];
+  static search(): never {
+    throw new PersonalAssistantError(
+      'CodeIndexer.search() is not available — the main package does not ship a code indexer module',
+      'NOT_IMPLEMENTED',
+      501,
+    );
   }
 }
 
 /**
- * Build a code index for a project root.
- *
- * @param rootDir - Root directory to index
- * @returns The built code index
- *
- * @example
- * ```typescript
- * const index = await buildCodeIndex('./src');
- * console.log('Indexed files:', index.fileCount);
- * ```
+ * Build a code index — not available.
  */
-export async function buildCodeIndex(rootDir: string): Promise<any> {
-  const { buildCodeIndex } = await import('../../dist/analysis/code-indexer.js');
-  return buildCodeIndex(rootDir);
+export async function buildCodeIndex(_rootDir: string): Promise<never> {
+  throw new PersonalAssistantError(
+    'buildCodeIndex() is not available — the main package does not ship a code indexer module',
+    'NOT_IMPLEMENTED',
+    501,
+  );
 }
 
 /**
- * Search a code index for relevant symbols.
- *
- * @param index - The code index to search
- * @param query - Search query
- * @param options - Search options
- * @returns Matching entries
- *
- * @example
- * ```typescript
- * const index = await buildCodeIndex('./src');
- * const results = searchIndex(index, 'parse', { maxResults: 5 });
- * results.forEach(r => console.log(`${r.name} - ${r.filePath}`));
- * ```
+ * Search a code index — not available.
  */
-export function searchIndex(
-  index: any,
-  query: string,
-  options?: { maxResults?: number; typeFilter?: string[] }
-): any[] {
-  // Dynamic import at usage time
-  return [];
+export function searchIndex(): never {
+  throw new PersonalAssistantError(
+    'searchIndex() is not available — the main package does not ship a code indexer module',
+    'NOT_IMPLEMENTED',
+    501,
+  );
 }
 
 /**
- * ContextBuilder - Build comprehensive context for the agent.
+ * ContextBuilder — use @personal-assistant/sdk/agent's ContextBuilderWrapper instead.
  *
- * Combines:
- * - Repo Map: Codebase structure overview
- * - Code Index: Searchable symbol index
- * - Knowledge Graph: Prior context from memory
- *
- * @example
- * ```typescript
- * import { ContextBuilder } from '@personal-assistant/sdk/parser';
- *
- * const builder = new ContextBuilder();
- * const result = await builder.build({
- *   rootDir: './src',
- *   query: 'user authentication',
- *   maxTokens: 8000
- * });
- * console.log(result.context);
- * ```
+ * Retained for API compatibility but delegates to the agent module.
  */
 export class ContextBuilder {
-  /**
-   * Build a comprehensive context for the agent.
-   *
-   * @param options - Build options
-   * @returns Assembled context result
-   */
   async build(options: ContextBuilderOptions): Promise<ContextBuildResult> {
-    const { ContextBuilder: BackendContextBuilder } = await import('../../dist/agent/context-builder.js');
-
-    const builder = new BackendContextBuilder();
-    const result = await builder.build({
-      rootDir: options.rootDir,
-      query: options.query,
-      maxTokens: options.maxTokens,
-      includeKnowledge: options.includeKnowledge,
-      includeRepoMap: options.includeRepoMap,
-      includeCodeSearch: options.includeCodeSearch,
-    });
-
-    return {
-      context: result.context,
-      repoMapIncluded: result.repoMapIncluded,
-      codeSearchIncluded: result.codeSearchIncluded,
-      knowledgeIncluded: result.knowledgeIncluded,
-      codeEntryCount: result.codeEntryCount,
-      knowledgeEntryCount: result.knowledgeEntryCount,
-    };
+    const { ContextBuilderWrapper } = await import('./agent.js');
+    const wrapper = new ContextBuilderWrapper();
+    return wrapper.build(options);
   }
 
-  /**
-   * Query the knowledge graph for relevant entries.
-   *
-   * @param query - Search query
-   * @returns Matching knowledge entries
-   */
   async queryKnowledgeGraph(query: string): Promise<KnowledgeEntry[]> {
-    const { ContextBuilder: BackendContextBuilder } = await import('../../dist/agent/context-builder.js');
-
-    const builder = new BackendContextBuilder();
-    return builder.queryKnowledgeGraph(query);
+    const { ContextBuilderWrapper } = await import('./agent.js');
+    const wrapper = new ContextBuilderWrapper();
+    return wrapper.queryKnowledge(query);
   }
 
-  /**
-   * Clear cached data (repo map, code index).
-   */
   clearCache(): void {
-    // Note: The underlying builder's clearCache is private
-    // This is a no-op placeholder for API consistency
+    // No-op
   }
 }
 
 /**
  * Convenience function to parse a file.
- *
- * @param filePath - Path to the source file
- * @returns Parse result
  */
 export async function parseFile(filePath: string): Promise<ParseResult> {
   const parser = new PersonalAssistantParser();
@@ -366,9 +249,6 @@ export async function parseFile(filePath: string): Promise<ParseResult> {
 
 /**
  * Convenience function to generate a repo map.
- *
- * @param rootDir - Root directory of the project
- * @returns Repo map string
  */
 export async function generateRepoMap(rootDir: string): Promise<string> {
   const parser = new PersonalAssistantParser();

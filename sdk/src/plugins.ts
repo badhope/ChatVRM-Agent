@@ -35,7 +35,6 @@ export class PersonalAssistantPlugins {
    * @returns Array of plugin information
    */
   async list(): Promise<PluginInfo[]> {
-    const { PluginLoader } = await import('../../dist/plugins/plugin-loader.js');
     const fs = await import('fs/promises');
     const path = await import('path');
 

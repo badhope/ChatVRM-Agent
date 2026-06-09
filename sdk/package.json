@@ -16,6 +16,9 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {},
+  "peerDependencies": {
+    "@personal-assistant/agent": ">=2.0.0"
+  },
   "devDependencies": {
     "typescript": "^5.3.0"
   }
