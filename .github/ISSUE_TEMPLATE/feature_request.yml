@@ -1,6 +1,6 @@
 name: Feature Request
-description: Suggest a new feature or a meaningful improvement.
-title: "[Feat]: "
+description: Suggest a new feature or improvement.
+title: "[feat]: "
 labels: ["enhancement", "triage"]
 assignees: []
 
@@ -8,38 +8,37 @@ body:
   - type: markdown
     attributes:
       value: |
-        Describe the problem you want to solve first, then the proposed
-        solution. The "why" matters more than the "how".
+        Describe the **problem** first, then the proposed **solution**.
+        The "why" matters more than the "how".
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: What user pain are you trying to solve? What is the current limitation?
+      label: The problem
+      description: What's painful? What can't you do today?
       placeholder: "Right now I have to ...; this is annoying because ..."
     validations:
       required: true
 
   - type: textarea
-    id: proposal
+    id: solution
     attributes:
-      label: Proposed solution
-      description: Describe the feature, change, or improvement you want.
+      label: What I want
+      description: The feature, change, or improvement.
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: Other approaches you have considered and why this one is better.
+      label: What I tried / considered
     validations:
       required: false
 
   - type: textarea
     id: scope
     attributes:
-      label: Scope / impact
+      label: Scope
       description: Does this change user-facing behavior, the API, the data model, or the build? Any backward-compat risk?
     validations:
       required: false
@@ -47,9 +46,9 @@ body:
   - type: dropdown
     id: willingness
     attributes:
-      label: Willingness to contribute
+      label: My willingness
       options:
-        - I'd be happy to submit a PR for this
+        - I'd send a PR for this
         - I can help test / review
         - I can only describe the use case
     validations:

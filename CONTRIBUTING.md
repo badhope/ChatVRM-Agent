@@ -1,123 +1,46 @@
-# Contributing to Personal-Assistant
+# Contributing
 
-Thanks for your interest in contributing. This document outlines the
-guidelines for contributing to **Personal-Assistant**.
+Want to send a PR? Cool. Here's the flow.
 
-## Prerequisites
+## Before you start
 
-- Node.js **>= 20.0.0 < 25.0.0** (22 LTS recommended)
-- npm
-- TypeScript 5.8 knowledge
-- Git
+- **Open an issue first** if the change is non-trivial. I don't want you
+  to spend a weekend on something I'd have asked you to do differently.
+- Read the code that's already there. I try to keep it boring and
+  consistent. If you're adding a new pattern, it should fit.
+- Look at the README for how to install / run / test. Use the lockfile
+  that's checked in; don't regenerate it.
 
-## Setup
+## Local checks
 
-```bash
-# 1. Fork and clone
-git clone https://github.com/<your-username>/Personal-Assistant.git
-cd Personal-Assistant
+Run whatever the project has: `pnpm test`, `pytest`, `cargo test`, etc.
+If linter / formatter configs are checked in, run them too. CI will
+catch what you missed, but a green push is faster than a red one.
 
-# 2. Install dependencies (backend + frontend)
-npm install
-(cd frontend && npm install)
+## Commit messages
 
-# 3. Build
-npm run build
-npm run web:build
+I don't enforce Conventional Commits. Subject, blank line, body, done.
+If a commit fixes an issue, mention the issue number. Don't bother with
+emoji or "WIP" prefixes.
 
-# 4. Run tests
-npm test
-```
+## Pull requests
 
-## How to Contribute
+- Fill the PR template. One paragraph in the body is fine; screenshots
+  help for UI.
+- Keep the diff small. Squash before merging unless the history matters.
+- I'll review roughly in order of arrival. If CI is green and the change
+  does what the description says, I'll merge. I might push back on
+  architecture; that's not personal.
+- Don't commit secrets, generated build output, large binaries, or
+  someone else's code without a license.
 
-### 1. Create a Branch
+## What I won't merge
 
-```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b bugfix/issue-number
-```
-
-### 2. Make Changes
-
-- Follow the existing code style (`npm run lint` and `npm run format`)
-- Write clean, maintainable, well-typed code
-- Add comments only where logic is non-obvious
-- **Include tests** for new functionality (`src/__tests__/`)
-
-### 3. Run Tests and Lint
-
-```bash
-npm test           # all tests must pass
-npm run lint       # 0 ESLint errors
-npm run build      # tsc 0 errors
-```
-
-### 4. Commit Changes
-
-Use [Conventional Commits](https://www.conventionalcommits.org/):
-
-```bash
-git commit -m "feat: add new feature X"
-git commit -m "fix: resolve issue with Y"
-git commit -m "docs: update README"
-git commit -m "i18n: add Chinese translation"
-```
-
-### 5. Push and Open a Pull Request
-
-```bash
-git push origin feature/your-feature-name
-```
-
-Then open a PR from your branch to `main` on GitHub.
-
-## Code Style
-
-- TypeScript everywhere (no plain JS)
-- 2-space indentation
-- Single quotes for strings
-- Trailing commas
-- LF line endings (`.prettierrc`)
-- Type annotations required
-- Public APIs should have JSDoc
-
-## Internationalization (i18n)
-
-The project supports multiple languages. When adding new UI strings:
-
-1. Add the English string to `frontend/src/i18n/en.json`
-2. Add the Chinese translation to `frontend/src/i18n/zh.json`
-3. Use `t('key')` from `useTranslation()` in components
-
-Documentation:
-
-- `README.md` — primary English docs
-- `README_zh.md` — Chinese mirror
-
-## Reporting Issues
-
-1. Search [existing issues](https://github.com/badhope/Personal-Assistant/issues) first
-2. Open a new issue with a clear title and description
-3. For bugs, include:
-   - Reproduction steps
-   - Expected vs actual behavior
-   - Environment (OS, Node version)
-   - Relevant logs
-
-## Feature Requests
-
-Open an issue with the `enhancement` label and describe:
-
-- The problem you're trying to solve
-- Your proposed solution
-- Any alternatives you've considered
+- Drive-by refactors that don't fix a real problem.
+- New dependencies for trivial reasons.
+- Anything that breaks the existing API without a heads-up first.
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the [MIT License](LICENSE).
-
-## Contact
-
-For questions, open a [GitHub Discussion](https://github.com/badhope/Personal-Assistant/discussions).
+By contributing, you agree your contribution is licensed under the same
+license as the rest of the project. See [`LICENSE`](./LICENSE).

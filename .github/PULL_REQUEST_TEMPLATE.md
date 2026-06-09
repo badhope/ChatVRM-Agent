@@ -1,31 +1,27 @@
-## Summary
+## What
 
-<!-- One-paragraph description of what this PR does. -->
+<!-- One line: what this PR does -->
 
-## Related issue
+## Why
 
-<!-- Link the issue this PR closes, e.g. Fixes #42, Closes #58 -->
+<!-- The reason. What problem does this fix / what value does it add? -->
 
-## Type of change
+## How
 
-Bug fix / New feature / Breaking change / Documentation / Refactor / Provider adapter / Tool / Pipeline / Dependency
+<!-- Approach, breaking changes, anything weird you did -->
 
-## What changed
+## Tested
 
-<!-- Bullet list of key changes. -->
+<!-- How you tested. If you didn't, say so and tell me why -->
 
-- …
+## Checklist
 
-## How was it tested?
+- [ ] I have read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- [ ] Tests pass locally (and CI is green)
+- [ ] I didn't add any new linter / typecheck warnings
+- [ ] I didn't commit any secrets, build output, or large binaries
+- [ ] I added a `CHANGELOG.md` entry under "Unreleased" if it matters
 
-```bash
-$ npm test
-$ npm run build
-$ npm run lint
-```
+## Screenshots / Logs
 
-Manual checks performed: …
-
-## Breaking change notes
-
-<!-- If applicable, describe the migration path for users. -->
+<!-- Drag in images for UI changes. Paste (redacted) logs for runtime changes. -->

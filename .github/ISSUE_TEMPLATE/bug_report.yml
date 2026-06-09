@@ -1,6 +1,6 @@
 name: Bug Report
-description: Report something that is broken or behaves incorrectly.
-title: "[Bug]: "
+description: Something is broken or behaving wrong.
+title: "[bug]: "
 labels: ["bug", "triage"]
 assignees: []
 
@@ -8,15 +8,15 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug. Please fill in the sections below.
-        The more detail you can give, the faster we can reproduce and fix it.
+        Thanks for taking the time. The more detail, the faster I can
+        reproduce and fix this.
 
   - type: textarea
-    id: description
+    id: what
     attributes:
       label: What happened?
-      description: A clear and concise description of the bug.
-      placeholder: "When I run `...`, the app does `...` instead of `...`."
+      description: Clear, short description of the bug.
+      placeholder: "When I run `...`, I get `...` instead of `...`."
     validations:
       required: true
 
@@ -24,7 +24,7 @@ body:
     id: repro
     attributes:
       label: Steps to reproduce
-      description: Numbered steps. Use a minimal example if possible.
+      description: Numbered. Smallest example you can manage.
       placeholder: |
         1. Install with `...`
         2. Run `...`
@@ -35,29 +35,14 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      description: What did you expect to happen?
+      label: Expected
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual behavior
-      description: What actually happened? Include stack traces / logs.
-    validations:
-      required: true
-
-  - type: dropdown
-    id: severity
-    attributes:
-      label: Severity
-      description: How bad is the impact?
-      options:
-        - Low — cosmetic / minor inconvenience
-        - Medium — feature broken but workaround exists
-        - High — feature broken, no workaround
-        - Critical — data loss, security issue, or service outage
+      label: Actual (include logs / stack traces)
     validations:
       required: true
 
@@ -65,16 +50,14 @@ body:
     id: version
     attributes:
       label: Version / commit
-      description: e.g. release tag, commit SHA, or container image digest
       placeholder: "v1.2.3 or abcdef0"
     validations:
       required: true
 
   - type: dropdown
-    id: env
+    id: where
     attributes:
-      label: Environment
-      description: Where did you run this?
+      label: Where did you run it?
       options:
         - Local (macOS)
         - Local (Linux)
@@ -86,10 +69,21 @@ body:
     validations:
       required: false
 
-  - type: textarea
-    id: extras
+  - type: dropdown
+    id: severity
     attributes:
-      label: Additional context
-      description: Anything else that might help (logs, screenshots, links).
+      label: How bad?
+      options:
+        - Low (cosmetic / minor inconvenience)
+        - Medium (broken feature, workaround exists)
+        - High (broken feature, no workaround)
+        - Critical (data loss, security, outage)
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
     validations:
       required: false
