@@ -26,4 +26,4 @@ keywords:
   - openai
   - pipeline
 abstract: >-
-  Self-hosted AI agent with a 6-stage pipeline (understand → plan → execute → validate → reflect). 10 LLM providers, 7 real tools, every call hits a real endpoint — no mock layer. React web UI + CLI + SDK.
+  My self-hosted AI assistant. Six stages from "I need to" to "done": understand, plan, execute, validate, reflect. Ten LLM providers, seven real tools, no mock layer pretending to be a tool. React web UI, CLI, SDK. Pick the one that fits the box you have.
