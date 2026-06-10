@@ -1,42 +1,22 @@
-# CODEOWNERS
-# Each line is a file pattern followed by one or more owners.
-# Order matters: later patterns take precedence.
+# CODEOWNERS — default review ownership
+# badhope is the sole owner; replace with team handles in a
+# multi-maintainer setup.
 
-# Default owners for everything not matched below
-*                                    @badhope
+# Default: everything
+*       @badhope
 
-# Core pipeline & domain logic
-/src/core/                           @badhope
-/src/stages/                         @badhope
-/src/domain/                         @badhope
-/src/ports/                          @badhope
-
-# Adapters (LLM / memory / config / shell / tools)
-/src/adapters/                       @badhope
-
-# Infrastructure
-/src/infrastructure/                 @badhope
-
-# CLI
-/src/cli/                            @badhope
-
-# Server (Express backend)
-/server/                             @badhope
-
-# Frontend (React + Vite + Tailwind)
-/frontend/                           @badhope
-
-# SDK (npm package)
-/sdk/                                @badhope
-
-# GitHub workflows & templates
-/.github/                            @badhope
+# GitHub configuration
+/.github/        @badhope
 
 # Documentation
-/docs/                               @badhope
-README.md                            @badhope
-README_zh.md                         @badhope
-CHANGELOG.md                         @badhope
-CONTRIBUTING.md                      @badhope
-SECURITY.md                          @badhope
-CODE_OF_CONDUCT.md                   @badhope
+/docs/           @badhope
+/README.md       @badhope
+/CHANGELOG.md    @badhope
+
+# Build / release config
+/package.json    @badhope
+/uv.lock         @badhope
+/package-lock.json @badhope
+/pnpm-lock.yaml  @badhope
+/Cargo.toml      @badhope
+/Cargo.lock      @badhope

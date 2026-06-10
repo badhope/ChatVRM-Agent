@@ -1,38 +1,40 @@
-## Bug description
+---
+name: Bug report
+about: Something is broken
+title: "[bug] "
+labels: bug
+assignees: badhope
+---
 
-A clear and concise description of what the bug is.
+## Describe the bug
 
-## Reproduction steps
+<!-- A clear and concise description of what the bug is. -->
 
-1. …
-2. …
-3. …
+## To reproduce
 
-**Expected behavior:** …
-**Actual behavior:** …
+```bash
+# Minimal reproduction steps
+```
+
+## Expected behaviour
+
+<!-- What you expected to happen. -->
+
+## Actual behaviour
+
+<!-- What actually happened. Include stack traces, error messages,
+screenshots. -->
 
 ## Environment
 
-- **OS**: …
-- **Node.js**: … (`node -v`)
-- **npm**: … (`npm -v`)
-- **Personal-Assistant version**: …
-- **Install method**: `npm install` / Docker / source build
-- **Provider used**: … (siliconflow, openai, ollama, etc.)
-- **Mode**: Web UI / CLI / SDK
-
-## Logs / Screenshots
-
-```
-Paste server / browser / CLI logs here.
-```
-
-Attach a screenshot or screen recording for UI bugs.
-
-## Possible cause
-
-Optional — share any root-cause hints.
+- OS: <!-- e.g. macOS 14.4 -->
+- Runtime version: <!-- e.g. Node 20.11, Python 3.11 -->
+- Package version: <!-- git rev-parse HEAD, or npm/pip version -->
+- Date observed: <!-- 2026-06-10 -->
 
 ## Severity
 
-Critical (data loss / security / total breakage) / High (major feature unusable) / Medium (workaround exists) / Low (cosmetic)
+- [ ] Blocker — production is down
+- [ ] High — feature unusable
+- [ ] Medium — workaround exists
+- [ ] Low — cosmetic
