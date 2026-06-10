@@ -1,16 +1,44 @@
 # Personal-Assistant
 
-A personal AI agent that plans, reasons, and acts through a 6-stage pipeline. Ships with a CLI and a React web UI that both talk to the same core — 10 LLM providers, 7 real tools, real SSE streaming, no mock layer.
+A self-hosted AI agent with a 6-stage pipeline — **understand → plan →
+execute → validate → reflect** — wired to real tools and 10 LLM providers.
+React web UI + CLI + SDK, all talking to the same core.
 
-[中文文档](README_zh.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
+I got tired of agent demos where the tool calls were hard-coded mocks.
+This one calls real endpoints. If your shell command fails, you see the
+real error. If a file write fails, you see the real `EACCES`. No
+"success" path that's secretly a stub.
 
 ---
 
-## What is this?
+## What's in the box
 
-Personal-Assistant is a self-hosted AI agent you can run locally or deploy behind a reverse proxy. Give it a task in natural language, and it goes through six stages — understand, plan, execute, validate, reflect — using real tools (file I/O, shell, memory, web search) to get things done.
+- **6-stage pipeline** with live progress events you can hook a UI onto.
+- **10 LLM providers** — OpenAI, Anthropic, Google, DeepSeek, SiliconFlow,
+  Aliyun, Zhipu, Baidu, Ollama, LM Studio.
+- **7 real tools** — `writeFile`, `readFile`, `shell`, `search`,
+  `remember`, `analyze`, `respond`. No mock layer.
+- **React web UI** with SSE streaming, 13 pages, a knowledge graph view,
+  a personality switcher, an emotion-state panel.
+- **CLI** for interactive chat and one-shot agent tasks.
+- **SDK** (`@personal-assistant/sdk`) so you can embed the agent in
+  your own app without forking the runtime.
+- **i18n**: English + Simplified Chinese (348 keys).
+- **Clean Architecture**: ports, adapters, pure domain logic. The core
+  has zero framework dependencies; the web UI is one adapter among many.
 
-Unlike chat-only wrappers, every tool call hits the real adapter: files are written to disk, shell commands run in a real process, memory is persisted to disk. There is no mock layer, no stub, no synthetic "success" path. If something fails, you see the real error.
+## Quick start
+
+```bash
+git clone https://github.com/badhope/Personal-Assistant.git
+cd Personal-Assistant
+npm run install:all
+# edit .env with your LLM provider key
+npm run dev:web      # React UI on :5173
+npm run dev:cli      # interactive CLI
+```
+
+---
 
 ### Key features
 
