@@ -1,0 +1,37 @@
+name: Stale
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+  issues:
+    types: [opened, labeled, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark / close stale
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        with:
+          egress-policy: audit
+
+      - name: Run stale
+        uses: actions/stale@5c658c458affa5e0b5e7b18c31291a4631a59c64 # v9.1.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: pinned,security,good first issue
+          exempt-pr-labels: pinned,security
+          operations-per-run: 60
+          remove-stale-when-updated: true
+          only: issues
