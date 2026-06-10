@@ -1,27 +1,36 @@
 ## What
 
-<!-- One line: what this PR does -->
+<!-- One-paragraph description of the change. -->
 
 ## Why
 
-<!-- The reason. What problem does this fix / what value does it add? -->
+<!-- Motivation. Link any issue this PR fixes (Fixes #123). -->
 
 ## How
 
-<!-- Approach, breaking changes, anything weird you did -->
+<!-- Approach: list the changes, files touched, design decisions. -->
 
-## Tested
+## Test plan
 
-<!-- How you tested. If you didn't, say so and tell me why -->
+<!-- How did you verify? Which commands, which test suites? -->
+
+- [ ] Existing tests pass
+- [ ] Added tests for new behaviour
+- [ ] Manually verified in dev / staging
+
+## Risk & rollout
+
+<!-- What can break? Is rollback straightforward? Is there a feature flag? -->
 
 ## Checklist
 
-- [ ] I have read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
-- [ ] Tests pass locally (and CI is green)
-- [ ] I didn't add any new linter / typecheck warnings
-- [ ] I didn't commit any secrets, build output, or large binaries
-- [ ] I added a `CHANGELOG.md` entry under "Unreleased" if it matters
+- [ ] My branch is up-to-date with the base branch
+- [ ] I ran `gitleaks` locally (or let CI do it)
+- [ ] I added / updated tests for new behaviour
+- [ ] I updated documentation (README, CHANGELOG, …)
+- [ ] I did **not** commit any secrets, tokens, or credentials
+- [ ] My commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
 
-## Screenshots / Logs
-
-<!-- Drag in images for UI changes. Paste (redacted) logs for runtime changes. -->
+> **Never commit secrets.** If you accidentally committed a token,
+> rotate it **immediately** in the provider's settings, then update
+> the PR to remove the secret. See [SECURITY.md](./SECURITY.md).
