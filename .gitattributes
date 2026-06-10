@@ -1,0 +1,110 @@
+# Auto-detect text files and normalize line endings to LF on commit.
+*               text=auto eol=lf
+
+# Shell scripts must keep LF.
+*.sh            text eol=lf
+*.bash          text eol=lf
+*.zsh           text eol=lf
+
+# Windows scripts must keep CRLF.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Python: enforce LF.
+*.py            text eol=lf
+*.pyi           text eol=lf
+
+# JS/TS/Web: enforce LF.
+*.js            text eol=lf
+*.cjs           text eol=lf
+*.mjs           text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.jsx           text eol=lf
+*.vue           text eol=lf
+*.svelte        text eol=lf
+*.html          text eol=lf
+*.css           text eol=lf
+*.scss          text eol=lf
+*.less          text eol=lf
+*.json          text eol=lf
+*.json5         text eol=lf
+*.jsonc         text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.toml          text eol=lf
+*.md            text eol=lf
+*.mdx           text eol=lf
+*.xml           text eol=lf
+*.svg           text eol=lf
+
+# Rust: enforce LF.
+*.rs            text eol=lf
+
+# C/C++/Go/Java/Kotlin/Swift: enforce LF.
+*.c             text eol=lf
+*.cc            text eol=lf
+*.cpp           text eol=lf
+*.cxx           text eol=lf
+*.h             text eol=lf
+*.hpp           text eol=lf
+*.go            text eol=lf
+*.java          text eol=lf
+*.kt            text eol=lf
+*.kts           text eol=lf
+*.swift         text eol=lf
+
+# Lockfiles: keep as-is, no normalization.
+*.lock          -text
+pnpm-lock.yaml  -text
+package-lock.json -text
+yarn.lock       -text
+Cargo.lock      -text
+poetry.lock     -text
+uv.lock         -text
+composer.lock   -text
+Gemfile.lock    -text
+
+# Binary files: do not diff.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.webp          binary
+*.ico           binary
+*.pdf           binary
+*.zip           binary
+*.tar           binary
+*.gz            binary
+*.tgz           binary
+*.7z            binary
+*.rar           binary
+*.woff          binary
+*.woff2         binary
+*.eot           binary
+*.ttf           binary
+*.otf           binary
+*.mp4           binary
+*.webm          binary
+*.mov           binary
+*.mp3           binary
+*.wav           binary
+*.flac          binary
+*.ogg           binary
+
+# Linguist overrides: mark vendored / generated / docs correctly.
+docs/*          linguist-documentation
+CHANGELOG.md    linguist-documentation
+CONTRIBUTING.md  linguist-documentation
+CODE_OF_CONDUCT.md linguist-documentation
+SECURITY.md     linguist-documentation
+LICENSE         linguist-vendored
+.github/        linguist-documentation
+*.min.js        linguist-generated
+*.min.css       linguist-generated
+*_pb2.py        linguist-generated
+*_pb2_grpc.py   linguist-generated
+/dist/          linguist-generated
+/build/         linguist-generated
+/node_modules/  linguist-vendored

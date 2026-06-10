@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software in academic work, please cite it using the
+  metadata below.
+title: Personal-Assistant
+authors:
+  - family-names: badhope
+    given-names: badhope
+    alias: badhope
+identifiers:
+  - type: url
+    value: https://github.com/badhope/Personal-Assistant
+license: MIT
+type: software
+url: https://github.com/badhope/Personal-Assistant
+repository-code: https://github.com/badhope/Personal-Assistant
+keywords:
+  - typescript
+  - nodejs
+  - personal-assistant
+  - ai-agent
+  - anthropic
+  - clean-architecture
+  - express
+  - llm
+  - openai
+  - pipeline
+abstract: >-
+  My self-hosted AI assistant. Six stages from "I need to" to "done": understand, plan, execute, validate, reflect. Ten LLM providers, seven real tools, no mock layer pretending to be a tool. React web UI, CLI, SDK. Pick the one that fits the box you have.
