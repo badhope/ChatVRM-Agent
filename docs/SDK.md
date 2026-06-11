@@ -1,5 +1,10 @@
 # SDK — `@personal-assistant/sdk`
 
+> **Deprecated.** The whole `Personal-Assistant` v2 (TypeScript) line
+> has been superseded by [`pa-agent`](https://github.com/badhope/pa-agent)
+> (Python). The SDK still builds and runs, but no new features will land
+> here. Use the Python rewrite for new projects.
+
 `@personal-assistant/sdk` is a small, dependency-free npm package
 that exposes the agent runner and a few standalone utilities
 (parser, editor, plugin loader) for embedding Personal Assistant

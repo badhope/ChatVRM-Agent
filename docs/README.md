@@ -12,6 +12,11 @@ Where to find what.
 5. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — common pitfalls.
 6. [GIT_GUIDELINES.md](GIT_GUIDELINES.md) — commit message style.
 
+> **Note:** [SDK.md](SDK.md) documents the standalone
+> `@personal-assistant/sdk` npm package. The SDK is part of the v2
+> (TypeScript) line and is **deprecated** — see the banner at the top
+> of the file. The current build is `pa-agent` (Python).
+
 ## Architecture decision records
 
 - [ADR/001-record-architecture-decisions.md](ADR/001-record-architecture-decisions.md) — why we use ADRs

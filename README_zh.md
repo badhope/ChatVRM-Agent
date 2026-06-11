@@ -1,10 +1,10 @@
 # Personal-Assistant（个人助手）
 
-> **状态：已被 [`pa-agent`](../pa-agent/README_zh.md) 取代。**
+> **状态：已被 [`pa-agent`](https://github.com/badhope/pa-agent) 取代。**
 > 本仓库的 v2（TypeScript）实现仍可运行、保留作为参考，但当前活跃的开发线
 > 是 Python 重写版 `pa-agent/`。两者沿用同一套三层架构（本地 IO ·
 > 模型网关 · 工具运行时），但新项目有更干净的 Pipeline、真正的 SSE 流式
-> 输出和 Streamlit Web 前端。当前构建请看 [pa-agent 中文说明](../pa-agent/README_zh.md)。
+> 输出和 Streamlit Web 前端。当前构建请看 [pa-agent 中文说明](https://github.com/badhope/pa-agent/blob/main/README_zh.md)。
 
 一个通过 6 阶段 Pipeline 进行规划、推理和执行的个人 AI 智能体。CLI 和 React Web UI 共享同一套核心——10 个 LLM Provider、7 个真实工具、真实 SSE 流式传输、无 mock 层。
 
