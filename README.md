@@ -1,5 +1,13 @@
 # Personal-Assistant
 
+> **Status: superseded by [`pa-agent`](https://github.com/badhope/Personal-Assistant/tree/main/../pa-agent).**
+> This v2 (TypeScript) implementation is kept for reference and remains
+> functional, but the active development line is the Python rewrite in
+> `pa-agent/`. The two share the same design — three-layer
+> local-IO · model-gateway · tool-runtime — but the new project has a
+> cleaner pipeline, real SSE streaming, and a Streamlit web UI.
+> See the [pa-agent README](../pa-agent/README.md) for the current build.
+
 A self-hosted AI agent with a 6-stage pipeline — **understand → plan →
 execute → validate → reflect** — wired to real tools and 10 LLM providers.
 React web UI + CLI + SDK, all talking to the same core.

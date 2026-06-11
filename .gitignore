@@ -44,6 +44,7 @@ pnpm-debug.log*
 # Build artifacts
 *.js.map
 *.d.ts.map
+*.tsbuildinfo
 
 # Coverage
 coverage/
@@ -56,7 +57,6 @@ logs/
 
 # Cache
 .cache/
-.pytest_cache/
 
 # Temporary
 *.tmp
@@ -76,21 +76,6 @@ local_*
 
 # SDK
 sdk/dist/
-
-# Packages (local)
-packages/
-
-# DevFlow
-.devflow/
-
-# Skills
-.skills/
-
-# Python
-__pycache__/
-*.py[cod]
-venv/
-ENV/
 
 # E2E test artifacts
 e2e-output/
