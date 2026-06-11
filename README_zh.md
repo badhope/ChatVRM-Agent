@@ -279,7 +279,6 @@ Personal-Assistant/
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS                # 代码评审负责人
 ├── sdk/                          # 独立 npm 包 (@personal-assistant/sdk)
-├── examples/                     # 7 个可运行示例脚本
 ├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API / SDK
 ├── README.md                     # 英文版
 ├── README_zh.md                  # 中文版（本文件）
@@ -307,12 +306,6 @@ Web UI 内置中英双语。点击页眉的地球图标在英文和简体中文�
 1. 复制 `frontend/src/i18n/en.json` 为 `frontend/src/i18n/<code>.json` 并翻译
 2. 在 [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) 的 `SUPPORTED_LANGUAGES` 和 `resources` 中注册
 3. 在 [`Layout.tsx`](frontend/src/components/Layout.tsx) 的语言下拉菜单中添加一项
-
----
-
-## 示例
-
-[`examples/`](examples/) 文件夹有 7 个独立的、可运行的 TypeScript 文件。每个都有前置条件和 `npx tsx` 命令注释。详见 [`examples/README.md`](examples/README.md)。
 
 ---
 

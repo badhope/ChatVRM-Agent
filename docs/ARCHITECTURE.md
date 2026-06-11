@@ -34,7 +34,6 @@ Personal-Assistant/
 ├── server/             # Express + SSE backend
 ├── frontend/           # React 18 + Vite + Tailwind web UI (13 pages)
 ├── sdk/                # Standalone npm package (@personal-assistant/sdk)
-├── examples/           # 7 runnable example scripts
 ├── docs/               # This folder
 └── typedoc.json        # TypeDoc config for the API reference site
 ```

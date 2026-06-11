@@ -309,7 +309,6 @@ Personal-Assistant/
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS                # Code review owners
 ├── sdk/                          # Standalone npm package (@personal-assistant/sdk)
-├── examples/                     # 7 runnable example scripts
 ├── docs/                         # ARCHITECTURE / SETUP / TROUBLESHOOTING / DEPLOYMENT / API / SDK
 ├── README.md                     # English
 ├── README_zh.md                  # 中文
@@ -337,12 +336,6 @@ Translation files live in [`frontend/src/i18n/`](frontend/src/i18n/) and follow 
 1. Copy `frontend/src/i18n/en.json` to `frontend/src/i18n/<code>.json` and translate
 2. Register it in [`frontend/src/i18n/index.ts`](frontend/src/i18n/index.ts) — `SUPPORTED_LANGUAGES` and `resources`
 3. Add a tab to the language switcher in [`Layout.tsx`](frontend/src/components/Layout.tsx)
-
----
-
-## Examples
-
-The [`examples/`](examples/) folder has 7 self-contained, runnable TypeScript files. Each is annotated with prerequisites and the exact `npx tsx` command. See [`examples/README.md`](examples/README.md) for the full table.
 
 ---
 

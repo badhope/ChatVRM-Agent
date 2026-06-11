@@ -11,9 +11,7 @@ export default defineConfig({
       'dist',
       '**/*.test.ts.skip',
       '**/sdk/**',
-      '**/examples/**',
       '**/plugins/**',
-      '**/scripts/**',
     ],
     coverage: {
       provider: 'v8',
