@@ -1,4 +1,4 @@
-import { VRMExpressionPresetName, VRMHumanBoneName } from '@pixiv/three-vrm';
+import { VRMExpressionPresetName, VRMHumanBoneName } from "@pixiv/three-vrm";
 
 export interface VRMCVRMAnimation {
   specVersion: string;

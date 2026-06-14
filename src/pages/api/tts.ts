@@ -1,28 +1,60 @@
 import { koeiromapFreeV1 } from "@/features/koeiromap/koeiromap";
+import { z } from "zod";
 
 import type { NextApiRequest, NextApiResponse } from "next";
+
+const talkStyleSchema = z.enum(["talk", "happy", "sad"]);
+
+const requestSchema = z.object({
+  message: z.string().min(1).max(2000),
+  speakerX: z.number().min(0).max(10),
+  speakerY: z.number().min(0).max(10),
+  style: talkStyleSchema.optional().default("talk"),
+  apiKey: z.string().min(1),
+});
 
 type Data = {
   audio: string;
 };
 
+type ErrorData = {
+  error: string;
+  details?: unknown;
+};
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Data>
+  res: NextApiResponse<Data | ErrorData>
 ) {
-  const message = req.body.message;
-  const speakerX = req.body.speakerX;
-  const speakerY = req.body.speakerY;
-  const style = req.body.style;
-  const apiKey = req.body.apiKey;
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
 
-  const voice = await koeiromapFreeV1(
-    message,
-    speakerX,
-    speakerY,
-    style,
-    apiKey
-  );
+  const parsed = requestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid request body",
+      details: parsed.error.flatten(),
+    });
+    return;
+  }
 
-  res.status(200).json(voice);
+  try {
+    const voice = await koeiromapFreeV1(
+      parsed.data.message,
+      parsed.data.speakerX,
+      parsed.data.speakerY,
+      parsed.data.style,
+      parsed.data.apiKey
+    );
+    res.status(200).json(voice);
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Unknown error from Koeiromap.";
+    res
+      .status(502)
+      .json({ error: "Upstream TTS call failed", details: message });
+  }
 }

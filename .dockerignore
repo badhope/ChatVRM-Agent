@@ -1,0 +1,46 @@
+# Files / directories excluded from the Docker build context.
+# See: https://docs.docker.com/engine/reference/builder/#dockerignore-file
+
+# Build artifacts
+.next/
+out/
+build/
+dist/
+
+# Dependencies — re-installed inside the image
+node_modules/
+
+# Local config and secrets — never bake into an image
+.env
+.env.local
+.env.*.local
+
+# Logs and OS junk
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Tests / coverage
+coverage/
+.vitest-cache/
+
+# Version control metadata
+.git/
+.gitignore
+.github/
+
+# Documentation that doesn't need to be in the image
+README.md
+README.zh.md
+README.ja.md
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md
+
+# Docker / CI
+Dockerfile
+.dockerignore
+vercel.json
