@@ -1,4 +1,5 @@
 import { IconButton } from "./iconButton";
+import { useI18n } from "@/features/i18n/i18nContext";
 
 type Props = {
   userMessage: string;
@@ -18,10 +19,12 @@ export const MessageInput = ({
   onClickMicButton,
   onClickSendButton,
 }: Props) => {
+  const { t } = useI18n();
+
   return (
     <div className="absolute bottom-0 z-20 w-screen">
       <div className="bg-base text-black">
-        <div className="mx-auto max-w-4xl p-16">
+        <div className="mx-auto max-w-4xl p-4 sm:p-16">
           <div className="grid grid-flow-col gap-[8px] grid-cols-[min-content_1fr_min-content]">
             <IconButton
               iconName="24/Microphone"
@@ -32,10 +35,10 @@ export const MessageInput = ({
             />
             <input
               type="text"
-              placeholder="聞きたいことをいれてね"
+              placeholder={t.messageInput.placeholder}
               onChange={onChangeUserMessage}
               disabled={isChatProcessing}
-              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled disabled:text-primary-disabled rounded-16 w-full px-16 text-text-primary typography-16 font-bold disabled"
+              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled disabled:text-primary-disabled rounded-16 w-full px-4 sm:px-16 py-2 sm:py-4 text-sm sm:text-base text-text-primary font-bold disabled"
               value={userMessage}
             ></input>
 
@@ -48,8 +51,8 @@ export const MessageInput = ({
             />
           </div>
         </div>
-        <div className="py-4 bg-[#413D43] text-center text-white font-Montserrat">
-          powered by VRoid, Koemotion, ChatGPT API
+        <div className="py-2 sm:py-4 bg-[#413D43] text-center text-white font-Montserrat text-xs sm:text-sm">
+          {t.messageInput.poweredBy}
         </div>
       </div>
     </div>

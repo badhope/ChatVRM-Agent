@@ -1,5 +1,6 @@
 import { MessageInput } from "@/components/messageInput";
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/features/i18n/i18nContext";
 
 type Props = {
   isChatProcessing: boolean;
@@ -20,6 +21,7 @@ export const MessageInputContainer = ({
   const [speechRecognition, setSpeechRecognition] =
     useState<SpeechRecognition>();
   const [isMicRecording, setIsMicRecording] = useState(false);
+  const { language } = useI18n();
 
   // 音声認識の結果を処理する
   const handleRecognitionResult = useCallback(
@@ -67,7 +69,8 @@ export const MessageInputContainer = ({
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
+    // 根据语言设置语音识别语言
+    recognition.lang = language === "zh" ? "zh-CN" : "en-US";
     recognition.interimResults = true; // 認識の途中結果を返す
     recognition.continuous = false; // 発言の終了時に認識を終了する
 
@@ -75,7 +78,7 @@ export const MessageInputContainer = ({
     recognition.addEventListener("end", handleRecognitionEnd);
 
     setSpeechRecognition(recognition);
-  }, [handleRecognitionResult, handleRecognitionEnd]);
+  }, [handleRecognitionResult, handleRecognitionEnd, language]);
 
   useEffect(() => {
     if (!isChatProcessing) {

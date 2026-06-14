@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link } from "./link";
+import { useI18n } from "@/features/i18n/i18nContext";
 
 type Props = {
   openAiKey: string;
@@ -14,6 +15,7 @@ export const Introduction = ({
   onChangeKoeiromapKey,
 }: Props) => {
   const [opened, setOpened] = useState(true);
+  const { t } = useI18n();
 
   const handleAiKeyChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,122 +32,94 @@ export const Introduction = ({
   );
 
   return opened ? (
-    <div className="absolute z-40 w-full h-full px-24 py-40  bg-black/30 font-M_PLUS_2">
-      <div className="mx-auto my-auto max-w-3xl max-h-full p-24 overflow-auto bg-white rounded-16">
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary ">
-            このアプリケーションについて
+    <div className="absolute z-40 w-full h-full px-4 sm:px-24 py-8 sm:py-40 bg-black/30 font-M_PLUS_2 overflow-y-auto">
+      <div className="mx-auto my-auto max-w-3xl max-h-full p-4 sm:p-24 overflow-auto bg-white rounded-16">
+        <div className="my-4 sm:my-24">
+          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+            {t.introduction.title}
           </div>
-          <div>
-            Webブラウザだけで3Dキャラクターとの会話を、マイクやテキスト入力、音声合成を用いて楽しめます。キャラクター（VRM）の変更や性格設定、音声調整もできます。
-          </div>
+          <div>{t.introduction.description}</div>
         </div>
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            技術紹介
+        <div className="my-4 sm:my-24">
+          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+            {t.introduction.techTitle}
           </div>
           <div>
-            3Dモデルの表示や操作には
+            {t.introduction.techDescription}
             <Link
-              url={"https://github.com/pixiv/three-vrm"}
-              label={"@pixiv/three-vrm"}
+              url="https://inside.pixiv.blog/2023/04/28/160000"
+              label={t.introduction.techLink}
             />
-            、 会話文生成には
-            <Link
-              url={
-                "https://openai.com/blog/introducing-chatgpt-and-whisper-apis"
-              }
-              label={"ChatGPT API"}
-            />
-            、 音声合成には
-            <Link url={"https://koemotion.rinna.co.jp/"} label={"Koemotion"} />
-            の
-            <Link
-              url={
-                "https://developers.rinna.co.jp/product/#product=koeiromap-free"
-              }
-              label={"Koeiromap API"}
-            />
-            を使用しています。 詳細はこちらの
-            <Link
-              url={"https://inside.pixiv.blog/2023/04/28/160000"}
-              label={"技術解説記事"}
-            />
-            をご覧ください。
           </div>
-          <div className="my-16">
-            このデモはGitHubでソースコードを公開しています。自由に変更や改変をお試しください！
+          <div className="my-4 sm:my-16">
+            {t.introduction.githubNotice}
             <br />
-            リポジトリ：
+            {t.introduction.repoLabel}
             <Link
-              url={"https://github.com/pixiv/ChatVRM"}
-              label={"https://github.com/pixiv/ChatVRM"}
+              url="https://github.com/pixiv/ChatVRM"
+              label="https://github.com/pixiv/ChatVRM"
             />
           </div>
         </div>
 
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            利用上の注意
+        <div className="my-4 sm:my-24">
+          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+            {t.introduction.usageTitle}
           </div>
-          <div>
-            差別的または暴力的な発言、特定の人物を貶めるような発言を、意図的に誘導しないでください。また、VRMモデルを使ってキャラクターを差し替える際はモデルの利用条件に従ってください。
-          </div>
+          <div>{t.introduction.usageDescription}</div>
         </div>
 
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            Koeiromap APIキー
+        <div className="my-4 sm:my-24">
+          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+            {t.introduction.koeiromapTitle}
           </div>
           <input
             type="text"
             placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             value={koeiroMapKey}
             onChange={handleKoeiromapKeyChange}
-            className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-          ></input>
+            className="my-1 sm:my-4 px-4 sm:px-16 py-2 sm:py-8 w-full h-10 sm:h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+          />
           <div>
-            APIキーはrinna Developersから発行してください。
+            {t.introduction.koeiromapDescription}
             <Link
               url="https://developers.rinna.co.jp/product/#product=koeiromap-free"
-              label="詳細はこちら"
+              label={t.introduction.koeiromapLink}
             />
           </div>
         </div>
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            OpenAI APIキー
+        <div className="my-4 sm:my-24">
+          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+            {t.introduction.openaiTitle}
           </div>
           <input
             type="text"
             placeholder="sk-..."
             value={openAiKey}
             onChange={handleAiKeyChange}
-            className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-          ></input>
+            className="my-1 sm:my-4 px-4 sm:px-16 py-2 sm:py-8 w-full h-10 sm:h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+          />
           <div>
-            APIキーは
+            {t.introduction.openaiDescription}
             <Link
               url="https://platform.openai.com/account/api-keys"
-              label="OpenAIのサイト"
+              label={t.introduction.openaiSite}
             />
-            で取得できます。取得したAPIキーをフォームに入力してください。
           </div>
-          <div className="my-16">
-            ChatGPT
-            APIはブラウザから直接アクセスしています。また、APIキーや会話内容はピクシブのサーバには保存されません。
+          <div className="my-4 sm:my-16">
+            {t.introduction.openaiNotice}
             <br />
-            ※利用しているモデルはChatGPT API (GPT-3.5)です。
+            {t.introduction.openaiModel}
           </div>
         </div>
-        <div className="my-24">
+        <div className="my-4 sm:my-24">
           <button
             onClick={() => {
               setOpened(false);
             }}
-            className="font-bold bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled text-white px-24 py-8 rounded-oval"
+            className="font-bold bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled text-white px-6 sm:px-24 py-2 sm:py-8 rounded-oval text-sm sm:text-base"
           >
-            APIキーを入力してはじめる
+            {t.introduction.startButton}
           </button>
         </div>
       </div>

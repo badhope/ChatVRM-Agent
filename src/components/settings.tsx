@@ -10,6 +10,7 @@ import {
   PRESET_D,
 } from "@/features/constants/koeiroParam";
 import { Link } from "./link";
+import { useI18n } from "@/features/i18n/i18nContext";
 
 type Props = {
   openAiKey: string;
@@ -43,9 +44,11 @@ export const Settings = ({
   onClickResetSystemPrompt,
   onChangeKoeiromapKey,
 }: Props) => {
+  const { t, language, setLanguage } = useI18n();
+
   return (
     <div className="absolute z-40 w-full h-full bg-white/80 backdrop-blur ">
-      <div className="absolute m-24">
+      <div className="absolute m-4 sm:m-24">
         <IconButton
           iconName="24/Close"
           isProcessing={false}
@@ -53,70 +56,95 @@ export const Settings = ({
         ></IconButton>
       </div>
       <div className="max-h-full overflow-auto">
-        <div className="text-text1 max-w-3xl mx-auto px-24 py-64 ">
-          <div className="my-24 typography-32 font-bold">設定</div>
-          <div className="my-24">
-            <div className="my-16 typography-20 font-bold">OpenAI API キー</div>
+        <div className="text-text1 max-w-3xl mx-auto px-4 sm:px-24 py-16 sm:py-64 ">
+          <div className="my-6 sm:my-24 typography-32 font-bold">{t.settings.title}</div>
+
+          {/* Language Selection */}
+          <div className="my-4 sm:my-24">
+            <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.language}</div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`px-4 py-2 rounded-8 ${
+                  language === "en"
+                    ? "bg-secondary text-white"
+                    : "bg-surface1 hover:bg-surface1-hover"
+                }`}
+              >
+                English
+              </button>
+              <button
+                onClick={() => setLanguage("zh")}
+                className={`px-4 py-2 rounded-8 ${
+                  language === "zh"
+                    ? "bg-secondary text-white"
+                    : "bg-surface1 hover:bg-surface1-hover"
+                }`}
+              >
+                中文
+              </button>
+            </div>
+          </div>
+
+          <div className="my-6 sm:my-24">
+            <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.openaiKey}</div>
             <input
-              className="text-ellipsis px-16 py-8 w-col-span-2 bg-surface1 hover:bg-surface1-hover rounded-8"
+              className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-col-span-2 bg-surface1 hover:bg-surface1-hover rounded-8"
               type="text"
               placeholder="sk-..."
               value={openAiKey}
               onChange={onChangeAiKey}
             />
-            <div>
-              APIキーは
+            <div className="text-sm sm:text-base">
+              {t.settings.openaiDescription}
               <Link
                 url="https://platform.openai.com/account/api-keys"
-                label="OpenAIのサイト"
+                label={t.settings.openaiSite}
               />
-              で取得できます。取得したAPIキーをフォームに入力してください。
             </div>
-            <div className="my-16">
-              ChatGPT
-              APIはブラウザから直接アクセスしています。また、APIキーや会話内容はピクシブのサーバには保存されません。
+            <div className="my-4 sm:my-16 text-sm sm:text-base">
+              {t.settings.openaiNotice}
               <br />
-              ※利用しているモデルはChatGPT API (GPT-3.5)です。
+              {t.settings.openaiModel}
             </div>
           </div>
-          <div className="my-40">
-            <div className="my-16 typography-20 font-bold">
-              キャラクターモデル
+          <div className="my-10 sm:my-40">
+            <div className="my-4 sm:my-16 typography-20 font-bold">
+              {t.settings.characterModel}
             </div>
-            <div className="my-8">
-              <TextButton onClick={onClickOpenVrmFile}>VRMを開く</TextButton>
+            <div className="my-2 sm:my-8">
+              <TextButton onClick={onClickOpenVrmFile}>{t.settings.openVrm}</TextButton>
             </div>
           </div>
-          <div className="my-40">
-            <div className="my-8">
-              <div className="my-16 typography-20 font-bold">
-                キャラクター設定（システムプロンプト）
+          <div className="my-10 sm:my-40">
+            <div className="my-2 sm:my-8">
+              <div className="my-4 sm:my-16 typography-20 font-bold">
+                {t.settings.characterSettings}
               </div>
               <TextButton onClick={onClickResetSystemPrompt}>
-                キャラクター設定リセット
+                {t.settings.resetCharacterSettings}
               </TextButton>
             </div>
 
             <textarea
               value={systemPrompt}
               onChange={onChangeSystemPrompt}
-              className="px-16 py-8  bg-surface1 hover:bg-surface1-hover h-168 rounded-8 w-full"
+              className="px-4 sm:px-16 py-2 sm:py-8 bg-surface1 hover:bg-surface1-hover h-40 sm:h-168 rounded-8 w-full text-sm sm:text-base"
             ></textarea>
           </div>
-          <div className="my-40">
-            <div className="my-16 typography-20 font-bold">声の調整</div>
-            <div>
-              KoemotionのKoeiromap APIを使用しています。詳しくは
+          <div className="my-10 sm:my-40">
+            <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.voiceAdjustment}</div>
+            <div className="text-sm sm:text-base">
+              {t.settings.koeiromapDescription}
               <Link
                 url="https://koemotion.rinna.co.jp"
                 label="https://koemotion.rinna.co.jp"
               />
-              をご覧ください。
             </div>
-            <div className="mt-16 font-bold">API キー</div>
-            <div className="mt-8">
+            <div className="mt-4 sm:mt-16 font-bold">{t.settings.apiKey}</div>
+            <div className="mt-2 sm:mt-8">
               <input
-                className="text-ellipsis px-16 py-8 w-col-span-2 bg-surface1 hover:bg-surface1-hover rounded-8"
+                className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-col-span-2 bg-surface1 hover:bg-surface1-hover rounded-8"
                 type="text"
                 placeholder="..."
                 value={koeiromapKey}
@@ -124,38 +152,38 @@ export const Settings = ({
               />
             </div>
 
-            <div className="mt-16 font-bold">プリセット</div>
-            <div className="my-8 grid grid-cols-2 gap-[8px]">
+            <div className="mt-4 sm:mt-16 font-bold">{t.settings.preset}</div>
+            <div className="my-2 sm:my-8 grid grid-cols-2 gap-[8px]">
               <TextButton
                 onClick={() =>
                   onChangeKoeiroParam(PRESET_A.speakerX, PRESET_A.speakerY)
                 }
               >
-                かわいい
+                {t.settings.cute}
               </TextButton>
               <TextButton
                 onClick={() =>
                   onChangeKoeiroParam(PRESET_B.speakerX, PRESET_B.speakerY)
                 }
               >
-                元気
+                {t.settings.energetic}
               </TextButton>
               <TextButton
                 onClick={() =>
                   onChangeKoeiroParam(PRESET_C.speakerX, PRESET_C.speakerY)
                 }
               >
-                かっこいい
+                {t.settings.cool}
               </TextButton>
               <TextButton
                 onClick={() =>
                   onChangeKoeiroParam(PRESET_D.speakerX, PRESET_D.speakerY)
                 }
               >
-                渋い
+                {t.settings.mature}
               </TextButton>
             </div>
-            <div className="my-24">
+            <div className="my-6 sm:my-24">
               <div className="select-none">x : {koeiroParam.speakerX}</div>
               <input
                 type="range"
@@ -163,7 +191,7 @@ export const Settings = ({
                 max={10}
                 step={0.001}
                 value={koeiroParam.speakerX}
-                className="mt-8 mb-16 input-range"
+                className="mt-2 sm:mt-8 mb-4 sm:mb-16 input-range"
                 onChange={(e) => {
                   onChangeKoeiroParam(
                     Number(e.target.value),
@@ -178,7 +206,7 @@ export const Settings = ({
                 max={10}
                 step={0.001}
                 value={koeiroParam.speakerY}
-                className="mt-8 mb-16 input-range"
+                className="mt-2 sm:mt-8 mb-4 sm:mb-16 input-range"
                 onChange={(e) => {
                   onChangeKoeiroParam(
                     koeiroParam.speakerX,
@@ -189,26 +217,26 @@ export const Settings = ({
             </div>
           </div>
           {chatLog.length > 0 && (
-            <div className="my-40">
-              <div className="my-8 grid-cols-2">
-                <div className="my-16 typography-20 font-bold">会話履歴</div>
+            <div className="my-10 sm:my-40">
+              <div className="my-2 sm:my-8 grid-cols-2">
+                <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.chatHistory}</div>
                 <TextButton onClick={onClickResetChatLog}>
-                  会話履歴リセット
+                  {t.settings.resetChatHistory}
                 </TextButton>
               </div>
-              <div className="my-8">
+              <div className="my-2 sm:my-8">
                 {chatLog.map((value, index) => {
                   return (
                     <div
                       key={index}
-                      className="my-8 grid grid-flow-col  grid-cols-[min-content_1fr] gap-x-fixed"
+                      className="my-2 sm:my-8 grid grid-flow-col grid-cols-[min-content_1fr] gap-x-4"
                     >
-                      <div className="w-[64px] py-8">
-                        {value.role === "assistant" ? "Character" : "You"}
+                      <div className="w-[64px] py-2 sm:py-8 text-sm sm:text-base">
+                        {value.role === "assistant" ? t.chatLog.character : t.chatLog.you}
                       </div>
                       <input
                         key={index}
-                        className="bg-surface1 hover:bg-surface1-hover rounded-8 w-full px-16 py-8"
+                        className="bg-surface1 hover:bg-surface1-hover rounded-8 w-full px-4 sm:px-16 py-2 sm:py-8 text-sm sm:text-base"
                         type="text"
                         value={value.content}
                         onChange={(event) => {
