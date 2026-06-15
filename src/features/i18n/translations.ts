@@ -34,6 +34,18 @@ export const translations = {
     },
     settings: {
       title: "Settings",
+      llmProvider: "LLM Provider",
+      llmModel: "Model",
+      llmBaseURL: "Base URL (override)",
+      llmApiKey: "API Key",
+      llmNotice:
+        "API keys and conversation content are never sent to any server other than the provider you select. Everything is stored in your browser only.",
+      testConnection: "Test connection",
+      testing: "Testing…",
+      testOk: "Connection OK",
+      testFailed: "Connection failed",
+      testChars: "chars",
+      docs: "Documentation",
       openaiKey: "OpenAI API Key",
       openaiDescription:
         "You can get an API key from the OpenAI website. Please enter the obtained API key in the form.",
@@ -57,6 +69,14 @@ export const translations = {
       chatHistory: "Chat History",
       resetChatHistory: "Reset Chat History",
       language: "Language",
+      ttsProvider: "TTS Provider",
+      ttsVoice: "Voice",
+      ttsModel: "Model (if applicable)",
+      ttsBaseURL: "Base URL (override)",
+      ttsApiKey: "API Key",
+      ttsNotice:
+        "Speech synthesis is performed in your browser. The selected provider receives the text directly.",
+      legacyKeyHint: "free endpoint fallback",
     },
     messageInput: {
       placeholder: "Type your question here",
@@ -106,6 +126,18 @@ export const translations = {
     },
     settings: {
       title: "设置",
+      llmProvider: "LLM 提供商",
+      llmModel: "模型",
+      llmBaseURL: "基础 URL（覆盖）",
+      llmApiKey: "API 密钥",
+      llmNotice:
+        "API 密钥和对话内容仅会发送至您选择的服务商，不会经过任何中转服务器，全部存储在您的浏览器本地。",
+      testConnection: "测试连接",
+      testing: "测试中…",
+      testOk: "连接成功",
+      testFailed: "连接失败",
+      testChars: "字符",
+      docs: "官方文档",
       openaiKey: "OpenAI API 密钥",
       openaiDescription:
         "您可以从 OpenAI 网站获取 API 密钥。请将获取的 API 密钥填入表单。",
@@ -128,6 +160,14 @@ export const translations = {
       chatHistory: "对话历史",
       resetChatHistory: "重置对话历史",
       language: "语言",
+      ttsProvider: "TTS 提供商",
+      ttsVoice: "声音",
+      ttsModel: "模型（如果适用）",
+      ttsBaseURL: "基础 URL（覆盖）",
+      ttsApiKey: "API 密钥",
+      ttsNotice:
+        "语音合成在您的浏览器中执行。所选服务商直接接收文本。",
+      legacyKeyHint: "免费端点回退",
     },
     messageInput: {
       placeholder: "输入你想问的问题",

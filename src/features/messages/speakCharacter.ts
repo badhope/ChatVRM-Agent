@@ -1,8 +1,8 @@
 import { wait } from "@/utils/wait";
-import { synthesizeVoiceApi } from "./synthesizeVoice";
 import { Viewer } from "../vrmViewer/viewer";
-import { Screenplay } from "./messages";
-import { Talk } from "./messages";
+import { Screenplay, Talk } from "./messages";
+import type { TTSSettings } from "../tts/types";
+import { synthesizeSpeech } from "../tts/tts";
 
 const createSpeakCharacter = () => {
   let lastTime = 0;
@@ -12,7 +12,7 @@ const createSpeakCharacter = () => {
   return (
     screenplay: Screenplay,
     viewer: Viewer,
-    koeiroApiKey: string,
+    ttsSettings: TTSSettings,
     onStart?: () => void,
     onComplete?: () => void
   ) => {
@@ -22,7 +22,7 @@ const createSpeakCharacter = () => {
         await wait(1000 - (now - lastTime));
       }
 
-      const buffer = await fetchAudio(screenplay.talk, koeiroApiKey).catch(
+      const buffer = await fetchAudio(screenplay.talk, ttsSettings).catch(
         () => null
       );
       lastTime = Date.now();
@@ -49,22 +49,14 @@ export const speakCharacter = createSpeakCharacter();
 
 export const fetchAudio = async (
   talk: Talk,
-  apiKey: string
+  ttsSettings: TTSSettings
 ): Promise<ArrayBuffer> => {
-  const ttsVoice = await synthesizeVoiceApi(
-    talk.message,
-    talk.speakerX,
-    talk.speakerY,
-    talk.style,
-    apiKey
-  );
-  const url = ttsVoice.audio;
-
-  if (url == null) {
-    throw new Error("Something went wrong");
-  }
-
-  const resAudio = await fetch(url);
-  const buffer = await resAudio.arrayBuffer();
-  return buffer;
+  const result = await synthesizeSpeech(ttsSettings, {
+    text: talk.message,
+    voice: ttsSettings.voice,
+    speakerX: talk.speakerX,
+    speakerY: talk.speakerY,
+    style: talk.style,
+  });
+  return result.audio;
 };

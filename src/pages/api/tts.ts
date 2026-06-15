@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import type { NextApiRequest, NextApiResponse } from "next";
 
+/**
+ * Legacy /api/tts endpoint — kept for backward compatibility with
+ * older frontends. New code should call `synthesizeSpeech()` from
+ * `@/features/tts/tts` directly from the browser, which dispatches
+ * to the user-selected provider.
+ */
 const talkStyleSchema = z.enum(["talk", "happy", "sad"]);
 
 const requestSchema = z.object({

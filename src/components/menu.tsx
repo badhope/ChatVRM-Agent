@@ -7,16 +7,20 @@ import { Settings } from "./settings";
 import { ViewerContext } from "@/features/vrmViewer/viewerContext";
 import { AssistantText } from "./assistantText";
 import { useI18n } from "@/features/i18n/i18nContext";
+import type { LLMSettings } from "@/features/llm/types";
+import type { TTSSettings } from "@/features/tts/types";
 
 type Props = {
-  openAiKey: string;
+  llmSettings: LLMSettings;
+  ttsSettings: TTSSettings;
   systemPrompt: string;
   chatLog: Message[];
   koeiroParam: KoeiroParam;
   assistantMessage: string;
   koeiromapKey: string;
   onChangeSystemPrompt: (systemPrompt: string) => void;
-  onChangeAiKey: (key: string) => void;
+  onChangeLlmSettings: (settings: LLMSettings) => void;
+  onChangeTtsSettings: (settings: TTSSettings) => void;
   onChangeChatLog: (index: number, text: string) => void;
   onChangeKoeiromapParam: (param: KoeiroParam) => void;
   handleClickResetChatLog: () => void;
@@ -24,14 +28,16 @@ type Props = {
   onChangeKoeiromapKey: (key: string) => void;
 };
 export const Menu = ({
-  openAiKey,
+  llmSettings,
+  ttsSettings,
   systemPrompt,
   chatLog,
   koeiroParam,
   assistantMessage,
   koeiromapKey,
   onChangeSystemPrompt,
-  onChangeAiKey,
+  onChangeLlmSettings,
+  onChangeTtsSettings,
   onChangeChatLog,
   onChangeKoeiromapParam,
   handleClickResetChatLog,
@@ -49,13 +55,6 @@ export const Menu = ({
       onChangeSystemPrompt(event.target.value);
     },
     [onChangeSystemPrompt]
-  );
-
-  const handleAiKeyChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChangeAiKey(event.target.value);
-    },
-    [onChangeAiKey]
   );
 
   const handleChangeKoeiromapKey = useCallback(
@@ -131,13 +130,15 @@ export const Menu = ({
       {showChatLog && <ChatLog messages={chatLog} />}
       {showSettings && (
         <Settings
-          openAiKey={openAiKey}
+          llmSettings={llmSettings}
+          onChangeLlmSettings={onChangeLlmSettings}
+          ttsSettings={ttsSettings}
+          onChangeTtsSettings={onChangeTtsSettings}
           chatLog={chatLog}
           systemPrompt={systemPrompt}
           koeiroParam={koeiroParam}
           koeiromapKey={koeiromapKey}
           onClickClose={() => setShowSettings(false)}
-          onChangeAiKey={handleAiKeyChange}
           onChangeSystemPrompt={handleChangeSystemPrompt}
           onChangeChatLog={onChangeChatLog}
           onChangeKoeiroParam={handleChangeKoeiroParam}

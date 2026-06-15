@@ -1,86 +1,61 @@
-import { Configuration, OpenAIApi } from "openai";
 import { Message } from "../messages/messages";
+import { streamChat } from "../llm/llmChat";
+import type { LLMSettings } from "../llm/types";
 
-export async function getChatResponse(messages: Message[], apiKey: string) {
-  if (!apiKey) {
-    throw new Error("Invalid API Key");
-  }
-
-  const configuration = new Configuration({
-    apiKey: apiKey,
-  });
-  // ブラウザからAPIを叩くときに発生するエラーを無くすworkaround
-  // https://github.com/openai/openai-node/issues/6#issuecomment-1492814621
-  delete configuration.baseOptions.headers["User-Agent"];
-
-  const openai = new OpenAIApi(configuration);
-
-  const { data } = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
-    messages: messages,
-  });
-
-  const [aiRes] = data.choices;
-  const message = aiRes.message?.content || "エラーが発生しました";
-
-  return { message: message };
-}
-
+/**
+ * Legacy streaming entry point, retained for backward compatibility.
+ *
+ * The new code paths should call `streamChat` from
+ * `features/llm/llmChat.ts` directly. This shim exists so existing
+ * imports keep working and to provide a stable call signature for
+ * the public `/api/chat` route.
+ *
+ * Returns a `ReadableStream<string>` that yields text deltas, exactly
+ * like the old implementation.
+ */
 export async function getChatResponseStream(
   messages: Message[],
-  apiKey: string
-) {
-  if (!apiKey) {
-    throw new Error("Invalid API Key");
-  }
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
+  apiKey: string,
+  settings?: Partial<LLMSettings>
+): Promise<ReadableStream<string>> {
+  const effectiveSettings: LLMSettings = {
+    providerId: settings?.providerId ?? "openai",
+    model: settings?.model ?? "gpt-4o-mini",
+    baseURL: settings?.baseURL ?? "https://api.openai.com/v1",
+    apiKey: apiKey || settings?.apiKey || "",
   };
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    headers: headers,
-    method: "POST",
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: messages,
-      stream: true,
-      max_tokens: 200,
-    }),
-  });
 
-  const reader = res.body?.getReader();
-  if (res.status !== 200 || !reader) {
-    throw new Error("Something went wrong");
-  }
+  return new ReadableStream<string>({
+    async start(controller) {
+      const enqueue = (text: string) => {
+        if (text) controller.enqueue(text);
+      };
+      const close = () => {
+        try {
+          controller.close();
+        } catch {
+          // Already closed.
+        }
+      };
 
-  const stream = new ReadableStream({
-    async start(controller: ReadableStreamDefaultController) {
-      const decoder = new TextDecoder("utf-8");
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const data = decoder.decode(value);
-          const chunks = data
-            .split("data:")
-            .filter((val) => !!val && val.trim() !== "[DONE]");
-          for (const chunk of chunks) {
-            const json = JSON.parse(chunk);
-            const messagePiece = json.choices[0].delta.content;
-            if (!!messagePiece) {
-              controller.enqueue(messagePiece);
+        await streamChat(
+          effectiveSettings,
+          messages.map((m) => ({ role: m.role, content: m.content })),
+          (chunk) => {
+            if (chunk.type === "text") enqueue(chunk.text);
+            else if (chunk.type === "done") {
+              if (chunk.reason === "error" && chunk.error) {
+                controller.error(new Error(chunk.error));
+              } else {
+                close();
+              }
             }
           }
-        }
-      } catch (error) {
-        controller.error(error);
-      } finally {
-        reader.releaseLock();
-        controller.close();
+        );
+      } catch (err) {
+        controller.error(err);
       }
     },
   });
-
-  return stream;
 }

@@ -10,19 +10,28 @@ import { speakCharacter } from "@/features/messages/speakCharacter";
 import { MessageInputContainer } from "@/components/messageInputContainer";
 import { SYSTEM_PROMPT } from "@/features/constants/systemPromptConstants";
 import { KoeiroParam, DEFAULT_PARAM } from "@/features/constants/koeiroParam";
-import { getChatResponseStream } from "@/features/chat/openAiChat";
+import { streamChat } from "@/features/llm/llmChat";
 import { Introduction } from "@/components/introduction";
 import { Menu } from "@/components/menu";
 import { GitHubLink } from "@/components/githubLink";
 import { Meta } from "@/components/meta";
 import { useI18n } from "@/features/i18n/i18nContext";
+import { loadLLMSettings, saveLLMSettings } from "@/features/llm/storage";
+import type { LLMSettings } from "@/features/llm/types";
+import { loadTTSSettings, saveTTSSettings } from "@/features/tts/storage";
+import type { TTSSettings } from "@/features/tts/types";
 
 export default function Home() {
   const { viewer } = useContext(ViewerContext);
   const { t } = useI18n();
 
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
-  const [openAiKey, setOpenAiKey] = useState("");
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>(() =>
+    loadLLMSettings()
+  );
+  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(() =>
+    loadTTSSettings()
+  );
   const [koeiromapKey, setKoeiromapKey] = useState("");
   const [koeiroParam, setKoeiroParam] = useState<KoeiroParam>(DEFAULT_PARAM);
   const [chatProcessing, setChatProcessing] = useState(false);
@@ -49,6 +58,16 @@ export default function Home() {
     );
   }, [systemPrompt, koeiroParam, chatLog]);
 
+  // Persist LLM settings whenever they change.
+  useEffect(() => {
+    saveLLMSettings(llmSettings);
+  }, [llmSettings]);
+
+  // Persist TTS settings whenever they change.
+  useEffect(() => {
+    saveTTSSettings(ttsSettings);
+  }, [ttsSettings]);
+
   const handleChangeChatLog = useCallback(
     (targetIndex: number, text: string) => {
       const newChatLog = chatLog.map((v: Message, i) => {
@@ -61,7 +80,9 @@ export default function Home() {
   );
 
   /**
-   * 文ごとに音声を直列でリクエストしながら再生する
+   * Stream TTS for each screenplay line. The actual provider selection
+   * happens inside `speakCharacter`, which routes through the TTS
+   * abstraction layer.
    */
   const handleSpeakAi = useCallback(
     async (
@@ -69,112 +90,106 @@ export default function Home() {
       onStart?: () => void,
       onEnd?: () => void
     ) => {
-      speakCharacter(screenplay, viewer, koeiromapKey, onStart, onEnd);
+      // The legacy free Koeiromap endpoint also accepts a key in the
+      // body. We forward the user-entered koeiromapKey so the free
+      // endpoint can still be used if the user has not yet entered
+      // an API key in the TTS panel.
+      const merged: TTSSettings = {
+        ...ttsSettings,
+        apiKey: ttsSettings.apiKey || koeiromapKey,
+      };
+      speakCharacter(screenplay, viewer, merged, onStart, onEnd);
     },
-    [viewer, koeiromapKey]
+    [viewer, ttsSettings, koeiromapKey]
   );
 
   /**
-   * アシスタントとの会話を行う
+   * Send a user message to the configured LLM, stream the response,
+   * and split it into sentences for TTS playback.
    */
   const handleSendChat = useCallback(
     async (text: string) => {
-      if (!openAiKey) {
+      if (!llmSettings.apiKey?.trim()) {
         setAssistantMessage(t.errors.apiKeyNotSet);
         return;
       }
 
       const newMessage = text;
-
       if (newMessage == null) return;
 
       setChatProcessing(true);
-      // ユーザーの発言を追加して表示
       const messageLog: Message[] = [
         ...chatLog,
         { role: "user", content: newMessage },
       ];
       setChatLog(messageLog);
 
-      // Chat GPTへ
       const messages: Message[] = [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
+        { role: "system", content: systemPrompt },
         ...messageLog,
       ];
 
-      const stream = await getChatResponseStream(messages, openAiKey).catch(
-        (e) => {
-          console.error(e);
-          return null;
-        }
-      );
-      if (stream == null) {
-        setChatProcessing(false);
-        return;
-      }
-
-      const reader = stream.getReader();
       let receivedMessage = "";
       let aiTextLog = "";
       let tag = "";
       const sentences = new Array<string>();
+
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        await streamChat(
+          llmSettings,
+          messages.map((m) => ({ role: m.role, content: m.content })),
+          (chunk) => {
+            if (chunk.type === "text") {
+              receivedMessage += chunk.text;
 
-          receivedMessage += value;
+              const tagMatch = receivedMessage.match(/^\[(.*?)\]/);
+              if (tagMatch && tagMatch[0]) {
+                tag = tagMatch[0];
+                receivedMessage = receivedMessage.slice(tag.length);
+              }
 
-          // 返答内容のタグ部分の検出
-          const tagMatch = receivedMessage.match(/^\[(.*?)\]/);
-          if (tagMatch && tagMatch[0]) {
-            tag = tagMatch[0];
-            receivedMessage = receivedMessage.slice(tag.length);
-          }
+              const sentenceMatch = receivedMessage.match(
+                /^(.+[。．！？\n]|.{10,}[、,])/
+              );
+              if (sentenceMatch && sentenceMatch[0]) {
+                const sentence = sentenceMatch[0];
+                sentences.push(sentence);
+                receivedMessage = receivedMessage
+                  .slice(sentence.length)
+                  .trimStart();
 
-          // 返答を一文単位で切り出して処理する
-          const sentenceMatch = receivedMessage.match(
-            /^(.+[。．！？\n]|.{10,}[、,])/
-          );
-          if (sentenceMatch && sentenceMatch[0]) {
-            const sentence = sentenceMatch[0];
-            sentences.push(sentence);
-            receivedMessage = receivedMessage
-              .slice(sentence.length)
-              .trimStart();
+                if (
+                  !sentence.replace(
+                    /^[\s\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]]+$/g,
+                    ""
+                  )
+                ) {
+                  return;
+                }
 
-            // 発話不要/不可能な文字列だった場合はスキップ
-            if (
-              !sentence.replace(
-                /^[\s\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]]+$/g,
-                ""
-              )
-            ) {
-              continue;
+                const aiText = `${tag} ${sentence}`;
+                const aiTalks = textsToScreenplay([aiText], koeiroParam);
+                aiTextLog += aiText;
+
+                const currentAssistantMessage = sentences.join(" ");
+                handleSpeakAi(aiTalks[0], () => {
+                  setAssistantMessage(currentAssistantMessage);
+                });
+              }
+            } else if (chunk.type === "done") {
+              if (chunk.reason === "error" && chunk.error) {
+                console.error("[LLM error]", chunk.error);
+                setAssistantMessage(chunk.error);
+              }
             }
-
-            const aiText = `${tag} ${sentence}`;
-            const aiTalks = textsToScreenplay([aiText], koeiroParam);
-            aiTextLog += aiText;
-
-            // 文ごとに音声を生成 & 再生、返答を表示
-            const currentAssistantMessage = sentences.join(" ");
-            handleSpeakAi(aiTalks[0], () => {
-              setAssistantMessage(currentAssistantMessage);
-            });
           }
-        }
+        );
       } catch (e) {
-        setChatProcessing(false);
         console.error(e);
-      } finally {
-        reader.releaseLock();
+        setChatProcessing(false);
+        return;
       }
 
-      // アシスタントの返答をログに追加
       const messageLogAssistant: Message[] = [
         ...messageLog,
         { role: "assistant", content: aiTextLog },
@@ -183,16 +198,23 @@ export default function Home() {
       setChatLog(messageLogAssistant);
       setChatProcessing(false);
     },
-    [systemPrompt, chatLog, handleSpeakAi, openAiKey, koeiroParam, t.errors.apiKeyNotSet]
+    [
+      systemPrompt,
+      chatLog,
+      handleSpeakAi,
+      llmSettings,
+      koeiroParam,
+      t.errors.apiKeyNotSet,
+    ]
   );
 
   return (
     <div className={"font-M_PLUS_2"}>
       <Meta />
       <Introduction
-        openAiKey={openAiKey}
+        openAiKey={llmSettings.apiKey}
         koeiroMapKey={koeiromapKey}
-        onChangeAiKey={setOpenAiKey}
+        onChangeAiKey={(v) => setLlmSettings((s) => ({ ...s, apiKey: v }))}
         onChangeKoeiromapKey={setKoeiromapKey}
       />
       <VrmViewer />
@@ -201,13 +223,15 @@ export default function Home() {
         onChatProcessStart={handleSendChat}
       />
       <Menu
-        openAiKey={openAiKey}
+        llmSettings={llmSettings}
+        onChangeLlmSettings={setLlmSettings}
+        ttsSettings={ttsSettings}
+        onChangeTtsSettings={setTtsSettings}
         systemPrompt={systemPrompt}
         chatLog={chatLog}
         koeiroParam={koeiroParam}
         assistantMessage={assistantMessage}
         koeiromapKey={koeiromapKey}
-        onChangeAiKey={setOpenAiKey}
         onChangeSystemPrompt={setSystemPrompt}
         onChangeChatLog={handleChangeChatLog}
         onChangeKoeiromapParam={setKoeiroParam}
