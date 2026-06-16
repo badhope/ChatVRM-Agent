@@ -9,7 +9,9 @@ export default function VrmViewer() {
     (canvas: HTMLCanvasElement) => {
       if (canvas) {
         viewer.setup(canvas);
-        viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
+        if (viewer.isReady) {
+          viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
+        }
 
         // Drag and DropでVRMを差し替え
         canvas.addEventListener("dragover", function (event) {
@@ -42,8 +44,11 @@ export default function VrmViewer() {
   );
 
   return (
-    <div className="fixed top-0 left-0 w-full h-[100svh] -z-10">
-      <canvas ref={canvasRef} className="h-full w-full block"></canvas>
-    </div>
+    <>
+      <div className="aurora-bg" aria-hidden />
+      <div className="fixed top-0 left-0 w-full h-[100dvh] h-[100svh] -z-10">
+        <canvas ref={canvasRef} className="h-full w-full block touch-none"></canvas>
+      </div>
+    </>
   );
 }

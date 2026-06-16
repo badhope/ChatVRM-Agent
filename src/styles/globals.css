@@ -1,20 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "./aurora.css";
 
 body {
-  background-position: top center;
-  background-attachment: fixed;
-  background-size: cover;
-  background-repeat: no-repeat;
+  color: rgba(255, 255, 255, 0.9);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  font-family: "Inter", "Noto Sans SC", system-ui, -apple-system, sans-serif;
 }
 
 @layer components {
   .input-range {
     -webkit-appearance: none;
     appearance: none;
-    background-color: #858585;
-    height: 2px;
+    background-color: rgba(255, 255, 255, 0.2);
+    height: 4px;
     width: 100%;
     border-radius: 4px;
   }
@@ -27,13 +28,36 @@ body {
     appearance: none;
     cursor: pointer;
     position: relative;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     display: block;
-    border: 2px solid #856292;
+    border: 2px solid #a78bfa;
     background-color: #ffffff;
     border-radius: 50%;
-    -webkit-border-radius: 50%;
+  }
+  .input-range::-moz-range-thumb {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #a78bfa;
+    background-color: #ffffff;
+    border-radius: 50%;
+  }
+
+  .input-dark {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 200ms ease;
+  }
+  .input-dark::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+  .input-dark:focus {
+    outline: none;
+    border-color: rgba(167, 139, 250, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.15);
   }
 }
 
@@ -42,8 +66,11 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
   .scroll-hidden::-webkit-scrollbar {
     display: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }

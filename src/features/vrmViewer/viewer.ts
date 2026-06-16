@@ -80,12 +80,19 @@ export class Viewer {
     const parentElement = canvas.parentElement;
     const width = parentElement?.clientWidth || canvas.width;
     const height = parentElement?.clientHeight || canvas.height;
-    // renderer
-    this._renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      alpha: true,
-      antialias: true,
-    });
+
+    try {
+      this._renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        alpha: true,
+        antialias: true,
+      });
+    } catch (e) {
+      console.warn("WebGL not available, VRM viewer disabled", e);
+      this.isReady = false;
+      return;
+    }
+
     this._renderer.outputEncoding = THREE.sRGBEncoding;
     this._renderer.setSize(width, height);
     this._renderer.setPixelRatio(window.devicePixelRatio);
