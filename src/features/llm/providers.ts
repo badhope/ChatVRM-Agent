@@ -302,3 +302,52 @@ export function findProvider(id: string | undefined): LLMProvider {
   }
   return LLM_PROVIDERS[0];
 }
+
+import type { CustomProvider } from "@/features/providers/customProviders";
+
+/** Find a provider by id, including user-saved custom ones. The
+ *  custom providers are loaded from localStorage on every call (cheap
+ *  — small JSON, parsed at most once per request). */
+export function findProviderWithCustom(
+  id: string | undefined
+): { provider: LLMProvider; isCustom: boolean; custom?: CustomProvider } {
+  if (id?.startsWith("custom:")) {
+    const customId = id.slice("custom:".length);
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem("chatvrm:custom-llm:v1");
+        if (raw) {
+          const list = JSON.parse(raw) as CustomProvider[];
+          const hit = list.find((c) => c.id === customId);
+          if (hit) {
+            return {
+              provider: customToProvider(hit),
+              isCustom: true,
+              custom: hit,
+            };
+          }
+        }
+      } catch {
+        // fall through
+      }
+    }
+  }
+  return { provider: findProvider(id), isCustom: false };
+}
+
+function customToProvider(c: CustomProvider): LLMProvider {
+  return {
+    id: `custom:${c.id}`,
+    name: c.name,
+    protocol: c.protocol === "anthropic" ? "anthropic" : "openai",
+    baseURL: c.baseURL,
+    defaultModel: c.defaultModel,
+    models: c.defaultModel
+      ? [{ id: c.defaultModel, label: c.defaultModel, hint: "default" }]
+      : [],
+    customBaseURL: true,
+    apiKeyHint: "Custom provider — paste the API key your service requires.",
+    docsURL: "",
+    region: "local",
+  };
+}

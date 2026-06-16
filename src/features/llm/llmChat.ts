@@ -1,5 +1,5 @@
 import type { ChatChunk, ChatMessage, LLMSettings } from "./types";
-import { findProvider } from "./providers";
+import { findProviderWithCustom } from "./providers";
 import { streamOpenAICompatible } from "./openaiCompatible";
 import { streamAnthropic } from "./anthropicClient";
 
@@ -18,7 +18,7 @@ export async function streamChat(
   onChunk: (chunk: ChatChunk) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const provider = findProvider(settings.providerId);
+  const { provider } = findProviderWithCustom(settings.providerId);
   const apiKey = settings.apiKey?.trim();
 
   if (!apiKey) {

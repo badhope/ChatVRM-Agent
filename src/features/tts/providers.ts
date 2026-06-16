@@ -123,11 +123,55 @@ export const TTS_PROVIDERS: TTSProvider[] = [
   },
 ];
 
-/** Find a provider by id. Falls back to the first one. */
+/** Find a TTS provider by id. Falls back to the first one. */
 export function findTTSProvider(id: string | undefined): TTSProvider {
   if (id) {
     const hit = TTS_PROVIDERS.find((p) => p.id === id);
     if (hit) return hit;
   }
   return TTS_PROVIDERS[0];
+}
+
+import type { CustomProvider } from "@/features/providers/customProviders";
+
+/** Find a TTS provider, including user-saved custom ones. */
+export function findTTSProviderWithCustom(
+  id: string | undefined
+): { provider: TTSProvider; isCustom: boolean; custom?: CustomProvider } {
+  if (id?.startsWith("custom:")) {
+    const customId = id.slice("custom:".length);
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem("chatvrm:custom-tts:v1");
+        if (raw) {
+          const list = JSON.parse(raw) as CustomProvider[];
+          const hit = list.find((c) => c.id === customId);
+          if (hit) {
+            return {
+              provider: customTtsToProvider(hit),
+              isCustom: true,
+              custom: hit,
+            };
+          }
+        }
+      } catch {
+        // fall through
+      }
+    }
+  }
+  return { provider: findTTSProvider(id), isCustom: false };
+}
+
+function customTtsToProvider(c: CustomProvider): TTSProvider {
+  return {
+    id: `custom:${c.id}`,
+    name: c.name,
+    protocol: c.protocol === "openai" ? "openai-tts" : "custom",
+    baseURL: c.baseURL,
+    defaultVoice: "default",
+    voices: [{ id: "default", label: "Default", language: "" }],
+    customBaseURL: true,
+    apiKeyHint: "Custom endpoint — paste the API key your service requires.",
+    docsURL: "",
+  };
 }

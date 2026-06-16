@@ -7,7 +7,7 @@
  * thrown to the caller.
  */
 import type { TTSRequest, TTSResult, TTSSettings } from "./types";
-import { findTTSProvider } from "./providers";
+import { findTTSProviderWithCustom } from "./providers";
 import { synthesizeKoeiromap } from "./koeiromapAdapter";
 import { synthesizeOpenAITTS } from "./openaiTtsAdapter";
 import { synthesizeElevenLabs } from "./elevenlabsAdapter";
@@ -18,7 +18,7 @@ export async function synthesizeSpeech(
   settings: TTSSettings,
   req: TTSRequest
 ): Promise<TTSResult> {
-  const provider = findTTSProvider(settings.providerId);
+  const { provider } = findTTSProviderWithCustom(settings.providerId);
   const baseURL = settings.baseURL?.trim() || provider.baseURL;
   if (!baseURL && provider.protocol !== "edge") {
     throw new Error(
