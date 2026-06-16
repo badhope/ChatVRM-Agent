@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useI18n } from "@/features/i18n/i18nContext";
-import { LLM_PROVIDERS, findProvider } from "@/features/llm/providers";
+import { LLM_PROVIDERS, findProviderWithCustom } from "@/features/llm/providers";
 import type { LLMProvider } from "@/features/llm/types";
 import type { LLMSettings } from "@/features/llm/types";
 import { useCustomLLM, useCustomTTS, type CustomProvider, type CustomProtocol } from "@/features/providers/customProviders";
@@ -28,7 +28,7 @@ const REGION_LABELS_ZH: Record<string, string> = {
 
 export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
   const { t, language } = useI18n();
-  const provider = findProvider(settings.providerId);
+  const { provider } = findProviderWithCustom(settings.providerId);
   const { list: customList } = useCustomLLM();
   const toast = useToast();
 
@@ -220,7 +220,7 @@ function ModelPicker({
   onWarnAnthropic: () => void;
 }) {
   const { t } = useI18n();
-  const provider = findProvider(settings.providerId);
+  const { provider } = findProviderWithCustom(settings.providerId);
   const presets = provider.models;
 
   const [open, setOpen] = useState(false);

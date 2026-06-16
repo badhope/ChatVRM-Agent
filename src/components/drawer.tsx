@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useCallback, ReactNode } from "react";
 
 interface AccordionProps {
   title: string;
@@ -49,23 +49,55 @@ interface DrawerProps {
 }
 
 export function Drawer({ open, onClose, title, children, variant = "drawer" }: DrawerProps) {
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
+
   useEffect(() => {
-    if (!open) return;
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+    } else if (visible) {
+      setClosing(true);
+      const t = setTimeout(() => setVisible(false), 250);
+      return () => clearTimeout(t);
+    }
+  }, [open, visible]);
+
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => {
+      setVisible(false);
+      onClose();
+    }, 250);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!visible) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [visible, handleClose]);
 
-  if (!open) return null;
+  if (!visible && !open) return null;
+
+  const backdropClass = closing
+    ? "animate-fade-out opacity-0"
+    : "animate-fade-in";
+  const panelClass = closing
+    ? "animate-slide-out-left"
+    : "animate-slide-in-left";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm ${backdropClass}`}
+      onClick={handleClose}
+    >
       <div
         className={
           variant === "drawer"
-            ? "absolute top-0 bottom-0 left-0 w-full sm:w-[400px] sm:max-w-[90vw] glass-strong shadow-2xl flex flex-col animate-slide-in-left"
+            ? `absolute top-0 bottom-0 left-0 w-full sm:w-[400px] sm:max-w-[90vw] glass-strong shadow-2xl flex flex-col ${panelClass}`
             : "absolute inset-0 flex items-end sm:items-center sm:justify-center pointer-events-none"
         }
         onClick={(e) => e.stopPropagation()}
@@ -80,7 +112,7 @@ export function Drawer({ open, onClose, title, children, variant = "drawer" }: D
           <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-white/10 flex-shrink-0">
             <h2 className="text-base font-bold text-white/95">{title}</h2>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
               aria-label="close"
             >

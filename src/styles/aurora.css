@@ -123,6 +123,16 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-60px); }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -146,6 +156,8 @@ body {
 .animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-in-up { animation: slide-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-out-left { animation: slide-out-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade-in { animation: fade-in 0.25s ease-out both; }
+.animate-fade-out { animation: fade-out 0.25s ease-out both; }
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 .animate-drift { animation: drift-orb 12s ease-in-out infinite; }

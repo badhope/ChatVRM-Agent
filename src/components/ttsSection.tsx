@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useI18n } from "@/features/i18n/i18nContext";
-import { TTS_PROVIDERS, findTTSProvider } from "@/features/tts/providers";
+import { TTS_PROVIDERS, findTTSProviderWithCustom } from "@/features/tts/providers";
 import type { TTSProvider } from "@/features/tts/types";
 import type { TTSSettings } from "@/features/tts/types";
 import { useCustomTTS, type CustomProvider } from "@/features/providers/customProviders";
@@ -14,7 +14,7 @@ interface TTSSectionProps {
 
 export function TTSSection({ settings, onChange, onBack }: TTSSectionProps) {
   const { t } = useI18n();
-  const provider = findTTSProvider(settings.providerId);
+  const { provider } = findTTSProviderWithCustom(settings.providerId);
   const { list: customList } = useCustomTTS();
 
   const [showPicker, setShowPicker] = useState(false);

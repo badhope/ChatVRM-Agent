@@ -30,7 +30,8 @@ export function CharacterSection({
   onResetVrm,
   showVoicePos,
 }: CharacterSectionProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const isZh = language === "zh";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,10 +96,10 @@ export function CharacterSection({
           <div className="text-[10px] text-white/45 mb-3">{t.character.voicePosHint}</div>
           <div className="grid grid-cols-4 gap-1.5 mb-4">
             {[
-              { p: PRESET_A, label: t.character.presets === "预设" ? "可爱" : "Cute" },
-              { p: PRESET_B, label: t.character.presets === "预设" ? "活力" : "Energetic" },
-              { p: PRESET_C, label: t.character.presets === "预设" ? "帅气" : "Cool" },
-              { p: PRESET_D, label: t.character.presets === "预设" ? "成熟" : "Mature" },
+              { p: PRESET_A, label: isZh ? "可爱" : "Cute" },
+              { p: PRESET_B, label: isZh ? "活力" : "Energetic" },
+              { p: PRESET_C, label: isZh ? "帅气" : "Cool" },
+              { p: PRESET_D, label: isZh ? "成熟" : "Mature" },
             ].map((preset, i) => (
               <button
                 key={i}
@@ -125,7 +126,7 @@ export function CharacterSection({
             onClick={resetKoeiro}
             className="mt-3 text-xs text-white/50 hover:text-white/80 underline underline-offset-2"
           >
-            {t.character.voicePos === "声位" ? "还原默认" : "Reset"}
+            {isZh ? "还原默认" : "Reset"}
           </button>
         </Accordion>
       )}

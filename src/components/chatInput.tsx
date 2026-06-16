@@ -91,7 +91,7 @@ export function ChatInput({ onSend, isProcessing, onStop }: ChatInputProps) {
           )}
         </div>
         <div className="text-center text-[10px] sm:text-[11px] text-white/30 mt-1.5 select-none">
-          VRoid · {isProcessing ? t.chatInput.thinking + "…" : ""}
+          {isProcessing ? t.chatInput.thinking + "…" : "VRoid"}
         </div>
       </div>
     </div>

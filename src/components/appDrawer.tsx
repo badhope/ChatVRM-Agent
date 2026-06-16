@@ -85,7 +85,7 @@ export function AppDrawer(props: AppDrawerProps) {
   const drawerOpen = props.open;
   const handleClose = () => {
     props.onClose();
-    setTimeout(() => setSection("root"), 300);
+    setSection("root");
   };
 
   return (
