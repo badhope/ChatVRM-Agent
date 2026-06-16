@@ -2,9 +2,9 @@
  * Koeiromap adapter.
  *
  * Calls the Koemotion /v1.0/infer endpoint and returns the
- * base64-encoded mp3 audio from the JSON response. Backwards-
- * compatible with the original /api/tts route — the body shape
- * matches what the existing server route already expects.
+ * base64-encoded mp3 audio from the JSON response. The free
+ * endpoint works without an API key; the paid endpoint requires
+ * one via the Ocp-Apim-Subscription-Key header.
  */
 import type {
   TTSProvider,
@@ -12,6 +12,7 @@ import type {
   TTSResult,
   TTSSettings,
 } from "./types";
+import { joinURL } from "@/utils/joinURL";
 
 export async function synthesizeKoeiromap(
   provider: TTSProvider,
@@ -59,11 +60,4 @@ function base64ToArrayBuffer(b64: string): ArrayBuffer {
   const bytes = new Uint8Array(binary.length);
   for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
   return bytes.buffer;
-}
-
-function joinURL(base: string, path: string): string {
-  if (!base) throw new Error("Base URL is required");
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
 }

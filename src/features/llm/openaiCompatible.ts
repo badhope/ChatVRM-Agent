@@ -1,4 +1,5 @@
 import type { ChatChunk, ChatMessage, LLMProvider } from "./types";
+import { joinURL } from "@/utils/joinURL";
 
 /**
  * Stream a chat completion from an OpenAI-compatible provider.
@@ -24,7 +25,14 @@ export async function streamOpenAICompatible(opts: {
 }): Promise<void> {
   const { provider, model, baseURL, apiKey, messages, signal, onChunk } = opts;
 
-  const url = joinURL(baseURL, "/chat/completions");
+  // Ensure /v1 path segment exists for OpenAI-compatible endpoints.
+  // Built-in providers already have it in their baseURL; this handles
+  // the common case where a user enters just the domain.
+  let normalized = baseURL;
+  if (!normalized.endsWith("/v1") && !normalized.includes("/v1/")) {
+    normalized = normalized.replace(/\/+$/, "") + "/v1";
+  }
+  const url = joinURL(normalized, "/chat/completions");
   const body: Record<string, unknown> = {
     model,
     messages: messages.map((m) => ({ role: m.role, content: m.content })),
@@ -132,13 +140,6 @@ export async function parseSSE(
       // Ignore.
     }
   }
-}
-
-function joinURL(base: string, path: string): string {
-  if (!base) throw new Error("Base URL is required");
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
 }
 
 async function safeReadErrorBody(res: Response): Promise<string> {

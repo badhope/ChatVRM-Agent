@@ -14,16 +14,28 @@ const createSpeakCharacter = () => {
     viewer: Viewer,
     ttsSettings: TTSSettings,
     onStart?: () => void,
-    onComplete?: () => void
+    onComplete?: () => void,
+    onTtsError?: (error: string) => void
   ) => {
     const fetchPromise = prevFetchPromise.then(async () => {
-      const now = Date.now();
-      if (now - lastTime < 1000) {
-        await wait(1000 - (now - lastTime));
+      // Rate-limit only for Koeiromap free endpoint; other providers
+      // don't need a 1 RPS cap.
+      const isKoeiromap = ttsSettings.providerId === "koeiromap";
+      if (isKoeiromap) {
+        const now = Date.now();
+        if (now - lastTime < 1000) {
+          await wait(1000 - (now - lastTime));
+        }
       }
 
       const buffer = await fetchAudio(screenplay.talk, ttsSettings).catch(
-        () => null
+        (err) => {
+          const message =
+            err instanceof Error ? err.message : "Unknown TTS error";
+          console.error("[TTS error]", message, ttsSettings.providerId);
+          onTtsError?.(message);
+          return null;
+        }
       );
       lastTime = Date.now();
       return buffer;
@@ -39,6 +51,8 @@ const createSpeakCharacter = () => {
         return viewer.model?.speak(audioBuffer, screenplay);
       }
     );
+    // onComplete fires when the utterance is enqueued (not when
+    // playback finishes — the VRM model manages playback internally).
     prevSpeakPromise.then(() => {
       onComplete?.();
     });
@@ -47,10 +61,10 @@ const createSpeakCharacter = () => {
 
 export const speakCharacter = createSpeakCharacter();
 
-export const fetchAudio = async (
+async function fetchAudio(
   talk: Talk,
   ttsSettings: TTSSettings
-): Promise<ArrayBuffer> => {
+): Promise<ArrayBuffer> {
   const result = await synthesizeSpeech(ttsSettings, {
     text: talk.message,
     voice: ttsSettings.voice,
@@ -59,4 +73,4 @@ export const fetchAudio = async (
     style: talk.style,
   });
   return result.audio;
-};
+}

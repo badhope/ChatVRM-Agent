@@ -56,10 +56,13 @@ export default async function handler(
     return;
   }
 
+  // Derive the SSML xml:lang from the voice name (e.g. "zh-CN-XiaoxiaoNeural" → "zh-CN").
+  const lang = voice.match(/^[a-z]{2,3}-[A-Z]{2}/)?.[0] ?? "en-US";
+
   // Build SSML with the requested speech rate.
   const ratePct = Math.round((speed - 1) * 100);
   const rate = ratePct === 0 ? "default" : `${ratePct > 0 ? "+" : ""}${ratePct}%`;
-  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}">
   <voice name="${voice}">
     <prosody rate="${rate}">${escapeXml(text)}</prosody>
   </voice>
@@ -77,13 +80,13 @@ export default async function handler(
     res.write(chunk);
   });
   audioStream.on("end", () => {
-    res.end();
+    if (!res.writableEnded) res.end();
   });
   audioStream.on("error", (err: Error) => {
     if (!res.headersSent) {
       res.status(502).json({ error: "Edge TTS stream error", details: err.message });
     } else {
-      res.end();
+      if (!res.writableEnded) res.end();
     }
   });
   req.on("close", () => {

@@ -68,7 +68,7 @@ export const Settings = ({
   });
 
   const provider = findProvider(llmSettings.providerId);
-  const showBaseURL = provider.customBaseURL || provider.id === "custom";
+  const showBaseURL = provider.customBaseURL || false;
 
   const ttsProvider = findTTSProvider(ttsSettings.providerId);
   const ttsShowBaseURL =
@@ -114,7 +114,7 @@ export const Settings = ({
 
   const handleTestConnection = useCallback(async () => {
     setTestState({ kind: "running" });
-    let received = "";
+    const start = performance.now();
     let done = false;
     let errorMsg: string | undefined;
     try {
@@ -122,9 +122,7 @@ export const Settings = ({
         llmSettings,
         [{ role: "user", content: "ping" }],
         (chunk) => {
-          if (chunk.type === "text") {
-            received += chunk.text;
-          } else if (chunk.type === "done") {
+          if (chunk.type === "done") {
             done = true;
             if (chunk.reason === "error") {
               errorMsg = chunk.error;
@@ -135,6 +133,7 @@ export const Settings = ({
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e);
     }
+    const elapsed = Math.round(performance.now() - start);
     if (errorMsg) {
       setTestState({ kind: "error", message: errorMsg });
     } else if (!done) {
@@ -145,10 +144,10 @@ export const Settings = ({
     } else {
       setTestState({
         kind: "ok",
-        message: `${t.settings.testOk} (${received.length} ${t.settings.testChars})`,
+        message: `${t.settings.testOk} — ${provider.name} · ${elapsed}ms`,
       });
     }
-  }, [llmSettings, t.settings.testOk, t.settings.testFailed, t.settings.testChars]);
+  }, [llmSettings, t.settings.testOk, t.settings.testFailed, provider.name]);
 
   const handleChangeTtsProvider = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -287,6 +286,11 @@ export const Settings = ({
             {provider.notes && (
               <div className="my-2 sm:my-4 text-sm sm:text-base text-text2">
                 {provider.notes}
+              </div>
+            )}
+            {provider.id === "anthropic" && (
+              <div className="my-2 sm:my-4 p-2 sm:p-4 bg-red-50 border border-red-200 rounded-8 text-xs sm:text-sm text-red-800">
+                {t.settings.anthropicWarning}
               </div>
             )}
             {provider.docsURL && (

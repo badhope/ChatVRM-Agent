@@ -1,227 +1,166 @@
-import { useCallback, useContext, useEffect, useState } from "react";
-import VrmViewer from "@/components/vrmViewer";
-import { ViewerContext } from "@/features/vrmViewer/viewerContext";
-import {
-  Message,
-  textsToScreenplay,
-  Screenplay,
-} from "@/features/messages/messages";
-import { speakCharacter } from "@/features/messages/speakCharacter";
-import { MessageInputContainer } from "@/components/messageInputContainer";
+import { Viewer } from "../features/vrmViewer/viewer";
+import { ViewerContext } from "../features/vrmViewer/viewerContext";
+import { MessageInputContainer } from "../components/messageInputContainer";
+import { Introduction } from "../components/introduction";
+import { Menu } from "../components/menu";
+import { VrmStoreProvider } from "@/features/messages/vrmStoreContext";
+import { generateResponse } from "@/features/messages/generateResponse";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SYSTEM_PROMPT } from "@/features/constants/systemPromptConstants";
-import { KoeiroParam, DEFAULT_PARAM } from "@/features/constants/koeiroParam";
+import { type Message } from "@/features/messages/messages";
+import {
+  KoeiroParam,
+  DEFAULT_PARAM,
+} from "@/features/constants/koeiroParam";
+import { loadVrmFromLocalStorage } from "@/features/vrmViewer/localStorage";
+import { type Screenplay, splitSentence, textsToScreenplay } from "@/features/messages/messages";
+import { speakCharacter } from "@/features/messages/speakCharacter";
 import { streamChat } from "@/features/llm/llmChat";
-import { Introduction } from "@/components/introduction";
-import { Menu } from "@/components/menu";
-import { GitHubLink } from "@/components/githubLink";
-import { Meta } from "@/components/meta";
-import { useI18n } from "@/features/i18n/i18nContext";
-import { loadLLMSettings, saveLLMSettings } from "@/features/llm/storage";
 import type { LLMSettings } from "@/features/llm/types";
-import { loadTTSSettings, saveTTSSettings } from "@/features/tts/storage";
 import type { TTSSettings } from "@/features/tts/types";
+import { loadLLMSettings, saveLLMSettings } from "@/features/llm/storage";
+import { loadTTSSettings, saveTTSSettings } from "@/features/tts/storage";
+import { useI18n } from "@/features/i18n/i18nContext";
 
 export default function Home() {
   const { viewer } = useContext(ViewerContext);
   const { t } = useI18n();
 
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
-  const [llmSettings, setLlmSettings] = useState<LLMSettings>(() =>
-    loadLLMSettings()
-  );
-  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(() =>
-    loadTTSSettings()
-  );
-  const [koeiromapKey, setKoeiromapKey] = useState("");
-  const [koeiroParam, setKoeiroParam] = useState<KoeiroParam>(DEFAULT_PARAM);
-  const [chatProcessing, setChatProcessing] = useState(false);
   const [chatLog, setChatLog] = useState<Message[]>([]);
   const [assistantMessage, setAssistantMessage] = useState("");
+  const [koeiroParam, setKoeiroParam] = useState<KoeiroParam>(DEFAULT_PARAM);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    if (window.localStorage.getItem("chatVRMParams")) {
-      const params = JSON.parse(
-        window.localStorage.getItem("chatVRMParams") as string
-      );
-      setSystemPrompt(params.systemPrompt ?? SYSTEM_PROMPT);
-      setKoeiroParam(params.koeiroParam ?? DEFAULT_PARAM);
-      setChatLog(params.chatLog ?? []);
-    }
-  }, []);
+  // LLM
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>(loadLLMSettings);
 
-  useEffect(() => {
-    process.nextTick(() =>
-      window.localStorage.setItem(
-        "chatVRMParams",
-        JSON.stringify({ systemPrompt, koeiroParam, chatLog })
-      )
-    );
-  }, [systemPrompt, koeiroParam, chatLog]);
+  // TTS
+  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
 
-  // Persist LLM settings whenever they change.
+  // ---- persist to localStorage ----
   useEffect(() => {
     saveLLMSettings(llmSettings);
   }, [llmSettings]);
-
-  // Persist TTS settings whenever they change.
   useEffect(() => {
     saveTTSSettings(ttsSettings);
   }, [ttsSettings]);
 
-  const handleChangeChatLog = useCallback(
-    (targetIndex: number, text: string) => {
-      const newChatLog = chatLog.map((v: Message, i) => {
-        return i === targetIndex ? { role: v.role, content: text } : v;
-      });
-
-      setChatLog(newChatLog);
-    },
-    [chatLog]
+  const [showIntroduction, setShowIntroduction] = useState(
+    !llmSettings.apiKey.trim()
   );
 
-  /**
-   * Stream TTS for each screenplay line. The actual provider selection
-   * happens inside `speakCharacter`, which routes through the TTS
-   * abstraction layer.
-   */
+  // ------------------ handlers ------------------
+  const handleChangeChatLog = useCallback(
+    (targetIndex: number, text: string) => {
+      setChatLog((prev) => {
+        const newChatLog = prev.map((v, i) =>
+          i === targetIndex ? { role: v.role, content: text } : v
+        );
+        return newChatLog;
+      });
+    },
+    []
+  );
+
+  const handleSendChat = useCallback(
+    async (message: string) => {
+      if (isProcessing || !message.trim()) return;
+      if (!llmSettings.apiKey.trim()) {
+        setAssistantMessage(t.errors.apiKeyNotSet);
+        return;
+      }
+
+      setIsProcessing(true);
+      const newLog: Message[] = [
+        ...chatLog,
+        { role: "user", content: message },
+      ];
+      setChatLog(newLog);
+
+      try {
+        const response = await generateResponse(
+          systemPrompt,
+          newLog.slice(-15),
+          llmSettings,
+          (text: string) => setAssistantMessage(text),
+          streamChat
+        );
+        setChatLog([
+          ...newLog,
+          { role: "assistant", content: response },
+        ]);
+
+        const screenplays = textsToScreenplay(
+          splitSentence(response),
+          koeiroParam
+        );
+        let isFirst = true;
+        let isLast = false;
+        for (let i = 0; i < screenplays.length; i++) {
+          if (i === screenplays.length - 1) isLast = true;
+          const screenplay = screenplays[i];
+          await handleSpeakAi(
+            screenplay,
+            isFirst ? () => (isFirst = false) : undefined,
+            isLast ? () => setIsProcessing(false) : undefined
+          );
+        }
+      } catch (err: unknown) {
+        setAssistantMessage(
+          err instanceof Error ? err.message : "Stream error"
+        );
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [isProcessing, chatLog, systemPrompt, llmSettings, koeiroParam, t.errors.apiKeyNotSet]
+  );
+
   const handleSpeakAi = useCallback(
     async (
       screenplay: Screenplay,
       onStart?: () => void,
       onEnd?: () => void
     ) => {
-      // The legacy free Koeiromap endpoint also accepts a key in the
-      // body. We forward the user-entered koeiromapKey so the free
-      // endpoint can still be used if the user has not yet entered
-      // an API key in the TTS panel.
-      const merged: TTSSettings = {
-        ...ttsSettings,
-        apiKey: ttsSettings.apiKey || koeiromapKey,
-      };
-      speakCharacter(screenplay, viewer, merged, onStart, onEnd);
+      speakCharacter(
+        screenplay,
+        viewer,
+        ttsSettings,
+        onStart,
+        onEnd,
+        (err) => {
+          setAssistantMessage(
+            t.errors.ttsFailed ? `${t.errors.ttsFailed}: ${err}` : `[TTS error] ${err}`
+          );
+        }
+      );
     },
-    [viewer, ttsSettings, koeiromapKey]
+    [viewer, ttsSettings, t.errors.ttsFailed]
   );
 
-  /**
-   * Send a user message to the configured LLM, stream the response,
-   * and split it into sentences for TTS playback.
-   */
-  const handleSendChat = useCallback(
-    async (text: string) => {
-      if (!llmSettings.apiKey?.trim()) {
-        setAssistantMessage(t.errors.apiKeyNotSet);
-        return;
-      }
-
-      const newMessage = text;
-      if (newMessage == null) return;
-
-      setChatProcessing(true);
-      const messageLog: Message[] = [
-        ...chatLog,
-        { role: "user", content: newMessage },
-      ];
-      setChatLog(messageLog);
-
-      const messages: Message[] = [
-        { role: "system", content: systemPrompt },
-        ...messageLog,
-      ];
-
-      let receivedMessage = "";
-      let aiTextLog = "";
-      let tag = "";
-      const sentences = new Array<string>();
-
-      try {
-        await streamChat(
-          llmSettings,
-          messages.map((m) => ({ role: m.role, content: m.content })),
-          (chunk) => {
-            if (chunk.type === "text") {
-              receivedMessage += chunk.text;
-
-              const tagMatch = receivedMessage.match(/^\[(.*?)\]/);
-              if (tagMatch && tagMatch[0]) {
-                tag = tagMatch[0];
-                receivedMessage = receivedMessage.slice(tag.length);
-              }
-
-              const sentenceMatch = receivedMessage.match(
-                /^(.+[。．！？\n]|.{10,}[、,])/
-              );
-              if (sentenceMatch && sentenceMatch[0]) {
-                const sentence = sentenceMatch[0];
-                sentences.push(sentence);
-                receivedMessage = receivedMessage
-                  .slice(sentence.length)
-                  .trimStart();
-
-                if (
-                  !sentence.replace(
-                    /^[\s\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]]+$/g,
-                    ""
-                  )
-                ) {
-                  return;
-                }
-
-                const aiText = `${tag} ${sentence}`;
-                const aiTalks = textsToScreenplay([aiText], koeiroParam);
-                aiTextLog += aiText;
-
-                const currentAssistantMessage = sentences.join(" ");
-                handleSpeakAi(aiTalks[0], () => {
-                  setAssistantMessage(currentAssistantMessage);
-                });
-              }
-            } else if (chunk.type === "done") {
-              if (chunk.reason === "error" && chunk.error) {
-                console.error("[LLM error]", chunk.error);
-                setAssistantMessage(chunk.error);
-              }
-            }
-          }
-        );
-      } catch (e) {
-        console.error(e);
-        setChatProcessing(false);
-        return;
-      }
-
-      const messageLogAssistant: Message[] = [
-        ...messageLog,
-        { role: "assistant", content: aiTextLog },
-      ];
-
-      setChatLog(messageLogAssistant);
-      setChatProcessing(false);
-    },
-    [
-      systemPrompt,
-      chatLog,
-      handleSpeakAi,
-      llmSettings,
-      koeiroParam,
-      t.errors.apiKeyNotSet,
-    ]
-  );
+  // Load VRM from local storage on mount.
+  useEffect(() => {
+    const blobUrl = loadVrmFromLocalStorage();
+    if (blobUrl) {
+      viewer.loadVrm(blobUrl);
+    }
+  }, [viewer]);
 
   return (
-    <div className={"font-M_PLUS_2"}>
-      <Meta />
-      <Introduction
-        openAiKey={llmSettings.apiKey}
-        koeiroMapKey={koeiromapKey}
-        onChangeAiKey={(v) => setLlmSettings((s) => ({ ...s, apiKey: v }))}
-        onChangeKoeiromapKey={setKoeiromapKey}
-      />
-      <VrmViewer />
-      <MessageInputContainer
-        isChatProcessing={chatProcessing}
-        onChatProcessStart={handleSendChat}
-      />
+    <div className="font-M_PLUS_2">
+      {showIntroduction && (
+        <Introduction
+          llmSettings={llmSettings}
+          ttsSettings={ttsSettings}
+          onChangeLlmApiKey={(key) =>
+            setLlmSettings((s) => ({ ...s, apiKey: key }))
+          }
+          onChangeTtsApiKey={(key) =>
+            setTtsSettings((s) => ({ ...s, apiKey: key }))
+          }
+        />
+      )}
       <Menu
         llmSettings={llmSettings}
         onChangeLlmSettings={setLlmSettings}
@@ -231,15 +170,19 @@ export default function Home() {
         chatLog={chatLog}
         koeiroParam={koeiroParam}
         assistantMessage={assistantMessage}
-        koeiromapKey={koeiromapKey}
+        koeiromapKey=""
         onChangeSystemPrompt={setSystemPrompt}
         onChangeChatLog={handleChangeChatLog}
         onChangeKoeiromapParam={setKoeiroParam}
         handleClickResetChatLog={() => setChatLog([])}
         handleClickResetSystemPrompt={() => setSystemPrompt(SYSTEM_PROMPT)}
-        onChangeKoeiromapKey={setKoeiromapKey}
+        onChangeKoeiromapKey={() => {}}
       />
-      <GitHubLink />
+      <MessageInputContainer
+        isChatProcessing={isProcessing}
+        onChatProcessStart={handleSendChat}
+      />
+      {viewer && <VrmStoreProvider viewer={viewer} />}
     </div>
   );
 }

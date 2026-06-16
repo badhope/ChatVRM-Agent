@@ -5,6 +5,7 @@
  * (mp3, opus, …) as an ArrayBuffer.
  */
 import type { TTSRequest, TTSResult, TTSSettings } from "./types";
+import { joinURL } from "@/utils/joinURL";
 
 export async function synthesizeOpenAITTS(
   baseURL: string,
@@ -57,10 +58,4 @@ function mimeForFormat(fmt: string): string {
     default:
       return "audio/mpeg";
   }
-}
-
-function joinURL(base: string, path: string): string {
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
 }

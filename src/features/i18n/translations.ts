@@ -44,8 +44,9 @@ export const translations = {
       testing: "Testing…",
       testOk: "Connection OK",
       testFailed: "Connection failed",
-      testChars: "chars",
       docs: "Documentation",
+      anthropicWarning:
+        "Anthropic API keys are exposed to the browser when using the direct protocol. This violates Anthropic's terms of service and may lead to account suspension. Consider using a server-side proxy or switching to OpenRouter.",
       openaiKey: "OpenAI API Key",
       openaiDescription:
         "You can get an API key from the OpenAI website. Please enter the obtained API key in the form.",
@@ -91,6 +92,7 @@ export const translations = {
     },
     errors: {
       apiKeyNotSet: "API key is not set",
+      ttsFailed: "Speech synthesis failed",
     },
   },
   zh: {
@@ -136,8 +138,9 @@ export const translations = {
       testing: "测试中…",
       testOk: "连接成功",
       testFailed: "连接失败",
-      testChars: "字符",
       docs: "官方文档",
+      anthropicWarning:
+        "使用 Anthropic 直连协议时，API 密钥会暴露在浏览器中。这违反了 Anthropic 的服务条款，可能导致账号被暂停。建议使用服务端代理或切换到 OpenRouter。",
       openaiKey: "OpenAI API 密钥",
       openaiDescription:
         "您可以从 OpenAI 网站获取 API 密钥。请将获取的 API 密钥填入表单。",
@@ -182,6 +185,7 @@ export const translations = {
     },
     errors: {
       apiKeyNotSet: "未设置 API 密钥",
+      ttsFailed: "语音合成失败",
     },
   },
 };

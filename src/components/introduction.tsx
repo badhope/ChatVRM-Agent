@@ -1,34 +1,42 @@
 import { useState, useCallback } from "react";
 import { Link } from "./link";
 import { useI18n } from "@/features/i18n/i18nContext";
+import type { LLMSettings } from "@/features/llm/types";
+import type { TTSSettings } from "@/features/tts/types";
+import { findProvider } from "@/features/llm/providers";
+import { findTTSProvider } from "@/features/tts/providers";
 
 type Props = {
-  openAiKey: string;
-  koeiroMapKey: string;
-  onChangeAiKey: (openAiKey: string) => void;
-  onChangeKoeiromapKey: (koeiromapKey: string) => void;
+  llmSettings: LLMSettings;
+  ttsSettings: TTSSettings;
+  onChangeLlmApiKey: (key: string) => void;
+  onChangeTtsApiKey: (key: string) => void;
 };
 export const Introduction = ({
-  openAiKey,
-  koeiroMapKey,
-  onChangeAiKey,
-  onChangeKoeiromapKey,
+  llmSettings,
+  ttsSettings,
+  onChangeLlmApiKey,
+  onChangeTtsApiKey,
 }: Props) => {
   const [opened, setOpened] = useState(true);
   const { t } = useI18n();
 
-  const handleAiKeyChange = useCallback(
+  const provider = findProvider(llmSettings.providerId);
+  const ttsProvider = findTTSProvider(ttsSettings.providerId);
+  const showTtsKey = ttsProvider.protocol !== "edge";
+
+  const handleLlmApiKeyChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChangeAiKey(event.target.value);
+      onChangeLlmApiKey(event.target.value);
     },
-    [onChangeAiKey]
+    [onChangeLlmApiKey]
   );
 
-  const handleKoeiromapKeyChange = useCallback(
+  const handleTtsApiKeyChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChangeKoeiromapKey(event.target.value);
+      onChangeTtsApiKey(event.target.value);
     },
-    [onChangeKoeiromapKey]
+    [onChangeTtsApiKey]
   );
 
   return opened ? (
@@ -56,8 +64,8 @@ export const Introduction = ({
             <br />
             {t.introduction.repoLabel}
             <Link
-              url="https://github.com/pixiv/ChatVRM"
-              label="https://github.com/pixiv/ChatVRM"
+              url="https://github.com/badhope/ChatVRM-Agent"
+              label="https://github.com/badhope/ChatVRM-Agent"
             />
           </div>
         </div>
@@ -69,49 +77,54 @@ export const Introduction = ({
           <div>{t.introduction.usageDescription}</div>
         </div>
 
+        {/* LLM API Key */}
         <div className="my-4 sm:my-24">
           <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
-            {t.introduction.koeiromapTitle}
+            {provider.name} API Key
           </div>
           <input
-            type="text"
-            placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            value={koeiroMapKey}
-            onChange={handleKoeiromapKeyChange}
+            type="password"
+            autoComplete="off"
+            placeholder="sk-…"
+            value={llmSettings.apiKey}
+            onChange={handleLlmApiKeyChange}
             className="my-1 sm:my-4 px-4 sm:px-16 py-2 sm:py-8 w-full h-10 sm:h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
           />
-          <div>
-            {t.introduction.koeiromapDescription}
-            <Link
-              url="https://developers.rinna.co.jp/product/#product=koeiromap-free"
-              label={t.introduction.koeiromapLink}
-            />
-          </div>
+          {provider.apiKeyHint && (
+            <div className="text-sm text-gray-500">{provider.apiKeyHint}</div>
+          )}
+          {provider.docsURL && (
+            <div>
+              <Link url={provider.docsURL} label={t.settings.docs} />
+            </div>
+          )}
         </div>
-        <div className="my-4 sm:my-24">
-          <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
-            {t.introduction.openaiTitle}
-          </div>
-          <input
-            type="text"
-            placeholder="sk-..."
-            value={openAiKey}
-            onChange={handleAiKeyChange}
-            className="my-1 sm:my-4 px-4 sm:px-16 py-2 sm:py-8 w-full h-10 sm:h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-          />
-          <div>
-            {t.introduction.openaiDescription}
-            <Link
-              url="https://platform.openai.com/account/api-keys"
-              label={t.introduction.openaiSite}
+
+        {/* TTS API Key */}
+        {showTtsKey && (
+          <div className="my-4 sm:my-24">
+            <div className="my-2 sm:my-8 font-bold typography-20 text-secondary">
+              {ttsProvider.name} API Key
+            </div>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="..."
+              value={ttsSettings.apiKey}
+              onChange={handleTtsApiKeyChange}
+              className="my-1 sm:my-4 px-4 sm:px-16 py-2 sm:py-8 w-full h-10 sm:h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
             />
+            {ttsProvider.apiKeyHint && (
+              <div className="text-sm text-gray-500">{ttsProvider.apiKeyHint}</div>
+            )}
+            {ttsProvider.docsURL && (
+              <div>
+                <Link url={ttsProvider.docsURL} label={t.settings.docs} />
+              </div>
+            )}
           </div>
-          <div className="my-4 sm:my-16">
-            {t.introduction.openaiNotice}
-            <br />
-            {t.introduction.openaiModel}
-          </div>
-        </div>
+        )}
+
         <div className="my-4 sm:my-24">
           <button
             onClick={() => {

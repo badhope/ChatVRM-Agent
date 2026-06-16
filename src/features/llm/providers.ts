@@ -5,8 +5,9 @@ import type { LLMProvider } from "./types";
  * rename it. Add a new entry here to ship a new built-in provider;
  * the settings UI will pick it up automatically.
  *
- * "Custom" is NOT a provider — it is exposed in the UI by checking
- * `provider.id === "custom"`.
+ * The "custom" provider requires the user to fill in the baseURL and
+ * model fields manually. It is useful for self-hosted or proxy
+ * endpoints that speak the OpenAI chat completions protocol.
  */
 export const LLM_PROVIDERS: LLMProvider[] = [
   // ─── International: OpenAI ────────────────────────────────────────
@@ -64,7 +65,7 @@ export const LLM_PROVIDERS: LLMProvider[] = [
         label: "Claude Opus 4.1",
         hint: "Most capable, slowest",
       },
-      { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "Fast and cheap" },
+      { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", hint: "Fastest" },
     ],
     apiKeyHint: "Get your key at console.anthropic.com → Settings → API Keys",
     docsURL: "https://console.anthropic.com/settings/keys",
@@ -272,6 +273,23 @@ export const LLM_PROVIDERS: LLMProvider[] = [
     docsURL: "https://ollama.com/",
     notes:
       "Run ollama serve locally. The baseURL defaults to http://localhost:11434/v1.",
+    region: "local",
+  },
+
+  // ─── Custom HTTP endpoint ─────────────────────────────────────────
+  {
+    id: "custom",
+    name: "Custom OpenAI-compatible",
+    protocol: "openai",
+    baseURL: "",
+    defaultModel: "",
+    models: [],
+    customBaseURL: true,
+    apiKeyHint:
+      "POST {baseURL}/chat/completions. Empty baseURL is OK — /v1 is appended automatically. Paste the model ID above.",
+    docsURL: "",
+    notes:
+      "Use this for any OpenAI-compatible endpoint (vLLM, LocalAI, text-generation-webui, LiteLLM proxy, or self-hosted models).",
     region: "local",
   },
 ];

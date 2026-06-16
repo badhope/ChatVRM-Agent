@@ -42,14 +42,6 @@ export async function streamChat(
     });
     return;
   }
-  // Some providers store the deployment/model in the baseURL path
-  // (e.g. Azure). Don't touch the URL in that case.
-  if (!/\/v1\/?$/.test(baseURL) && !baseURL.includes("/openai/")) {
-    // Most OpenAI-compatible providers expect /v1 to be present.
-    // The provider's own baseURL should already include it; if the
-    // user overrode with a domain-only URL, append /v1.
-    if (!baseURL.includes("/v1")) baseURL = baseURL.replace(/\/+$/, "") + "/v1";
-  }
 
   const model = settings.model?.trim() || provider.defaultModel;
   if (!model) {
@@ -61,6 +53,14 @@ export async function streamChat(
     return;
   }
 
+  // Wrap onChunk so we guarantee a final "done" chunk even when the
+  // underlying stream ends naturally without [DONE] / message_stop.
+  let emittedDone = false;
+  const safeChunk = (chunk: ChatChunk) => {
+    if (chunk.type === "done") emittedDone = true;
+    onChunk(chunk);
+  };
+
   if (provider.protocol === "anthropic") {
     await streamAnthropic({
       provider,
@@ -69,7 +69,7 @@ export async function streamChat(
       apiKey,
       messages,
       signal,
-      onChunk,
+      onChunk: safeChunk,
     });
   } else {
     await streamOpenAICompatible({
@@ -79,7 +79,11 @@ export async function streamChat(
       apiKey,
       messages,
       signal,
-      onChunk,
+      onChunk: safeChunk,
     });
+  }
+
+  if (!emittedDone) {
+    onChunk({ type: "done", reason: "stop" });
   }
 }

@@ -1,5 +1,6 @@
 import type { ChatChunk, ChatMessage, LLMProvider } from "./types";
 import { parseSSE } from "./openaiCompatible";
+import { joinURL } from "@/utils/joinURL";
 
 /**
  * Anthropic Messages API client.
@@ -44,7 +45,9 @@ export async function streamAnthropic(opts: {
     return;
   }
 
-  const url = joinURL(baseURL, "/v1/messages");
+  // Strip trailing /v1 before reappending — avoids /v1/v1 double-pathing
+  // when a user enters https://api.anthropic.com/v1 as the baseURL.
+  const url = joinURL(baseURL.replace(/\/v1\/?$/, ""), "/v1/messages");
   const body: Record<string, unknown> = {
     model,
     messages: turns,
@@ -105,13 +108,6 @@ export async function streamAnthropic(opts: {
       });
     }
   });
-}
-
-function joinURL(base: string, path: string): string {
-  if (!base) throw new Error("Base URL is required");
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
 }
 
 async function safeReadErrorBody(res: Response): Promise<string> {

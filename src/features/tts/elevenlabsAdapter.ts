@@ -5,6 +5,7 @@
  * (mp3 by default) as an ArrayBuffer.
  */
 import type { TTSRequest, TTSResult, TTSSettings } from "./types";
+import { joinURL } from "@/utils/joinURL";
 
 export async function synthesizeElevenLabs(
   baseURL: string,
@@ -45,8 +46,4 @@ export async function synthesizeElevenLabs(
   return { audio, mime: accept, voice: voiceId };
 }
 
-function joinURL(base: string, path: string): string {
-  const b = base.replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
-}
+

@@ -31,9 +31,8 @@ describe("LLM_PROVIDERS", () => {
 
   it("every provider has a defaultModel", () => {
     for (const p of LLM_PROVIDERS) {
-      // Azure has no defaultModel — that's intentional, the user
-      // must fill it in. All other providers must have one.
-      if (p.id === "azure") continue;
+      // Azure and Custom require user input for model name.
+      if (p.id === "azure" || p.id === "custom") continue;
       expect(p.defaultModel, `provider ${p.id}`).toBeTruthy();
     }
   });
