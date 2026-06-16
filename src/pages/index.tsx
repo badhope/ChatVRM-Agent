@@ -3,9 +3,10 @@ import { ViewerContext } from "../features/vrmViewer/viewerContext";
 import { MessageInputContainer } from "../components/messageInputContainer";
 import { Introduction } from "../components/introduction";
 import { Menu } from "../components/menu";
+import VrmViewer from "../components/vrmViewer";
 import { VrmStoreProvider } from "@/features/messages/vrmStoreContext";
 import { generateResponse } from "@/features/messages/generateResponse";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { SYSTEM_PROMPT } from "@/features/constants/systemPromptConstants";
 import { type Message } from "@/features/messages/messages";
 import {
@@ -46,9 +47,7 @@ export default function Home() {
     saveTTSSettings(ttsSettings);
   }, [ttsSettings]);
 
-  const [showIntroduction, setShowIntroduction] = useState(
-    !llmSettings.apiKey.trim()
-  );
+  const [showIntroduction, setShowIntroduction] = useState(false);
 
   // ------------------ handlers ------------------
   const handleChangeChatLog = useCallback(
@@ -149,18 +148,8 @@ export default function Home() {
 
   return (
     <div className="font-M_PLUS_2">
-      {showIntroduction && (
-        <Introduction
-          llmSettings={llmSettings}
-          ttsSettings={ttsSettings}
-          onChangeLlmApiKey={(key) =>
-            setLlmSettings((s) => ({ ...s, apiKey: key }))
-          }
-          onChangeTtsApiKey={(key) =>
-            setTtsSettings((s) => ({ ...s, apiKey: key }))
-          }
-        />
-      )}
+      {showIntroduction && <Introduction />}
+      <VrmViewer />
       <Menu
         llmSettings={llmSettings}
         onChangeLlmSettings={setLlmSettings}

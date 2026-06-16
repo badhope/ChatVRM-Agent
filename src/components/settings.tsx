@@ -227,25 +227,25 @@ export const Settings = ({
   }, [ttsSettings, t.settings.testOk]);
 
   return (
-    <div className="absolute z-40 w-full h-full bg-white/80 backdrop-blur ">
-      <div className="absolute m-4 sm:m-24">
-        <IconButton
-          iconName="24/Close"
-          isProcessing={false}
-          onClick={onClickClose}
-        ></IconButton>
-      </div>
-      <div className="max-h-full overflow-auto">
-        <div className="text-text1 max-w-3xl mx-auto px-4 sm:px-24 py-16 sm:py-64 ">
-          <div className="my-6 sm:my-24 typography-32 font-bold">{t.settings.title}</div>
+    <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+      <div className="relative w-full max-w-lg sm:max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+          <IconButton
+            iconName="24/Close"
+            isProcessing={false}
+            onClick={onClickClose}
+          ></IconButton>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
+          <div className="my-4 sm:my-6 typography-24 sm:typography-32 font-bold">{t.settings.title}</div>
 
           {/* Language Selection */}
-          <div className="my-4 sm:my-24">
-            <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.language}</div>
-            <div className="flex gap-4">
+          <div className="my-4 sm:my-6">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">{t.settings.language}</div>
+            <div className="flex gap-3">
               <button
                 onClick={() => setLanguage("en")}
-                className={`px-4 py-2 rounded-8 ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base ${
                   language === "en"
                     ? "bg-secondary text-white"
                     : "bg-surface1 hover:bg-surface1-hover"
@@ -255,7 +255,7 @@ export const Settings = ({
               </button>
               <button
                 onClick={() => setLanguage("zh")}
-                className={`px-4 py-2 rounded-8 ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base ${
                   language === "zh"
                     ? "bg-secondary text-white"
                     : "bg-surface1 hover:bg-surface1-hover"
@@ -267,12 +267,12 @@ export const Settings = ({
           </div>
 
           {/* LLM Provider */}
-          <div className="my-6 sm:my-24">
-            <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-4 sm:my-6">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
               {t.settings.llmProvider}
             </div>
             <select
-              className="px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+              className="px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
               value={llmSettings.providerId}
               onChange={handleChangeProvider}
             >
@@ -284,30 +284,30 @@ export const Settings = ({
               ))}
             </select>
             {provider.notes && (
-              <div className="my-2 sm:my-4 text-sm sm:text-base text-text2">
+              <div className="my-1 sm:my-2 text-xs sm:text-sm text-text2">
                 {provider.notes}
               </div>
             )}
             {provider.id === "anthropic" && (
-              <div className="my-2 sm:my-4 p-2 sm:p-4 bg-red-50 border border-red-200 rounded-8 text-xs sm:text-sm text-red-800">
+              <div className="my-1 sm:my-2 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm text-red-800">
                 {t.settings.anthropicWarning}
               </div>
             )}
             {provider.docsURL && (
-              <div className="text-sm sm:text-base">
+              <div className="text-xs sm:text-sm">
                 <Link url={provider.docsURL} label={t.settings.docs} />
               </div>
             )}
           </div>
 
           {/* Model */}
-          <div className="my-6 sm:my-24">
-            <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-4 sm:my-6">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
               {t.settings.llmModel}
             </div>
             <input
               list="llm-model-list"
-              className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+              className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
               type="text"
               placeholder={provider.defaultModel}
               value={llmSettings.model}
@@ -327,12 +327,12 @@ export const Settings = ({
 
           {/* Base URL */}
           {showBaseURL && (
-            <div className="my-6 sm:my-24">
-              <div className="my-4 sm:my-16 typography-20 font-bold">
+            <div className="my-4 sm:my-6">
+              <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
                 {t.settings.llmBaseURL}
               </div>
               <input
-                className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                 type="text"
                 placeholder={provider.baseURL}
                 value={llmSettings.baseURL}
@@ -342,12 +342,12 @@ export const Settings = ({
           )}
 
           {/* API Key */}
-          <div className="my-6 sm:my-24">
-            <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-4 sm:my-6">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
               {t.settings.llmApiKey}
             </div>
             <input
-              className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+              className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
               type="password"
               autoComplete="off"
               placeholder="sk-…"
@@ -355,11 +355,11 @@ export const Settings = ({
               onChange={handleChangeApiKey}
             />
             {provider.apiKeyHint && (
-              <div className="my-2 sm:my-4 text-sm sm:text-base text-text2">
+              <div className="my-1 sm:my-2 text-xs sm:text-sm text-text2">
                 {provider.apiKeyHint}
               </div>
             )}
-            <div className="my-2 sm:my-8 flex items-center gap-2 sm:gap-4 flex-wrap">
+            <div className="my-2 sm:my-3 flex items-center gap-2 flex-wrap">
               <TextButton
                 onClick={handleTestConnection}
                 disabled={testState.kind === "running"}
@@ -369,12 +369,12 @@ export const Settings = ({
                   : t.settings.testConnection}
               </TextButton>
               {testState.kind === "ok" && (
-                <span className="text-sm sm:text-base text-green-700">
+                <span className="text-xs sm:text-sm text-green-700">
                   {testState.message}
                 </span>
               )}
               {testState.kind === "error" && (
-                <span className="text-sm sm:text-base text-red-700 break-all">
+                <span className="text-xs sm:text-sm text-red-700 break-all">
                   {testState.message}
                 </span>
               )}
@@ -382,23 +382,23 @@ export const Settings = ({
           </div>
 
           {/* Legacy OpenAI notice kept in case old users want to know */}
-          <div className="my-6 sm:my-24">
-            <div className="my-4 sm:my-16 text-sm sm:text-base text-text2">
+          <div className="my-4 sm:my-6">
+            <div className="my-1 sm:my-2 text-xs sm:text-sm text-text2">
               {t.settings.llmNotice}
             </div>
           </div>
 
-          <div className="my-10 sm:my-40">
-            <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-6 sm:my-8">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
               {t.settings.characterModel}
             </div>
-            <div className="my-2 sm:my-8">
+            <div className="my-1 sm:my-2">
               <TextButton onClick={onClickOpenVrmFile}>{t.settings.openVrm}</TextButton>
             </div>
           </div>
-          <div className="my-10 sm:my-40">
-            <div className="my-2 sm:my-8">
-              <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-6 sm:my-8">
+            <div className="my-1 sm:my-2">
+              <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
                 {t.settings.characterSettings}
               </div>
               <TextButton onClick={onClickResetSystemPrompt}>
@@ -409,20 +409,20 @@ export const Settings = ({
             <textarea
               value={systemPrompt}
               onChange={onChangeSystemPrompt}
-              className="px-4 sm:px-16 py-2 sm:py-8 bg-surface1 hover:bg-surface1-hover h-40 sm:h-168 rounded-8 w-full text-sm sm:text-base"
+              className="px-3 sm:px-4 py-2 bg-surface1 hover:bg-surface1-hover h-32 sm:h-40 rounded-lg w-full text-sm sm:text-base"
             ></textarea>
           </div>
           {/* TTS Provider */}
-          <div className="my-10 sm:my-40">
-            <div className="my-4 sm:my-16 typography-20 font-bold">
+          <div className="my-6 sm:my-8">
+            <div className="my-2 sm:my-3 typography-16 sm:typography-20 font-bold">
               {t.settings.voiceAdjustment}
             </div>
-            <div className="my-2 sm:my-8">
-              <div className="my-2 sm:my-4 typography-16 font-bold">
+            <div className="my-2 sm:my-3">
+              <div className="my-1 sm:my-2 typography-14 sm:typography-16 font-bold">
                 {t.settings.ttsProvider}
               </div>
               <select
-                className="px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                className="px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                 value={ttsSettings.providerId}
                 onChange={handleChangeTtsProvider}
               >
@@ -433,23 +433,23 @@ export const Settings = ({
                 ))}
               </select>
               {ttsProvider.notes && (
-                <div className="my-2 sm:my-4 text-sm sm:text-base text-text2">
+                <div className="my-1 sm:my-2 text-xs sm:text-sm text-text2">
                   {ttsProvider.notes}
                 </div>
               )}
               {ttsProvider.docsURL && (
-                <div className="text-sm sm:text-base">
+                <div className="text-xs sm:text-sm">
                   <Link url={ttsProvider.docsURL} label={t.settings.docs} />
                 </div>
               )}
             </div>
 
-            <div className="my-2 sm:my-8">
-              <div className="my-2 sm:my-4 typography-16 font-bold">
+            <div className="my-2 sm:my-3">
+              <div className="my-1 sm:my-2 typography-14 sm:typography-16 font-bold">
                 {t.settings.ttsVoice}
               </div>
               <select
-                className="px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                className="px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                 value={ttsSettings.voice}
                 onChange={handleChangeTtsVoice}
               >
@@ -462,12 +462,12 @@ export const Settings = ({
             </div>
 
             {ttsProvider.protocol === "openai-tts" && (
-              <div className="my-2 sm:my-8">
-                <div className="my-2 sm:my-4 typography-16 font-bold">
+              <div className="my-2 sm:my-3">
+                <div className="my-1 sm:my-2 typography-14 sm:typography-16 font-bold">
                   {t.settings.ttsModel}
                 </div>
                 <input
-                  className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                  className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                   type="text"
                   placeholder="tts-1"
                   value={ttsSettings.model ?? ""}
@@ -477,12 +477,12 @@ export const Settings = ({
             )}
 
             {ttsShowBaseURL && (
-              <div className="my-2 sm:my-8">
-                <div className="my-2 sm:my-4 typography-16 font-bold">
+              <div className="my-2 sm:my-3">
+                <div className="my-1 sm:my-2 typography-14 sm:typography-16 font-bold">
                   {t.settings.ttsBaseURL}
                 </div>
                 <input
-                  className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                  className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                   type="text"
                   placeholder={ttsProvider.baseURL}
                   value={ttsSettings.baseURL}
@@ -492,12 +492,12 @@ export const Settings = ({
             )}
 
             {ttsProvider.protocol !== "edge" && (
-              <div className="my-2 sm:my-8">
-                <div className="my-2 sm:my-4 typography-16 font-bold">
+              <div className="my-2 sm:my-3">
+                <div className="my-1 sm:my-2 typography-14 sm:typography-16 font-bold">
                   {t.settings.ttsApiKey}
                 </div>
                 <input
-                  className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-full bg-surface1 hover:bg-surface1-hover rounded-8 text-sm sm:text-base"
+                  className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                   type="password"
                   autoComplete="off"
                   placeholder="..."
@@ -505,11 +505,11 @@ export const Settings = ({
                   onChange={handleChangeTtsApiKey}
                 />
                 {ttsProvider.apiKeyHint && (
-                  <div className="my-2 sm:my-4 text-sm sm:text-base text-text2">
+                  <div className="my-1 sm:my-2 text-xs sm:text-sm text-text2">
                     {ttsProvider.apiKeyHint}
                   </div>
                 )}
-                <div className="my-2 sm:my-8 flex items-center gap-2 sm:gap-4 flex-wrap">
+                <div className="my-2 sm:my-3 flex items-center gap-2 flex-wrap">
                   <TextButton
                     onClick={handleTestTts}
                     disabled={ttsTestState.kind === "running"}
@@ -519,12 +519,12 @@ export const Settings = ({
                       : t.settings.testConnection}
                   </TextButton>
                   {ttsTestState.kind === "ok" && (
-                    <span className="text-sm sm:text-base text-green-700">
+                    <span className="text-xs sm:text-sm text-green-700">
                       {ttsTestState.message}
                     </span>
                   )}
                   {ttsTestState.kind === "error" && (
-                    <span className="text-sm sm:text-base text-red-700 break-all">
+                    <span className="text-xs sm:text-sm text-red-700 break-all">
                       {ttsTestState.message}
                     </span>
                   )}
@@ -532,7 +532,7 @@ export const Settings = ({
               </div>
             )}
 
-            <div className="my-2 sm:my-8 text-sm sm:text-base text-text2">
+            <div className="my-2 sm:my-3 text-xs sm:text-sm text-text2">
               {t.settings.ttsNotice}
             </div>
 
@@ -540,8 +540,8 @@ export const Settings = ({
                 Koeiromap provider. Hidden for other providers. */}
             {ttsProvider.protocol === "koeiromap" && (
               <>
-                <div className="mt-4 sm:mt-16 font-bold">{t.settings.preset}</div>
-                <div className="my-2 sm:my-8 grid grid-cols-2 gap-[8px]">
+                <div className="mt-3 sm:mt-4 font-bold text-sm sm:text-base">{t.settings.preset}</div>
+                <div className="my-2 sm:my-3 grid grid-cols-2 gap-2">
                   <TextButton
                     onClick={() =>
                       onChangeKoeiroParam(PRESET_A.speakerX, PRESET_A.speakerY)
@@ -571,15 +571,15 @@ export const Settings = ({
                     {t.settings.mature}
                   </TextButton>
                 </div>
-                <div className="my-6 sm:my-24">
-                  <div className="select-none">x : {koeiroParam.speakerX}</div>
+                <div className="my-4 sm:my-6">
+                  <div className="select-none text-sm sm:text-base">x : {koeiroParam.speakerX}</div>
                   <input
                     type="range"
                     min={-10}
                     max={10}
                     step={0.001}
                     value={koeiroParam.speakerX}
-                    className="mt-2 sm:mt-8 mb-4 sm:mb-16 input-range"
+                    className="mt-1 sm:mt-2 mb-2 sm:mb-3 input-range"
                     onChange={(e) => {
                       onChangeKoeiroParam(
                         Number(e.target.value),
@@ -587,14 +587,14 @@ export const Settings = ({
                       );
                     }}
                   ></input>
-                  <div className="select-none">y : {koeiroParam.speakerY}</div>
+                  <div className="select-none text-sm sm:text-base">y : {koeiroParam.speakerY}</div>
                   <input
                     type="range"
                     min={-10}
                     max={10}
                     step={0.001}
                     value={koeiroParam.speakerY}
-                    className="mt-2 sm:mt-8 mb-4 sm:mb-16 input-range"
+                    className="mt-1 sm:mt-2 mb-2 sm:mb-3 input-range"
                     onChange={(e) => {
                       onChangeKoeiroParam(
                         koeiroParam.speakerX,
@@ -605,19 +605,19 @@ export const Settings = ({
                 </div>
                 {/* Legacy koeiromap key field — kept for the free
                     endpoint that accepts the key in the body. */}
-                <div className="mt-4 sm:mt-16 font-bold">
+                <div className="mt-3 sm:mt-4 font-bold text-sm sm:text-base">
                   {t.settings.apiKey} ({t.settings.legacyKeyHint || "Koeiromap"})
                 </div>
-                <div className="mt-2 sm:mt-8">
+                <div className="mt-1 sm:mt-2">
                   <input
-                    className="text-ellipsis px-4 sm:px-16 py-2 sm:py-8 w-col-span-2 bg-surface1 hover:bg-surface1-hover rounded-8"
+                    className="text-ellipsis px-3 sm:px-4 py-2 w-full bg-surface1 hover:bg-surface1-hover rounded-lg text-sm sm:text-base"
                     type="text"
                     placeholder="..."
                     value={koeiromapKey}
                     onChange={onChangeKoeiromapKey}
                   />
                 </div>
-                <div className="text-sm sm:text-base my-2 sm:my-4">
+                <div className="text-xs sm:text-sm my-1 sm:my-2">
                   {t.settings.koeiromapDescription}
                   <Link
                     url="https://koemotion.rinna.co.jp"
@@ -628,26 +628,26 @@ export const Settings = ({
             )}
           </div>
           {chatLog.length > 0 && (
-            <div className="my-10 sm:my-40">
-              <div className="my-2 sm:my-8 grid-cols-2">
-                <div className="my-4 sm:my-16 typography-20 font-bold">{t.settings.chatHistory}</div>
+            <div className="my-6 sm:my-8">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <div className="typography-20 font-bold">{t.settings.chatHistory}</div>
                 <TextButton onClick={onClickResetChatLog}>
                   {t.settings.resetChatHistory}
                 </TextButton>
               </div>
-              <div className="my-2 sm:my-8">
+              <div className="space-y-2 sm:space-y-3">
                 {chatLog.map((value, index) => {
                   return (
                     <div
                       key={index}
-                      className="my-2 sm:my-8 grid grid-flow-col grid-cols-[min-content_1fr] gap-x-4"
+                      className="flex gap-2 sm:gap-3 items-start"
                     >
-                      <div className="w-[64px] py-2 sm:py-8 text-sm sm:text-base">
+                      <div className="w-12 sm:w-16 py-1.5 sm:py-2 text-xs sm:text-sm font-bold flex-shrink-0">
                         {value.role === "assistant" ? t.chatLog.character : t.chatLog.you}
                       </div>
                       <input
                         key={index}
-                        className="bg-surface1 hover:bg-surface1-hover rounded-8 w-full px-4 sm:px-16 py-2 sm:py-8 text-sm sm:text-base"
+                        className="bg-surface1 hover:bg-surface1-hover rounded-lg w-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
                         type="text"
                         value={value.content}
                         onChange={(event) => {

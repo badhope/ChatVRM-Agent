@@ -22,10 +22,10 @@ export const MessageInput = ({
   const { t } = useI18n();
 
   return (
-    <div className="absolute bottom-0 z-20 w-screen">
+    <div className="fixed bottom-0 z-20 w-full">
       <div className="bg-base text-black">
-        <div className="mx-auto max-w-4xl p-4 sm:p-16">
-          <div className="grid grid-flow-col gap-[8px] grid-cols-[min-content_1fr_min-content]">
+        <div className="mx-auto max-w-2xl sm:max-w-4xl px-3 sm:px-6 py-2 sm:py-3">
+          <div className="grid grid-flow-col gap-2 grid-cols-[min-content_1fr_min-content]">
             <IconButton
               iconName="24/Microphone"
               className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
@@ -38,7 +38,7 @@ export const MessageInput = ({
               placeholder={t.messageInput.placeholder}
               onChange={onChangeUserMessage}
               disabled={isChatProcessing}
-              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled disabled:text-primary-disabled rounded-16 w-full px-4 sm:px-16 py-2 sm:py-4 text-sm sm:text-base text-text-primary font-bold disabled"
+              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled disabled:text-primary-disabled rounded-xl w-full px-3 sm:px-4 py-2 text-sm sm:text-base text-text-primary font-bold"
               value={userMessage}
             ></input>
 
@@ -51,7 +51,7 @@ export const MessageInput = ({
             />
           </div>
         </div>
-        <div className="py-2 sm:py-4 bg-[#413D43] text-center text-white font-Montserrat text-xs sm:text-sm">
+        <div className="py-1.5 sm:py-2 bg-[#413D43] text-center text-white font-Montserrat text-[10px] sm:text-xs">
           {t.messageInput.poweredBy}
         </div>
       </div>

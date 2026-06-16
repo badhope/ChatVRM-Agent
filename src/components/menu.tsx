@@ -101,8 +101,8 @@ export const Menu = ({
 
   return (
     <>
-      <div className="absolute z-10 m-4 sm:m-24">
-        <div className="grid grid-flow-col gap-[8px]">
+      <div className="fixed top-3 left-3 sm:top-4 sm:left-4 z-30">
+        <div className="grid grid-flow-col gap-2">
           <IconButton
             iconName="24/Menu"
             label={t.menu.settings}
@@ -127,7 +127,7 @@ export const Menu = ({
           )}
         </div>
       </div>
-      {showChatLog && <ChatLog messages={chatLog} />}
+      {showChatLog && <ChatLog messages={chatLog} onClose={() => setShowChatLog(false)} />}
       {showSettings && (
         <Settings
           llmSettings={llmSettings}

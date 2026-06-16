@@ -4,8 +4,9 @@ import { useI18n } from "@/features/i18n/i18nContext";
 
 type Props = {
   messages: Message[];
+  onClose?: () => void;
 };
-export const ChatLog = ({ messages }: Props) => {
+export const ChatLog = ({ messages, onClose }: Props) => {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
 
@@ -24,35 +25,43 @@ export const ChatLog = ({ messages }: Props) => {
   }, [messages]);
 
   return (
-    <div className="absolute w-col-span-6 max-w-full h-[100svh] pb-64">
-      <div className="max-h-full px-4 sm:px-16 pt-24 sm:pt-104 pb-16 sm:pb-64 overflow-y-auto scroll-hidden">
-        {messages.map((msg, i) => {
-          return (
-            <div key={i} ref={messages.length - 1 === i ? chatScrollRef : null}>
-              <Chat role={msg.role} message={msg.content} t={t} />
-            </div>
-          );
-        })}
+    <div className="fixed inset-0 z-20 flex items-center justify-center p-4 sm:p-8" onClick={onClose}>
+      <div className="w-full max-w-sm sm:max-w-md max-h-[80vh] bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-secondary text-white font-bold text-sm sm:text-base rounded-t-2xl flex-shrink-0 flex justify-between items-center">
+          <span>{t.menu.chatLog}</span>
+          {onClose && (
+            <button onClick={onClose} className="text-white/80 hover:text-white text-lg font-bold ml-2">
+              ×
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-hidden px-3 sm:px-5 py-2 sm:py-4">
+          {messages.map((msg, i) => {
+            return (
+              <div key={i} ref={messages.length - 1 === i ? chatScrollRef : null}>
+                <Chat role={msg.role} message={msg.content} t={t} />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 };
 
 const Chat = ({ role, message, t }: { role: string; message: string; t: any }) => {
-  const roleColor =
-    role === "assistant" ? "bg-secondary text-white " : "bg-base text-primary";
-  const roleText = role === "assistant" ? "text-secondary" : "text-primary";
-  const offsetX = role === "user" ? "pl-8 sm:pl-40" : "pr-8 sm:pr-40";
-
+  const isUser = role === "user";
   return (
-    <div className={`mx-auto max-w-sm my-4 sm:my-16 ${offsetX}`}>
-      <div
-        className={`px-6 sm:px-24 py-2 sm:py-8 rounded-t-8 font-bold tracking-wider text-sm sm:text-base ${roleColor}`}
-      >
-        {role === "assistant" ? t.chatLog.character : t.chatLog.you}
+    <div className={`flex flex-col mb-3 sm:mb-4 ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`text-xs sm:text-sm font-bold mb-1 ${isUser ? "text-primary" : "text-secondary"}`}>
+        {isUser ? t.chatLog.you : t.chatLog.character}
       </div>
-      <div className="px-6 sm:px-24 py-4 sm:py-16 bg-white rounded-b-8">
-        <div className={`typography-16 font-bold ${roleText}`}>{message}</div>
+      <div className={`max-w-[85%] sm:max-w-[75%] px-3 sm:px-4 py-2 sm:py-3 rounded-2xl text-sm sm:text-base font-medium ${
+        isUser
+          ? "bg-secondary text-white rounded-br-sm"
+          : "bg-surface1 text-text1 rounded-bl-sm"
+      }`}>
+        {message}
       </div>
     </div>
   );
