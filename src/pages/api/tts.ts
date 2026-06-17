@@ -13,8 +13,8 @@ const talkStyleSchema = z.enum(["talk", "happy", "sad"]);
 
 const requestSchema = z.object({
   message: z.string().min(1).max(2000),
-  speakerX: z.number().min(0).max(10),
-  speakerY: z.number().min(0).max(10),
+  speakerX: z.number().min(-10).max(10),
+  speakerY: z.number().min(-10).max(10),
   style: talkStyleSchema.optional().default("talk"),
   apiKey: z.string().min(1),
 });

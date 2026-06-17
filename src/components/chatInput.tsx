@@ -12,6 +12,13 @@ export function ChatInput({ onSend, isProcessing, onStop }: ChatInputProps) {
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const micTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (micTimeoutRef.current) clearTimeout(micTimeoutRef.current);
+    };
+  }, []);
 
   const send = () => {
     const v = text.trim();
@@ -30,14 +37,24 @@ export function ChatInput({ onSend, isProcessing, onStop }: ChatInputProps) {
 
   // Mock mic toggle — actual speech recognition not wired in this pass
   const toggleMic = () => {
-    setRecording((v) => !v);
-    if (!recording) {
-      setTimeout(() => setRecording(false), 4000);
-    }
+    setRecording((prev) => {
+      const next = !prev;
+      if (micTimeoutRef.current) {
+        clearTimeout(micTimeoutRef.current);
+        micTimeoutRef.current = null;
+      }
+      if (next) {
+        micTimeoutRef.current = setTimeout(() => {
+          setRecording(false);
+          micTimeoutRef.current = null;
+        }, 4000);
+      }
+      return next;
+    });
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-5 pb-3 sm:pb-4 pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
       <div className="max-w-3xl mx-auto pointer-events-auto">
         <div
           className={`glass rounded-2xl flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 transition-all ${

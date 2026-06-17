@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useI18n } from "@/features/i18n/i18nContext";
 import { useToast } from "./toast";
 
@@ -30,7 +30,7 @@ export function TopBar({ onOpenMenu, onOpenChat, hasMessages }: TopBarProps) {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-30 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-30 px-3 sm:px-5 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-[max(1rem,env(safe-area-inset-top))] pointer-events-none">
       <div className="flex items-center justify-between gap-2 max-w-6xl mx-auto pointer-events-auto">
         <button
           onClick={onOpenMenu}
@@ -114,19 +114,40 @@ export function TopBar({ onOpenMenu, onOpenChat, hasMessages }: TopBarProps) {
 function HelpPopover({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
   const items = t.help.steps;
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
+  useEffect(() => {
+    // Focus the close button on mount for keyboard users.
+    closeRef.current?.focus();
+  }, []);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-fade-in"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.help.title}
+      onKeyDown={handleKeyDown}
     >
       <div
-        className="glass-strong rounded-2xl p-5 max-w-sm w-full shadow-2xl animate-slide-in-up"
+        className="glass-panel rounded-2xl p-6 max-w-sm w-full animate-slide-in-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-bold text-white/95">{t.help.title}</h3>
           <button
+            ref={closeRef}
             onClick={onClose}
             className="text-white/60 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"
             aria-label="close"

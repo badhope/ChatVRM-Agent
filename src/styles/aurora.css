@@ -51,11 +51,20 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.glass-panel {
+  background: rgba(18, 14, 36, 0.92);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 60px -10px rgba(0, 0, 0, 0.6);
+}
+
 .glass-strong {
-  background: rgba(20, 14, 40, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(12, 8, 28, 0.96);
+  backdrop-filter: blur(32px) saturate(140%);
+  -webkit-backdrop-filter: blur(32px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.7);
 }
 
 .icon-gradient {
@@ -84,14 +93,14 @@ body {
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 .btn-ghost:active {
   transform: scale(0.96);
@@ -128,6 +137,11 @@ body {
   to { opacity: 0; transform: translateX(-60px); }
 }
 
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(60px); }
+}
+
 @keyframes fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -157,7 +171,50 @@ body {
 .animate-slide-in-up { animation: slide-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-out-left { animation: slide-out-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-out-right { animation: slide-out-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade-in { animation: fade-in 0.25s ease-out both; }
 .animate-fade-out { animation: fade-out 0.25s ease-out both; }
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 .animate-drift { animation: drift-orb 12s ease-in-out infinite; }
+
+/* ---- Accessibility: respect reduced-motion preference ---- */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg::before,
+  .aurora-bg::after {
+    animation: none;
+  }
+  .animate-slide-in-right,
+  .animate-slide-in-up,
+  .animate-slide-in-left,
+  .animate-slide-out-left,
+  .animate-slide-out-right,
+  .animate-fade-in,
+  .animate-fade-out,
+  .animate-pulse-soft,
+  .animate-drift {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+  .btn-primary:hover,
+  .btn-ghost:hover,
+  .btn-primary:active,
+  .btn-ghost:active {
+    transform: none;
+  }
+}
+
+/* ---- Fallback for browsers without backdrop-filter support ---- */
+/* When blur isn't available, raise the background opacity so the
+   glass panels remain readable against the 3D scene. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(18, 14, 36, 0.88);
+  }
+  .glass-panel {
+    background: rgba(18, 14, 36, 0.97);
+  }
+  .glass-strong {
+    background: rgba(12, 8, 28, 0.99);
+  }
+}

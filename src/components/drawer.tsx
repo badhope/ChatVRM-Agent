@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
 
 interface AccordionProps {
   title: string;
@@ -13,12 +13,12 @@ export function Accordion({ title, defaultOpen = false, badge, children }: Accor
     <div className="border-b border-white/8">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 py-3.5 px-1 active:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between gap-3 py-4 px-1 active:bg-white/5 transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold text-white/90 truncate">{title}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-sm font-semibold text-white/95 truncate">{title}</span>
           {badge && (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-white/10 text-white/60">
               {badge}
             </span>
           )}
@@ -35,7 +35,7 @@ export function Accordion({ title, defaultOpen = false, badge, children }: Accor
           <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && <div className="pb-4 pt-1 px-1 animate-slide-in-up">{children}</div>}
+      {open && <div className="pb-5 pt-1 px-1 animate-slide-in-up">{children}</div>}
     </div>
   );
 }
@@ -51,6 +51,7 @@ interface DrawerProps {
 export function Drawer({ open, onClose, title, children, variant = "drawer" }: DrawerProps) {
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -63,11 +64,20 @@ export function Drawer({ open, onClose, title, children, variant = "drawer" }: D
     }
   }, [open, visible]);
 
+  // Clean up any pending close timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
   const handleClose = useCallback(() => {
     setClosing(true);
-    setTimeout(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
       setVisible(false);
       onClose();
+      closeTimerRef.current = null;
     }, 250);
   }, [onClose]);
 
@@ -86,18 +96,21 @@ export function Drawer({ open, onClose, title, children, variant = "drawer" }: D
     ? "animate-fade-out opacity-0"
     : "animate-fade-in";
   const panelClass = closing
-    ? "animate-slide-out-left"
-    : "animate-slide-in-left";
+    ? "animate-slide-out-right"
+    : "animate-slide-in-right";
 
   return (
     <div
       className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm ${backdropClass}`}
       onClick={handleClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
     >
       <div
         className={
           variant === "drawer"
-            ? `absolute top-0 bottom-0 left-0 w-full sm:w-[400px] sm:max-w-[90vw] glass-strong shadow-2xl flex flex-col ${panelClass}`
+            ? `absolute top-0 right-0 bottom-0 w-full sm:w-[420px] sm:max-w-[90vw] glass-strong shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${panelClass}`
             : "absolute inset-0 flex items-end sm:items-center sm:justify-center pointer-events-none"
         }
         onClick={(e) => e.stopPropagation()}
@@ -121,7 +134,7 @@ export function Drawer({ open, onClose, title, children, variant = "drawer" }: D
               </svg>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto scroll-hidden px-4 sm:px-5">{children}</div>
+          <div className="flex-1 overflow-y-auto scroll-hidden px-5 sm:px-6 py-2">{children}</div>
         </div>
       </div>
     </div>
@@ -134,21 +147,21 @@ interface SectionListProps {
 
 export function SectionList({ items }: SectionListProps) {
   return (
-    <div className="py-2">
+    <div className="py-3 space-y-1">
       {items.map((item) => (
         <button
           key={item.key}
           onClick={item.onClick}
-          className="w-full flex items-center gap-3.5 py-3.5 px-2 -mx-2 rounded-xl active:bg-white/5 hover:bg-white/5 transition-colors text-left"
+          className="w-full flex items-center gap-4 py-3.5 px-3 -mx-1 rounded-xl active:bg-white/8 hover:bg-white/[0.06] transition-colors text-left group"
         >
-          <div className="w-10 h-10 rounded-xl glass flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-xl icon-gradient-fill flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
             {item.icon}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-white/95">{item.title}</div>
-            <div className="text-xs text-white/50 mt-0.5 line-clamp-1">{item.hint}</div>
+            <div className="text-[15px] font-semibold text-white/95">{item.title}</div>
+            <div className="text-[13px] text-white/50 mt-0.5 line-clamp-1">{item.hint}</div>
           </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-white/40 flex-shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-white/30 flex-shrink-0 group-hover:text-white/50 transition-colors">
             <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
@@ -168,14 +181,14 @@ export function SectionPage({ title, onBack, children }: SectionPageProps) {
     <div>
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 -ml-1 px-1 py-2 text-sm text-white/70 hover:text-white active:scale-95 transition-all"
+        className="flex items-center gap-2 -ml-1 px-1 py-3 text-sm font-medium text-white/70 hover:text-white active:scale-95 transition-all"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {title}
       </button>
-      {children}
+      <div className="mt-1">{children}</div>
     </div>
   );
 }

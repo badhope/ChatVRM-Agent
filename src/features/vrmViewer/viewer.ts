@@ -18,6 +18,8 @@ export class Viewer {
   private _scene: THREE.Scene;
   private _camera?: THREE.PerspectiveCamera;
   private _cameraControls?: OrbitControls;
+  private _rafId: number | null = null;
+  private _onResize: (() => void) | null = null;
 
   constructor() {
     this.isReady = false;
@@ -39,7 +41,7 @@ export class Viewer {
     this._clock.start();
   }
 
-  public loadVrm(url: string) {
+  public loadVrm(url: string, onLoaded?: () => void) {
     if (this.model?.vrm) {
       this.unloadVRM();
     }
@@ -63,6 +65,11 @@ export class Viewer {
       requestAnimationFrame(() => {
         this.resetCamera();
       });
+
+      onLoaded?.();
+    }).catch((err) => {
+      console.error("[Viewer.loadVrm] Failed to load VRM:", err);
+      onLoaded?.();
     });
   }
 
@@ -77,6 +84,9 @@ export class Viewer {
    * Reactで管理しているCanvasを後から設定する
    */
   public setup(canvas: HTMLCanvasElement) {
+    // Guard against double-setup (Strict Mode remount).
+    if (this.isReady && this._renderer?.domElement === canvas) return;
+
     const parentElement = canvas.parentElement;
     const width = parentElement?.clientWidth || canvas.width;
     const height = parentElement?.clientHeight || canvas.height;
@@ -110,9 +120,14 @@ export class Viewer {
     this._cameraControls.screenSpacePanning = true;
     this._cameraControls.update();
 
-    window.addEventListener("resize", () => {
-      this.resize();
-    });
+    // Remove any previous resize listener before adding a new one
+    // (guards against Strict Mode double-setup leaking listeners).
+    if (this._onResize) {
+      window.removeEventListener("resize", this._onResize);
+    }
+    this._onResize = () => this.resize();
+    window.addEventListener("resize", this._onResize);
+
     this.isReady = true;
     this.update();
   }
@@ -157,7 +172,7 @@ export class Viewer {
   }
 
   public update = () => {
-    requestAnimationFrame(this.update);
+    this._rafId = requestAnimationFrame(this.update);
     const delta = this._clock.getDelta();
     // update vrm components
     if (this.model) {
@@ -168,4 +183,26 @@ export class Viewer {
       this._renderer.render(this._scene, this._camera);
     }
   };
+
+  /**
+   * Release all GPU resources, event listeners, and animation frames.
+   * Safe to call multiple times.
+   */
+  public dispose() {
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
+    if (this._onResize) {
+      window.removeEventListener("resize", this._onResize);
+      this._onResize = null;
+    }
+    this.unloadVRM();
+    this._cameraControls?.dispose();
+    this._renderer?.dispose();
+    this._renderer = undefined;
+    this._camera = undefined;
+    this._cameraControls = undefined;
+    this.isReady = false;
+  }
 }

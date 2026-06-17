@@ -9,6 +9,11 @@
 /coverage
 /.vitest-cache
 
+# local visual test artifacts
+/inspect.js
+/visual-test.js
+/shots/
+
 # next.js
 /.next/
 /out/

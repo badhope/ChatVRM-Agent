@@ -2,7 +2,7 @@ import { ViewerContext } from "../features/vrmViewer/viewerContext";
 import VrmViewer from "../components/vrmViewer";
 import { VrmStoreProvider } from "@/features/messages/vrmStoreContext";
 import { generateResponse } from "@/features/messages/generateResponse";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SYSTEM_PROMPT } from "@/features/constants/systemPromptConstants";
 import { type Message } from "@/features/messages/messages";
 import {
@@ -41,6 +41,11 @@ export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitial, setDrawerInitial] = useState<"root" | "chat">("root");
 
+  // AbortController for the in-flight conversation (LLM stream + TTS queue).
+  // Lets the stop button cancel both the network request and the
+  // remaining utterances without mutating shared state.
+  const abortRef = useRef<AbortController | null>(null);
+
   // ---- persist to localStorage ----
   useEffect(() => {
     saveLLMSettings(llmSettings);
@@ -65,6 +70,10 @@ export default function Home() {
         return;
       }
 
+      // One controller per conversation turn. handleStop aborts it.
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setIsProcessing(true);
       setAssistantMessage("");
       const newLog: Message[] = [
@@ -79,7 +88,8 @@ export default function Home() {
           newLog.slice(-15),
           llmSettings,
           (text: string) => setAssistantMessage(text),
-          streamChat
+          streamChat,
+          controller.signal
         );
         setChatLog([
           ...newLog,
@@ -93,6 +103,8 @@ export default function Home() {
         let isFirst = true;
         let isLast = false;
         for (let i = 0; i < screenplays.length; i++) {
+          // Stop enqueuing new utterances once the user aborts.
+          if (controller.signal.aborted) break;
           if (i === screenplays.length - 1) isLast = true;
           const screenplay = screenplays[i];
           await new Promise<void>((resolve) => {
@@ -109,29 +121,44 @@ export default function Home() {
               },
               (err) => {
                 setIsSpeaking(false);
-                setAssistantMessage(
-                  t.errors.ttsFailed ? `${t.errors.ttsFailed}: ${err}` : `[TTS error] ${err}`
-                );
+                // Don't clobber the LLM's text in the assistant bubble when
+                // the TTS step alone fails. The reply is already in chatLog
+                // history; the user can read it there. A non-fatal warning
+                // in the console is enough — surfacing a TTS error after a
+                // successful reply was masking the actual content.
+                console.warn("[TTS playback error]", err);
                 resolve();
               }
             );
           });
         }
       } catch (err: unknown) {
-        setAssistantMessage(
-          err instanceof Error ? err.message : "Stream error"
-        );
+        // AbortError is expected when the user hits stop — don't surface
+        // it as an error in the assistant bubble.
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // keep whatever text was already streamed
+        } else {
+          setAssistantMessage(
+            err instanceof Error ? err.message : "Stream error"
+          );
+        }
       } finally {
         setIsProcessing(false);
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+        }
       }
     },
-    [isProcessing, chatLog, systemPrompt, llmSettings, koeiroParam, ttsSettings, t.errors.ttsFailed, t.errors.apiKeyNotSet, viewer]
+    [isProcessing, chatLog, systemPrompt, llmSettings, koeiroParam, ttsSettings, t.errors.apiKeyNotSet, viewer]
   );
 
   const handleStop = useCallback(() => {
-    // The viewer audio chain doesn't expose a public abort hook —
-    // flipping these flags stops new utterances from being enqueued
-    // and tells the UI to leave the speaking state.
+    // Abort the in-flight LLM stream (if any) and signal the TTS
+    // loop to stop enqueuing further utterances. The viewer's audio
+    // chain doesn't expose a public abort hook, so the currently
+    // playing utterance will finish naturally.
+    abortRef.current?.abort();
+    abortRef.current = null;
     setIsProcessing(false);
     setIsSpeaking(false);
   }, []);
@@ -139,7 +166,9 @@ export default function Home() {
   const handlePickVrm = useCallback(
     (file: File) => {
       const url = URL.createObjectURL(file);
-      viewer.loadVrm(url);
+      // Revoke the object URL after the VRM finishes loading to avoid
+      // leaking blob URLs on repeated picks.
+      viewer.loadVrm(url, () => URL.revokeObjectURL(url));
     },
     [viewer]
   );

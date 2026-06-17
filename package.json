@@ -47,8 +47,6 @@
   "dependencies": {
     "@charcoal-ui/icons": "^2.6.0",
     "@pixiv/three-vrm": "^1.0.9",
-    "@tailwindcss/line-clamp": "^0.4.4",
-    "@types/dom-speech-recognition": "^0.0.1",
     "msedge-tts": "^2.0.5",
     "next": "13.2.4",
     "node-fetch": "^3.3.1",
@@ -60,7 +58,9 @@
   },
   "devDependencies": {
     "@charcoal-ui/tailwind-config": "^2.6.0",
+    "@charcoal-ui/theme": "^2.6.0",
     "@gltf-transform/core": "^2.4.6",
+    "@types/dom-speech-recognition": "^0.0.1",
     "@types/node": "18.15.10",
     "@types/react": "18.0.29",
     "@types/react-dom": "18.0.11",
@@ -69,6 +69,7 @@
     "eslint": "8.36.0",
     "eslint-config-next": "13.2.4",
     "happy-dom": "^20.10.3",
+    "playwright": "^1.61.0",
     "postcss": "^8.4.21",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.3.1",

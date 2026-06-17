@@ -65,27 +65,27 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
   const showAnthropicWarn = provider.id === "anthropic";
 
   return (
-    <div className="py-2">
+    <div className="py-2 space-y-4">
       {/* Current provider card */}
-      <div className="glass rounded-2xl p-4 my-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1.5">
+      <div className="glass-panel rounded-2xl p-5">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">
           {t.llm.current}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl icon-gradient-fill flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl icon-gradient-fill flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-lg shadow-purple-500/20">
             {(provider.name[0] ?? "?").toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-white/95 truncate">{provider.name}</div>
-            <div className="text-xs text-white/50 truncate">
+            <div className="text-[15px] font-bold text-white truncate">{provider.name}</div>
+            <div className="text-[13px] text-white/50 truncate mt-0.5">
               {settings.model || provider.defaultModel || "—"}
             </div>
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-4">
           <button
             onClick={() => setShowPicker((v) => !v)}
-            className="btn-ghost text-xs font-semibold px-3 py-1.5 rounded-lg flex-1"
+            className="btn-ghost text-[13px] font-semibold px-4 py-2 rounded-xl w-full"
           >
             {showPicker ? t.menu.close : t.llm.change}
           </button>
@@ -94,35 +94,35 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
 
       {/* Provider picker */}
       {showPicker && (
-        <div className="animate-slide-in-up">
+        <div className="glass-panel rounded-2xl p-5 animate-slide-in-up space-y-5">
           {Object.entries(grouped).map(([region, items]) => (
-            <div key={region} className="mb-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 px-1 mb-1.5">
+            <div key={region}>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1 mb-2.5">
                 {regionLabels[region] ?? region}
               </div>
-              <div className="space-y-1">
+              <div className="flex flex-col gap-2">
                 {items.map((item) => {
                   const isActive = settings.providerId === (item.isCustom ? `custom:${item.p.id}` : item.p.id);
                   return (
                     <button
                       key={item.isCustom ? `c-${item.p.id}` : item.p.id}
                       onClick={() => onPickProvider(item)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                      className={`w-full flex items-center gap-3.5 px-3.5 py-4 rounded-xl transition-all ${
                         isActive
-                          ? "bg-white/10 border border-white/20"
-                          : "hover:bg-white/5 active:bg-white/8 border border-transparent"
+                          ? "bg-white/[0.12] border border-white/25"
+                          : "hover:bg-white/[0.05] active:bg-white/[0.08] border border-transparent"
                       }`}
                     >
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                          isActive ? "icon-gradient-fill text-white" : "bg-white/8 text-white/70"
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          isActive ? "icon-gradient-fill text-white" : "bg-white/[0.08] text-white/70"
                         }`}
                       >
                         {(item.p.name[0] ?? "?").toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <div className="text-sm text-white/90 truncate">{item.p.name}</div>
-                        <div className="text-[10px] text-white/40 truncate">
+                        <div className="text-[13px] text-white/95 truncate">{item.p.name}</div>
+                        <div className="text-[11px] text-white/40 truncate mt-0.5">
                           {"defaultModel" in item.p && item.p.defaultModel
                             ? item.p.defaultModel
                             : "baseURL" in item.p && item.p.baseURL
@@ -131,7 +131,9 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
                         </div>
                       </div>
                       {isActive && (
-                        <span className="icon-gradient text-sm font-bold">✓</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="icon-gradient flex-shrink-0">
+                          <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       )}
                     </button>
                   );
@@ -141,9 +143,11 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
           ))}
           <button
             onClick={() => setShowCustomDialog(true)}
-            className="w-full mt-1 px-3 py-2.5 rounded-xl border border-dashed border-white/15 text-sm text-white/70 hover:border-white/30 hover:text-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full px-3 py-3 rounded-xl border border-dashed border-white/20 text-[13px] text-white/70 hover:border-white/35 hover:text-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            <span className="icon-gradient text-base font-bold">+</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="icon-gradient">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
             {t.llm.addCustom}
           </button>
         </div>
@@ -151,7 +155,7 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
 
       {/* Config accordions (only when not picking) */}
       {!showPicker && (
-        <div className="mt-2">
+        <div className="glass-panel rounded-2xl px-4 py-1">
           <Accordion title={t.llm.model} defaultOpen>
             <ModelPicker
               settings={settings}
@@ -174,10 +178,10 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
               value={settings.apiKey}
               onChange={(e) => onChange({ ...settings, apiKey: e.target.value })}
               placeholder="sk-…"
-              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-sm"
+              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-[13px]"
             />
             {provider.apiKeyHint && (
-              <div className="text-[11px] text-white/45 mt-2 leading-relaxed">
+              <div className="text-[12px] text-white/45 mt-2.5 leading-relaxed">
                 {provider.apiKeyHint}
               </div>
             )}
@@ -190,7 +194,7 @@ export function LLMSection({ settings, onChange, onBack }: LLMSectionProps) {
               onChange={(e) => onChange({ ...settings, baseURL: e.target.value })}
               placeholder={provider.baseURL || t.llm.baseURLPlaceholder}
               disabled={!provider.customBaseURL}
-              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-[13px] disabled:opacity-50"
             />
           </Accordion>
         </div>
@@ -232,7 +236,7 @@ function ModelPicker({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl input-dark text-left"
       >
-        <span className={`text-sm truncate ${value ? "text-white/95" : "text-white/40"}`}>
+        <span className={`text-[13px] truncate ${value ? "text-white/95" : "text-white/40"}`}>
           {value || t.llm.noModelPicked}
         </span>
         <svg
@@ -249,7 +253,7 @@ function ModelPicker({
       {open && (
         <div className="mt-2 space-y-1 animate-slide-in-up">
           {presets.length > 0 && (
-            <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 px-1 mb-1">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1 mb-1.5">
               {t.llm.presets}
             </div>
           )}
@@ -261,29 +265,31 @@ function ModelPicker({
                 setOpen(false);
                 onWarnAnthropic();
               }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left ${
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left ${
                 settings.model === m.id
-                  ? "bg-white/10"
-                  : "hover:bg-white/5 active:bg-white/8"
+                  ? "bg-white/[0.12]"
+                  : "hover:bg-white/[0.05] active:bg-white/[0.08]"
               }`}
             >
               <div className="min-w-0">
-                <div className="text-sm text-white/90 truncate">{m.label}</div>
-                {m.hint && <div className="text-[10px] text-white/40 truncate">{m.hint}</div>}
+                <div className="text-[13px] text-white/95 truncate">{m.label}</div>
+                {m.hint && <div className="text-[11px] text-white/40 truncate">{m.hint}</div>}
               </div>
               {settings.model === m.id && (
-                <span className="icon-gradient text-xs font-bold">✓</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="icon-gradient flex-shrink-0">
+                  <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               )}
             </button>
           ))}
-          <div className="pt-2 border-t border-white/8 mt-2">
+          <div className="pt-3 border-t border-white/8 mt-2">
             <input
               type="text"
               value={settings.model}
               onChange={(e) => onChange({ ...settings, model: e.target.value })}
               onFocus={onWarnAnthropic}
               placeholder={t.llm.modelPlaceholder}
-              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-sm"
+              className="input-dark w-full px-3.5 py-2.5 rounded-xl text-[13px]"
             />
           </div>
         </div>
@@ -308,7 +314,7 @@ export function CustomProviderDialog({ kind, onClose, onSaved, existing }: Custo
 
   const [name, setName] = useState(existing?.name ?? "");
   const [protocol, setProtocol] = useState<CustomProtocol>(
-    existing?.protocol ?? (kind === "llm" ? "openai" : "openai")
+    existing?.protocol ?? "openai"
   );
   const [baseURL, setBaseURL] = useState(existing?.baseURL ?? "");
   const [defaultModel, setDefaultModel] = useState(existing?.defaultModel ?? "");

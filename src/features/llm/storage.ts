@@ -41,11 +41,13 @@ export function saveLLMSettings(settings: LLMSettings): void {
 }
 
 function defaultSettings(): LLMSettings {
-  const openai = LLM_PROVIDERS[0];
+  // Default to Aliyun Bailian (China-friendly, OpenAI-compatible).
+  // User must supply their own API key.
+  const dashscope = LLM_PROVIDERS.find((p) => p.id === "dashscope")!;
   return {
-    providerId: openai.id,
-    model: openai.defaultModel,
-    baseURL: openai.baseURL,
+    providerId: dashscope.id,
+    model: dashscope.defaultModel,
+    baseURL: dashscope.baseURL,
     apiKey: "",
   };
 }

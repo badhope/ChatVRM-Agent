@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { translations, Language, TranslationKey } from "./translations";
 
 type I18nContextType = {
@@ -13,21 +13,41 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en");
 
   useEffect(() => {
-    const saved = localStorage.getItem("chatVRM_language");
-    if (saved === "en" || saved === "zh") {
-      setLanguageState(saved);
+    try {
+      const saved = localStorage.getItem("chatVRM_language");
+      if (saved === "en" || saved === "zh") {
+        setLanguageState(saved);
+      }
+    } catch {
+      // localStorage may be unavailable (private browsing, etc.)
     }
   }, []);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("chatVRM_language", lang);
-  };
+    try {
+      localStorage.setItem("chatVRM_language", lang);
+    } catch {
+      // Ignore write failures (quota, private browsing, etc.)
+    }
+  }, []);
 
   const t = translations[language];
 
+  // Keep <html lang> in sync with the active language for a11y/SEO.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+    }
+  }, [language]);
+
+  const value = useMemo<I18nContextType>(
+    () => ({ language, setLanguage, t }),
+    [language, setLanguage, t]
+  );
+
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   );

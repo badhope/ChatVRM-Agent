@@ -1,13 +1,13 @@
+@import "./aurora.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "./aurora.css";
 
 body {
   color: rgba(255, 255, 255, 0.9);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  font-family: "Inter", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  font-family: "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Zen Hei", "Source Han Sans SC", "M PLUS 2", "Montserrat", system-ui, -apple-system, sans-serif;
 }
 
 @layer components {
@@ -45,19 +45,19 @@ body {
   }
 
   .input-dark {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.95);
     transition: all 200ms ease;
   }
   .input-dark::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.45);
   }
   .input-dark:focus {
     outline: none;
-    border-color: rgba(167, 139, 250, 0.5);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.15);
+    border-color: rgba(167, 139, 250, 0.6);
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
   }
 }
 

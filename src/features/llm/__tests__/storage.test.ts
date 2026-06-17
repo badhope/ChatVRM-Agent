@@ -9,7 +9,7 @@ describe("LLM storage", () => {
 
   it("returns defaults when storage is empty", () => {
     const s = loadLLMSettings();
-    expect(s.providerId).toBe("openai");
+    expect(s.providerId).toBe("dashscope");
     expect(s.model).toBeTruthy();
     expect(s.baseURL).toBeTruthy();
     expect(s.apiKey).toBe("");
@@ -40,6 +40,6 @@ describe("LLM storage", () => {
   it("returns defaults when the stored JSON is malformed", () => {
     window.localStorage.setItem("chatvrm:llm:v1", "{not json");
     const s = loadLLMSettings();
-    expect(s.providerId).toBe("openai");
+    expect(s.providerId).toBe("dashscope");
   });
 });

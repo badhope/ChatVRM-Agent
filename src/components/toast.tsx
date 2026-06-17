@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, createContext, useContext } from "react";
 
 export type ToastKind = "info" | "warn" | "error" | "success";
 
@@ -93,6 +93,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
     <div
       className={`glass-strong rounded-xl px-4 py-3 min-w-[280px] max-w-[360px] flex items-start gap-3 pointer-events-auto animate-slide-in-right border bg-gradient-to-br ${colorClass}`}
       onClick={onDismiss}
+      role="alert"
     >
       <span className={`text-lg font-bold ${iconColor}`}>{icon}</span>
       <div className="flex-1 min-w-0">
