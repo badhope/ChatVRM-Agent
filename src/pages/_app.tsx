@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
+import Head from "next/head";
 import "@charcoal-ui/icons";
 import { I18nProvider } from "@/features/i18n/i18nContext";
 import { ToastProvider } from "@/components/toast";
@@ -9,6 +10,12 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <I18nProvider>
       <ToastProvider>
+        <Head>
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover"
+          />
+        </Head>
         <Meta />
         <Component {...pageProps} />
       </ToastProvider>

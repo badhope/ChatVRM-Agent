@@ -14,10 +14,19 @@ export default function VrmViewer() {
       cleanupRef.current = null;
 
       if (!canvas) return;
+      // viewer may be undefined during SSR or if context init failed.
+      if (!viewer) return;
 
-      viewer.setup(canvas);
-      if (viewer.isReady) {
-        viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
+      try {
+        viewer.setup(canvas);
+        if (viewer.isReady) {
+          viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
+        }
+      } catch (e) {
+        // WebGL may be unavailable on some mobile devices / browsers.
+        // Swallow the error so the rest of the UI (chat, settings)
+        // remains usable instead of white-screening.
+        console.warn("[VrmViewer] setup failed, 3D disabled:", e);
       }
 
       // Drag and DropでVRMを差し替え

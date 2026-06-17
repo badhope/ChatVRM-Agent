@@ -6,9 +6,7 @@ import { Viewer } from "./viewer";
 // import) but the broader pipeline (Model → AudioContext, canvas setup)
 // requires DOM APIs. Constructing during SSR would either crash or leak
 // a singleton that the client can never reach.
-const viewer =
-  typeof window !== "undefined"
-    ? new Viewer()
-    : (undefined as unknown as Viewer);
+const viewer: Viewer | undefined =
+  typeof window !== "undefined" ? new Viewer() : undefined;
 
 export const ViewerContext = createContext({ viewer });

@@ -11,7 +11,7 @@ const createSpeakCharacter = () => {
 
   return (
     screenplay: Screenplay,
-    viewer: Viewer,
+    viewer: Viewer | undefined,
     ttsSettings: TTSSettings,
     onStart?: () => void,
     onComplete?: () => void,
@@ -48,7 +48,7 @@ const createSpeakCharacter = () => {
         if (!audioBuffer) {
           return;
         }
-        return viewer.model?.speak(audioBuffer, screenplay);
+        return viewer?.model?.speak(audioBuffer, screenplay);
       }
     );
     // onComplete fires when the utterance is enqueued (not when

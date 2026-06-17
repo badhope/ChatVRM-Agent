@@ -165,6 +165,7 @@ export default function Home() {
 
   const handlePickVrm = useCallback(
     (file: File) => {
+      if (!viewer) return;
       const url = URL.createObjectURL(file);
       // Revoke the object URL after the VRM finishes loading to avoid
       // leaking blob URLs on repeated picks.
@@ -174,6 +175,7 @@ export default function Home() {
   );
 
   const handleResetVrm = useCallback(() => {
+    if (!viewer) return;
     viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
   }, [viewer]);
 
