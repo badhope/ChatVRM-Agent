@@ -1,7 +1,6 @@
 # ChatVRM Agent (日本語)
 
-> ブラウザで 3D キャラクターと会話できるデモアプリ — VRM アバターを読み込み、LLM 駆動のキャラクターと音声でチャットできます。
-> [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM) のフォークです。
+> ブラウザで 3D キャラクターと会話できるフレームワーク — VRM アバターを読み込み、LLM 駆動のキャラクターと音声でチャットできます。
 
 🌐 **言語**: [English](./README.md) · [中文](./README.zh.md) · [日本語](./README.ja.md)
 
@@ -9,20 +8,21 @@
 
 ## 概要
 
-ChatVRM Agent は、ブラウザだけで 3D キャラクターとリアルタイムに会話できるデモです。VRM ファイルを読み込み、声を選んだら、アバターはあなたのマイクを聞き取り、LLM で返答を生成し、感情を込めた音声で読み上げ、それに合わせて表情と体を動かします。
+ChatVRM Agent は、ブラウザだけで 3D キャラクターとリアルタイムに会話できるアプリケーションです。VRM ファイルを読み込み、声を選んだら、アバターはあなたのマイクを聞き取り、LLM で返答を生成し、感情を込めた音声で読み上げ、それに合わせて表情と体を動かします。
 
-このリポジトリは Pixiv 原本の英語優先フォークです。ドキュメントは英語が主で、中国語版と日本語版へはワンクリックで切り替えられます。
-
-> 元リポジトリは 2024-07-18 時点のコードでアーカイブされています。今後の ChatVRM への変更を行いたい場合は、フォークして開発してください。
-> 関連プロジェクトとして [local-chat-vrm](https://github.com/pixiv/local-chat-vrm) もあります（ブラウザ完結の英語版）。
+モダンなグラスモーフィズム UI、プログレッシブディスクロージャー設定パネル、フルモバイル対応（ノッチ安全領域）、アクセシビリティ機能（ARIA ロール、フォーカス管理、モーション軽減サポート）を備えています。
 
 ## 機能
 
-- 🎭 **VRM アバター対応** — `.vrm` ファイルを読み込むだけでブラウザに表示
+- 🎭 **VRM アバター対応** — `.vrm` ファイルを読み込むだけでブラウザに表示。カメラは全身を安定してフレーミング
 - 🎤 **音声認識** — ブラウザの [Web Speech API (SpeechRecognition)](https://developer.mozilla.org/ja/docs/Web/API/SpeechRecognition) を利用
-- 🤖 **LLM 返答生成** — [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat) を使用
-- 🗣️ **感情 TTS** — [Koeiromap (Koemotion / rinna)](https://koemotion.rinna.co.jp/) で日本語の表情豊かな音声合成
+- 🤖 **マルチ LLM** — 13 の組み込みチャットプロバイダー（OpenAI、Anthropic、OpenRouter、DeepSeek、Moonshot、Zhipu、Aliyun Bailian、Volcengine、Hunyuan、Qianfan、SiliconFlow、Ollama、Azure）+ カスタム HTTP エンドポイント
+- 🗣️ **マルチ TTS** — 5 つの組み込み音声プロバイダー（Koeiromap、OpenAI TTS、ElevenLabs、Microsoft Edge TTS、カスタム HTTP）
 - 👀 **表情・待機モーション** — まばたき・視線・リップシンクは [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) が担当
+- 🛑 **ストリーム制御** — 停止ボタンが `AbortController` で LLM ストリームと TTS 再生キューを同時に中断
+- 🌐 **国際化** — 英語 / 中国語 UI、日本語 README 翻訳
+- 📱 **レスポンシブ & モバイル安全** — デスクトップ/タブレット/モバイルブレイクポイント、`env(safe-area-inset-*)` ノッチ処理、`viewport-fit=cover`
+- ♿ **アクセシビリティ** — ダイアログの ARIA ロール、フォーカス管理、`prefers-reduced-motion` サポート、`backdrop-filter` の `@supports` フォールバック
 - ⚙️ **実行時調整** — 設定パネルで声・口調・システムプロンプトをリアルタイムに変更
 
 ## 技術スタック
@@ -31,10 +31,10 @@ ChatVRM Agent は、ブラウザだけで 3D キャラクターとリアルタ�
 | --- | --- |
 | フレームワーク | Next.js 13 (Pages Router) |
 | 言語 | TypeScript 5 |
-| UI | React 18, Tailwind CSS |
+| UI | React 18, Tailwind CSS, グラスモーフィズムデザインシステム |
 | 3D | three.js, @pixiv/three-vrm |
-| LLM | OpenAI Chat Completions API |
-| 音声合成 | Koeiromap (rinna) |
+| LLM | 13 プロバイダー、統一ストリーミングクライアント (`features/llm/`) |
+| 音声合成 | 5 プロバイダー、統一合成クライアント (`features/tts/`) |
 | 音声認識 | Web Speech API |
 
 ## クイックスタート
@@ -43,7 +43,8 @@ ChatVRM Agent は、ブラウザだけで 3D キャラクターとリアルタ�
 
 - Node.js **16.14.2**（`package.json` の `engines` 参照）または互換の 16.x / 18.x
 - npm
-- **OpenAI API キー**（chat モデルが利用できるもの。例: `gpt-4o-mini`、`gpt-4o`、`gpt-3.5-turbo`）
+- 少なくとも1つの **LLM** プロバイダーの API キー（例: OpenAI、DeepSeek、Anthropic）
+- 少なくとも1つの **TTS** プロバイダーの API キー（無料の Edge TTS を使わない場合）
 
 ### 1. クローン & インストール
 
@@ -53,9 +54,9 @@ cd ChatVRM-Agent
 npm install
 ```
 
-### 2. 環境変数の設定
+### 2. 環境変数の設定（任意）
 
-サンプルをコピーして値を入力：
+サンプルをコピーして値を入力。アプリ内の設定パネルでもキーを入力できます — 環境変数はデフォルト値としてのみ使用されます。
 
 ```bash
 cp .env.example .env
@@ -64,11 +65,9 @@ cp .env.example .env
 `.env` を編集：
 
 ```env
-# /api/chat で使う OpenAI API キー
+# オプションのデフォルト LLM キー（アプリ内キーが空の時に使用）
 OPEN_AI_KEY=sk-...
 ```
-
-> 💡 アプリ内の設定パネルに直接貼り付けることもできます。そのセッションでのみ使われ、ディスクには保存されません。
 
 ### 3. 開発サーバーを起動
 
@@ -91,60 +90,45 @@ npm run start
 npm run export
 ```
 
-> ⚠️ 静的書き出しでは `/api/chat` と `/api/tts` をサーバー側で呼び出せません。これらのルートを使うには、Node が動くホスト（Vercel、Railway、Fly.io、自前 VPS など）にデプロイしてください。
+> ⚠️ 静的書き出しでは `/api/tts-edge` と `/api/chat` をサーバー側で呼び出せません。これらのルートを使うには、Node が動くホスト（Vercel、Railway、Fly.io、自前 VPS など）にデプロイしてください。
 
-## 設定項目
+## 対応 LLM プロバイダー
 
-設定は起動時に環境変数から読み込まれ、実行時はアプリ内の設定パネルで変更できます。完全な一覧は [`.env.example`](./.env.example) を参照。
+LLM クライアント (`src/features/llm/`) は **OpenAI 互換** と **Anthropic ネイティブ** プロトコルに対応。**設定 → LLM プロバイダー** ドロップダウンで切り替え可能。
 
-| 変数 | 必須 | 既定値 | 説明 |
-| --- | --- | --- | --- |
-| `OPEN_AI_KEY` | サーバーでは必須 | — | OpenAI API キー。未設定時は UI で入力した値にフォールバック。 |
+| プロバイダー | 地域 | プロトコル | デフォルトモデル | 備考 |
+| --- | --- | --- | --- | --- |
+| OpenAI | グローバル | OpenAI | `gpt-4o-mini` | ビジョン対応モデルをドロップダウンで表示 |
+| Azure OpenAI | グローバル | OpenAI | *(デプロイメント名)* | カスタム baseURL 必須 |
+| Anthropic (Claude) | グローバル | Anthropic | `claude-sonnet-4-5` | `x-api-key` + `anthropic-version` 使用 |
+| OpenRouter | グローバル | OpenAI | `openai/gpt-4o-mini` | 1キーで500+モデル |
+| DeepSeek | 中国 | OpenAI | `deepseek-chat` | `deepseek-reasoner` もあり |
+| Moonshot (Kimi) | 中国 | OpenAI | `moonshot-v1-8k` | 8k/32k/128k コンテキスト |
+| Zhipu AI (GLM) | 中国 | OpenAI | `glm-4.6` | `glm-4-flash` に無料枠 |
+| Aliyun Bailian (Qwen) | 中国 | OpenAI | `qwen-plus` | baseURL 変更でリージョン切替 |
+| Volcengine Ark (Doubao) | 中国 | OpenAI | `doubao-seed-1-6-250715` | Doubao、DeepSeek、コードモデル |
+| Tencent Hunyuan | 中国 | OpenAI | `hunyuan-turbos-latest` | |
+| Baidu Qianfan | 中国 | OpenAI | `deepseek-v3.2` | ERNIE + Qwen + DeepSeek |
+| SiliconFlow | 中国 | OpenAI | `Qwen/Qwen3-8B` | Qwen3-8B に無料枠 |
+| Ollama (ローカル) | ローカル | OpenAI | `qwen3:8b` | ローカルで `ollama serve` 実行 |
 
-## ディレクトリ構成
+**カスタムプロバイダー** — "Custom" を選ぶか `customBaseURL: true` を設定して、任意の OpenAI 互換エンドポイント（vLLM、LiteLLM プロキシ、LM Studio、独自サーバーなど）を指定。
 
-```
-ChatVRM-Agent/
-├── .github/
-│   ├── workflows/          # CI (next build)
-│   ├── ISSUE_TEMPLATE/     # 不具合・機能要望テンプレート
-│   └── PULL_REQUEST_TEMPLATE.md
-├── public/                 # 静的アセット（既定 VRM、アイドルアニメ、OGP 画像）
-├── src/
-│   ├── components/         # React UI（チャットログ、設定、メニュー、VRM ビューア…）
-│   ├── features/
-│   │   ├── chat/           # OpenAI クライアント
-│   │   ├── emoteController/  # まばたき・視線・表情
-│   │   ├── koeiromap/      # TTS クライアント
-│   │   ├── lipSync/        # 音声解析による口パク
-│   │   ├── messages/       # メッセージストア・TTS オーケストレーション
-│   │   └── vrmViewer/      # three.js + three-vrm ラッパー
-│   ├── lib/                # VRM / VRMA ローダーとヘルパー
-│   ├── pages/
-│   │   ├── api/            # /api/chat, /api/tts
-│   │   ├── _app.tsx
-│   │   ├── _document.tsx
-│   │   └── index.tsx
-│   ├── styles/             # globals.css
-│   └── utils/              # ヘルパー
-├── .editorconfig
-├── .env.example
-├── .eslintrc.json
-├── .gitignore
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── LICENSE                 # MIT（pixiv/ChatVRM 由来）
-├── README.md               # 英語版メインドキュメント
-├── README.zh.md
-├── README.ja.md            # あなたがここを読んでいます
-├── SECURITY.md
-├── next.config.js
-├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-├── tsconfig.json
-└── watch.json
-```
+設定パネルには **接続テスト** ボタンがあり、最小の "ping" リクエストを送信してレスポンスを報告します。
+
+## 対応 TTS プロバイダー
+
+TTS クライアント (`src/features/tts/`) は 5 つのプロトコルに対応。**設定 → TTS プロバイダー** ドロップダウンで切り替え可能。
+
+| プロバイダー | プロトコル | API キー | 音声 | コスト |
+| --- | --- | --- | --- | --- |
+| Koeiromap (Koemotion) | REST JSON → base64 mp3 | 任意 | 4 日本語プリセット | 無料（レート制限）/ 有料 |
+| OpenAI TTS | REST → バイナリストリーム | 必須 | 6 標準音声 | 文字課金 |
+| ElevenLabs | REST → バイナリストリーム | 必須 | 8 標準音声 | 無料枠 + 有料 |
+| Microsoft Edge TTS | サーバープロキシ (`/api/tts-edge`) | **不要** | 8 ニューラル音声（日/英/中/韓） | 無料 |
+| カスタム HTTP | REST → バイナリストリーム | 任意 | カスタム | あなたのコスト |
+
+**カスタムプロバイダー** — エンドポイントに `{ text, voice, format, speed }` を POST し、生のオーディオバイトを返します。CosyVoice、GPT-SoVITS、LiteLLM TTS プロキシなどを組み込めます。
 
 ## スクリプト
 
@@ -155,22 +139,26 @@ ChatVRM-Agent/
 | `npm run start` | 本番ビルドを起動 |
 | `npm run export` | 静的サイトを `out/` に書き出し |
 | `npm run lint` | Next.js 設定で ESLint を実行 |
+| `npm run typecheck` | `tsc --noEmit` を実行 |
+| `npm test` | Vitest ユニットテストを実行 |
 
 ## API ルート
 
-- `POST /api/chat` — OpenAI への Chat Completion リクエストをプロキシ。Body: `{ apiKey?: string, messages: ChatMessage[] }`。未指定なら `process.env.OPEN_AI_KEY` を使用。
-- `POST /api/tts` — Koeiromap で日本語音声を合成。Body: `{ text: string, speakerX: number, speakerY: number }`。
+- `POST /api/chat` — OpenAI への旧サーバープロキシ。新クライアントはブラウザから直接 LLM を呼び出します。
+- `POST /api/tts` — Koeiromap 無料エンドポイントへの旧サーバープロキシ。新クライアントはブラウザから直接 TTS を呼び出します。
+- `POST /api/tts-edge` — Microsoft Edge TTS のサーバープロキシ。mp3 バイトストリームを返します。
 
 ## プライバシーとデータ
 
 - 会話履歴は**ブラウザのメモリ内**にだけ保持されます。ページを再読み込みすると消去されます。
-- 音声はローカルで Web Speech API により認識され、認識テキストは OpenAI（または設定された LLM）と Koeiromap に送信されます。
+- API キーと設定は `localStorage` の `chatvrm:llm:v1` と `chatvrm:tts:v1` キーに保存されます。
+- LLM と TTS の呼び出しは**ブラウザから直接**選択したプロバイダーに送信されます（Edge TTS を除く、`/api/tts-edge` プロキシを使用）。
+- 音声はローカルで Web Speech API により認識され、認識テキストは選択した LLM と TTS プロバイダーに転送されます。
 - このコードベースはテレメトリやアナリティクスを収集しません。
-- サードパーティのデータ取り扱いについては [OpenAI のデータ利用ポリシー](https://openai.com/policies/api-data-usage-policies) および [Koeiromap の利用規約](https://koemotion.rinna.co.jp/) を確認してください。
 
 ## コントリビュート
 
-コントリビュート大歓迎！まず [CONTRIBUTING.md](./CONTRIBUTING.md) を読んで、[Code of Conduct](./CODE_OF_CONDUCT.md) に従ってください。不具合・機能要望は [`.github/ISSUE_TEMPLATE/`](./.github) のテンプレートから提出してください。
+コントリビュート大歓迎！まず [CONTRIBUTING.md](./CONTRIBUTING.md) を読んで、[Code of Conduct](./CODE_OF_CONDUCT.md) に従ってください。
 
 ## セキュリティ
 
@@ -178,11 +166,14 @@ ChatVRM-Agent/
 
 ## ライセンス
 
-本プロジェクトは **MIT ライセンス** で公開しています — [LICENSE](./LICENSE) を参照。元作者は [pixiv](https://github.com/pixiv/ChatVRM)、本フォークは [@badhope](https://github.com/badhope) が保守しています。
+本プロジェクトは **MIT ライセンス** で公開しています — [LICENSE](./LICENSE) を参照。
 
 ## 謝辞
 
-- [pixiv](https://github.com/pixiv) — 元の ChatVRM プロジェクトと [@pixiv/three-vrm](https://github.com/pixiv/three-vrm)
+- [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) — VRM レンダリングライブラリ
 - [rinna / Koemotion](https://koemotion.rinna.co.jp/) — Koeiromap 感情 TTS
-- [OpenAI](https://openai.com/) — Chat Completions API
+- [OpenAI](https://openai.com/) — Chat Completions API + TTS
+- [Anthropic](https://www.anthropic.com/) — Claude Messages API
+- [ElevenLabs](https://elevenlabs.io/) — ニューラル TTS
+- [Microsoft](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/) — Edge TTS ニューラル音声
 - すべてのコントリビューターと、オープンソース VRM コミュニティ

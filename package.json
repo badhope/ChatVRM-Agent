@@ -2,7 +2,7 @@
   "name": "chatvrm-agent",
   "version": "0.2.0",
   "private": true,
-  "description": "3D digital-human conversation demo — VRM avatar in the browser, LLM-driven voice chat (forked from pixiv/ChatVRM).",
+  "description": "3D digital-human conversation framework — VRM avatars, 13 LLM providers, 5 TTS engines, voice input, lip sync, and a glassmorphism UI.",
   "license": "MIT",
   "author": {
     "name": "badhope",

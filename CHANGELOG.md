@@ -8,41 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- English-first documentation set: `README.md` (English), `README.zh.md`
-  (Chinese), `README.ja.md` (Japanese) with cross-links and aligned section
-  structure.
-- `.env.example` documenting `OPEN_AI_KEY` and optional `OPEN_AI_MODEL`,
-  `KOEIROMAP_BASE_URL`, `PORT`.
-- `.editorconfig`, `.prettierrc`, `.prettierignore`.
-- Community health files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
-  `SECURITY.md`.
-- GitHub templates: `.github/ISSUE_TEMPLATE/` (bug, feature, question) and
-  `.github/PULL_REQUEST_TEMPLATE.md`.
-- `Dockerfile` (multi-stage, Node 18) and `.dockerignore`.
-- `vercel.json` with security headers and asset caching.
-- `.nvmrc` pinning Node `16.14.2`.
-- Vitest test runner, `npm run test`, `npm run typecheck`, `npm run format`.
-- `zod` request validation in `/api/chat` and `/api/tts`.
-- Next.js error pages: `404.tsx`, `500.tsx`.
+- Camera lock for stable full-body VRM framing (disabled zoom/pan, limited rotation)
+- AbortController for stop button (aborts LLM stream + TTS queue)
+- Mobile white-screen prevention (viewer null-guard, WebGL try/catch, viewport meta fix)
+- `prefers-reduced-motion` support and `@supports` backdrop-filter fallback
+- Safe-area insets (`env(safe-area-inset-*)`) on topbar and chat input
+- ARIA roles, focus management, Escape key on dialogs and popovers
+- Provider value memoization (toast, i18n)
+- `dispose()` method on Viewer (RAF/resize/renderer/model cleanup)
 
 ### Changed
-- Repository renamed from `Personal-Assistant` to `ChatVRM-Agent`; About and
-  Topics updated to English.
-- Repository description and topics in English (chatvrm, vrm, digital-human,
-  llm, typescript, nextjs, …).
-- `package.json`: full metadata (repository, bugs, homepage, license,
-  keywords), `engines` widened to `>=16.14.2 <19`.
-- Moved `@pixiv/three-vrm` from devDependencies to dependencies.
-- README no longer inherits the Pixiv "archive" notice (this is an active
-  fork).
-- Branch protection enabled on `main` (require PR review, linear history,
-  no force push, no deletion).
+- Repository description and topics updated to reflect the independent project
+- README rewritten as a standalone project (removed fork language)
+- `viewerContext` SSR safety (lazy init via `typeof window` guard)
+- `tailwind.config.js`: dark theme, correct font name, removed line-clamp plugin
+- `api/tts.ts` speakerX/Y schema `min(0)` → `min(-10)` for negative presets
+- viewport meta moved from `_document.tsx` to `_app.tsx` (Next 13 best practice)
+- `lang="ja"` → `lang="en"` in `_document.tsx`
 
-## [0.1.0] — 2024-07-18
+## [0.2.0] — 2024
 
 ### Added
-- Initial import of the upstream [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM)
-  codebase (last commit `b542aa0`).
+- Multi-LLM support: 13 providers (OpenAI, Anthropic, OpenRouter, DeepSeek, Moonshot, Zhipu, Aliyun Bailian, Volcengine, Hunyuan, Qianfan, SiliconFlow, Ollama, Azure) + custom HTTP endpoint
+- Multi-TTS support: 5 providers (Koeiromap, OpenAI TTS, ElevenLabs, Microsoft Edge TTS, custom HTTP)
+- English / Chinese i18n with runtime switching
+- Glassmorphism UI with aurora background
+- Progressive-disclosure settings (drawer + accordion)
+- Vitest test runner, `npm run test`, `npm run typecheck`, `npm run format`
+- `zod` request validation in API routes
+- Next.js error pages: `404.tsx`, `500.tsx`
+- `Dockerfile` (multi-stage, Node 18) and `.dockerignore`
+- `vercel.json` with security headers and asset caching
+- Community health files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
+- GitHub templates: `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`
 
-[Unreleased]: https://github.com/badhope/ChatVRM-Agent/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/badhope/ChatVRM-Agent/releases/tag/v0.1.0
+[Unreleased]: https://github.com/badhope/ChatVRM-Agent/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/badhope/ChatVRM-Agent/releases/tag/v0.2.0

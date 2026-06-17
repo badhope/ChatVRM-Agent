@@ -2,9 +2,6 @@
 
 ## Supported Versions
 
-This project is a fork of [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM),
-which was archived in 2024. The upstream codebase is no longer maintained.
-
 The `main` branch of **ChatVRM Agent** receives security fixes on a
 best-effort basis. Older tags and branches are not supported.
 

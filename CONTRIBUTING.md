@@ -1,8 +1,7 @@
 # Contributing to ChatVRM Agent
 
-First off, thanks for taking the time to contribute! This project is a
-community fork of [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM) and we
-welcome improvements from anyone.
+First off, thanks for taking the time to contribute! We welcome
+improvements from anyone.
 
 ## Table of Contents
 

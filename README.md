@@ -1,7 +1,6 @@
 # ChatVRM Agent
 
-> A 3D digital-human conversation demo — load a VRM avatar in the browser and chat with an LLM-driven character via voice.
-> Forked from [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM).
+> A 3D digital-human conversation framework — load a VRM avatar in the browser and chat with an LLM-driven character via voice.
 
 🌐 **Languages**: [English](./README.md) · [中文](./README.zh.md) · [日本語](./README.ja.md)
 
@@ -9,19 +8,21 @@
 
 ## Overview
 
-ChatVRM Agent is a browser-based demo that lets you have a real-time conversation with a 3D character. Import a VRM model, pick a voice, and the avatar will listen to your microphone, generate a response through an LLM, speak it back with emotional expression, and animate its body and face to match.
+ChatVRM Agent is a browser-based application that lets you have real-time conversations with a 3D character. Import a VRM model, pick a voice, and the avatar will listen to your microphone, generate a response through an LLM, speak it back with emotional expression, and animate its body and face to match.
 
-This repository is a fork of the Pixiv original, repackaged and re-documented for English-first users while keeping Chinese and Japanese translations one click away.
+Built with a modern glassmorphism UI, progressive-disclosure settings, full mobile support with safe-area insets, and accessibility features (ARIA roles, focus management, reduced-motion support).
 
 ## Features
 
-- 🎭 **VRM avatar support** — drop in any `.vrm` file and the character appears in the browser.
+- 🎭 **VRM avatar support** — drop in any `.vrm` file and the character appears in the browser, with stable full-body framing.
 - 🎤 **Voice input** — uses the browser's [Web Speech API (SpeechRecognition)](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition).
 - 🤖 **Multi-LLM** — 13 built-in chat providers (OpenAI, Anthropic, OpenRouter, DeepSeek, Moonshot, Zhipu, Aliyun Bailian, Volcengine, Hunyuan, Qianfan, SiliconFlow, Ollama, Azure) plus a fully custom HTTP endpoint. Switch in the settings panel.
 - 🗣️ **Multi-TTS** — 5 built-in speech providers (Koeiromap, OpenAI TTS, ElevenLabs, Microsoft Edge TTS, custom HTTP) with a per-provider voice picker.
 - 👀 **Facial expressions & idle motion** — blinking, gaze tracking, and lip sync driven by [@pixiv/three-vrm](https://github.com/pixiv/three-vrm).
+- 🛑 **Stream control** — stop button aborts both the LLM stream and the TTS playback queue via `AbortController`.
 - 🌐 **i18n** — English / Chinese UI; Japanese README translation.
-- 📱 **Responsive layout** — desktop, tablet, and mobile breakpoints.
+- 📱 **Responsive & mobile-safe** — desktop, tablet, and mobile breakpoints with `env(safe-area-inset-*)` notch handling and `viewport-fit=cover`.
+- ♿ **Accessible** — ARIA roles on dialogs, focus management, `prefers-reduced-motion` support, `@supports` fallback for `backdrop-filter`.
 - ⚙️ **Tunable character** — adjust voice parameters, speaking style, system prompt, and test connections at runtime from the settings panel.
 
 ## Tech Stack
@@ -30,7 +31,7 @@ This repository is a fork of the Pixiv original, repackaged and re-documented fo
 | --- | --- |
 | Framework | Next.js 13 (Pages Router) |
 | Language | TypeScript 5 |
-| UI | React 18, Tailwind CSS |
+| UI | React 18, Tailwind CSS, glassmorphism design system |
 | 3D | three.js, @pixiv/three-vrm |
 | LLM | 13 providers via a single streaming client (`features/llm/`) |
 | TTS | 5 providers via a single synthesis client (`features/tts/`) |
@@ -134,7 +135,7 @@ For OpenAI TTS, you can set a custom **Model** (e.g. `tts-1`, `tts-1-hd`, `gpt-4
 ```
 ChatVRM-Agent/
 ├── .github/
-│   ├── workflows/          # CI (next build)
+│   ├── workflows/          # CI (lint, typecheck, test, build)
 │   ├── ISSUE_TEMPLATE/     # Bug report & feature request forms
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── public/                 # Static assets (default VRM, idle animation, OGP image)
@@ -154,7 +155,7 @@ ChatVRM-Agent/
 │   │   ├── _app.tsx
 │   │   ├── _document.tsx
 │   │   └── index.tsx
-│   ├── styles/             # globals.css
+│   ├── styles/             # globals.css, aurora.css
 │   └── utils/              # Small helpers + tests
 ├── .editorconfig
 ├── .env.example
@@ -162,7 +163,7 @@ ChatVRM-Agent/
 ├── .gitignore
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
-├── LICENSE                 # MIT (inherited from pixiv/ChatVRM)
+├── LICENSE                 # MIT
 ├── README.md               # You are here
 ├── README.zh.md
 ├── README.ja.md
@@ -226,11 +227,11 @@ Please **do not** file public issues for security problems. See [SECURITY.md](./
 
 ## License
 
-This project is released under the **MIT License** — see [LICENSE](./LICENSE). Originally created by [pixiv](https://github.com/pixiv/ChatVRM); this fork is maintained by [@badhope](https://github.com/badhope).
+This project is released under the **MIT License** — see [LICENSE](./LICENSE).
 
 ## Acknowledgments
 
-- [pixiv](https://github.com/pixiv) — original ChatVRM project and [@pixiv/three-vrm](https://github.com/pixiv/three-vrm)
+- [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) — VRM rendering library
 - [rinna / Koemotion](https://koemotion.rinna.co.jp/) — Koeiromap expressive TTS
 - [OpenAI](https://openai.com/) — Chat Completions API + TTS
 - [Anthropic](https://www.anthropic.com/) — Claude Messages API
