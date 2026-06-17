@@ -107,17 +107,29 @@ export class Viewer {
     this._renderer.setSize(width, height);
     this._renderer.setPixelRatio(window.devicePixelRatio);
 
-    // camera
-    this._camera = new THREE.PerspectiveCamera(20.0, width / height, 0.1, 20.0);
-    this._camera.position.set(0, 1.3, 1.5);
-    this._cameraControls?.target.set(0, 1.3, 0);
+    // camera — positioned for a full-body shot of a standing VRM
+    // (typical VRM ~1.6m tall, feet at y=0). Target the body center
+    // and pull back enough that the whole character is visible.
+    this._camera = new THREE.PerspectiveCamera(30.0, width / height, 0.1, 20.0);
+    this._camera.position.set(0, 0.95, 2.8);
+    this._cameraControls?.target.set(0, 0.95, 0);
     this._cameraControls?.update();
-    // camera controls
+    // camera controls — lock the camera so the character stays
+    // framed. Allow a small amount of horizontal rotation for
+    // interactivity, but disable zoom/pan entirely.
     this._cameraControls = new OrbitControls(
       this._camera,
       this._renderer.domElement
     );
     this._cameraControls.screenSpacePanning = true;
+    this._cameraControls.enableZoom = false;
+    this._cameraControls.enablePan = false;
+    // Limit rotation so the user can't swing behind or below the
+    // character — keeps the view stable and the character visible.
+    this._cameraControls.minPolarAngle = THREE.MathUtils.degToRad(70);
+    this._cameraControls.maxPolarAngle = THREE.MathUtils.degToRad(100);
+    this._cameraControls.minAzimuthAngle = THREE.MathUtils.degToRad(-35);
+    this._cameraControls.maxAzimuthAngle = THREE.MathUtils.degToRad(35);
     this._cameraControls.update();
 
     // Remove any previous resize listener before adding a new one
@@ -154,21 +166,44 @@ export class Viewer {
   }
 
   /**
-   * VRMのheadノードを参照してカメラ位置を調整する
+   * VRMが読み込まれた後、モデルのバウンディングボックスから
+   * 全身が画面に収まるようにカメラを調整する。
+   * （以前は頭ボーンの位置にカメラを合わせていたが、
+   *   これだと半身しか映らず、ロード時にジャンプしていた）
    */
   public resetCamera() {
-    const headNode = this.model?.vrm?.humanoid.getNormalizedBoneNode("head");
+    if (!this._camera || !this._cameraControls || !this.model?.vrm) return;
 
-    if (headNode) {
-      const headWPos = headNode.getWorldPosition(new THREE.Vector3());
-      this._camera?.position.set(
-        this._camera.position.x,
-        headWPos.y,
-        this._camera.position.z
-      );
-      this._cameraControls?.target.set(headWPos.x, headWPos.y, headWPos.z);
-      this._cameraControls?.update();
+    // Compute the bounding box of the VRM scene to frame the full body.
+    const box = new THREE.Box3().setFromObject(this.model.vrm.scene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // If the bounding box is degenerate, fall back to defaults.
+    if (size.y < 0.01 || !isFinite(size.y)) {
+      this._camera.position.set(0, 0.95, 2.8);
+      this._cameraControls.target.set(0, 0.95, 0);
+      this._cameraControls.update();
+      return;
     }
+
+    // Frame the full body: target the vertical center of the model,
+    // and compute the distance needed to fit its height in the FOV.
+    const fov = THREE.MathUtils.degToRad(this._camera.fov);
+    const aspect = this._camera.aspect;
+    // Distance so the full height fits (account for aspect ratio).
+    const halfHeight = size.y / 2;
+    const distV = halfHeight / Math.tan(fov / 2);
+    const distH = (size.x / 2) / (Math.tan(fov / 2) * aspect);
+    const distance = Math.max(distV, distH) * 1.15; // 15% padding
+
+    this._camera.position.set(
+      center.x,
+      center.y,
+      center.z + distance
+    );
+    this._cameraControls.target.set(center.x, center.y, center.z);
+    this._cameraControls.update();
   }
 
   public update = () => {
