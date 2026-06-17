@@ -1,8 +1,14 @@
 import { useContext, useCallback, useRef } from "react";
 import { ViewerContext } from "../features/vrmViewer/viewerContext";
-import { buildUrl } from "@/utils/buildUrl";
 
-export default function VrmViewer() {
+interface VrmViewerProps {
+  /** Fired once after the WebGL canvas is set up and ready to load a VRM. */
+  onReady?: () => void;
+  /** Fired when the user drops a .vrm file onto the canvas. */
+  onVrmFile?: (file: File) => void;
+}
+
+export default function VrmViewer({ onReady, onVrmFile }: VrmViewerProps) {
   const { viewer } = useContext(ViewerContext);
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -19,8 +25,10 @@ export default function VrmViewer() {
 
       try {
         viewer.setup(canvas);
+        // VRM loading is driven by the host (index.tsx) based on the
+        // active character, so we just signal readiness here.
         if (viewer.isReady) {
-          viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
+          onReady?.();
         }
       } catch (e) {
         // WebGL may be unavailable on some mobile devices / browsers.
@@ -45,9 +53,15 @@ export default function VrmViewer() {
 
         const ext = file.name.split(".").pop()?.toLowerCase();
         if (ext === "vrm") {
-          const blob = new Blob([file], { type: "application/octet-stream" });
-          const url = window.URL.createObjectURL(blob);
-          viewer.loadVrm(url, () => URL.revokeObjectURL(url));
+          // Route through the character system so the dropped model
+          // is persisted to the active character, not just loaded
+          // ephemerally.
+          if (onVrmFile) {
+            onVrmFile(file);
+          } else if (viewer) {
+            const url = window.URL.createObjectURL(file);
+            viewer.loadVrm(url, () => URL.revokeObjectURL(url));
+          }
         }
       };
 
@@ -59,7 +73,7 @@ export default function VrmViewer() {
         canvas.removeEventListener("drop", onDrop);
       };
     },
-    [viewer]
+    [viewer, onReady, onVrmFile]
   );
 
   return (

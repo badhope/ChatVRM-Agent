@@ -10,6 +10,7 @@ import type { LLMSettings } from "@/features/llm/types";
 import type { TTSSettings } from "@/features/tts/types";
 import type { Message } from "@/features/messages/messages";
 import type { KoeiroParam } from "@/features/constants/koeiroParam";
+import type { Character } from "@/features/characters/types";
 
 type SectionKey = "root" | "llm" | "tts" | "character" | "chat" | "advanced";
 
@@ -31,6 +32,13 @@ interface AppDrawerProps {
   onResetVrm: () => void;
   onResetAll: () => void;
   showVoicePos: boolean;
+  // character roster
+  characters: Character[];
+  activeCharacterId: string | null;
+  onSelectCharacter: (id: string) => void;
+  onAddCharacter: () => void;
+  onRenameCharacter: (id: string, name: string) => void;
+  onDeleteCharacter: (id: string) => void;
 }
 
 export function AppDrawer(props: AppDrawerProps) {
@@ -111,6 +119,12 @@ export function AppDrawer(props: AppDrawerProps) {
       {section === "character" && (
         <SectionPage title={t.menu.back} onBack={() => setSection("root")}>
           <CharacterSection
+            characters={props.characters}
+            activeId={props.activeCharacterId}
+            onSelect={props.onSelectCharacter}
+            onAddNew={props.onAddCharacter}
+            onRename={props.onRenameCharacter}
+            onDelete={props.onDeleteCharacter}
             systemPrompt={props.systemPrompt}
             onChangePrompt={props.onChangeSystemPrompt}
             koeiroParam={props.koeiroParam}

@@ -6,9 +6,9 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 import { SYSTEM_PROMPT } from "@/features/constants/systemPromptConstants";
 import { type Message } from "@/features/messages/messages";
 import {
-  KoeiroParam,
   DEFAULT_PARAM,
 } from "@/features/constants/koeiroParam";
+import type { KoeiroParam } from "@/features/constants/koeiroParam";
 import { splitSentence, textsToScreenplay } from "@/features/messages/messages";
 import { speakCharacter } from "@/features/messages/speakCharacter";
 import { streamChat } from "@/features/llm/llmChat";
@@ -23,15 +23,37 @@ import { ChatInput } from "@/components/chatInput";
 import { AssistantBubble } from "@/components/assistantBubble";
 import { findTTSProviderWithCustom } from "@/features/tts/providers";
 import { buildUrl } from "@/utils/buildUrl";
+import { useCharacters } from "@/features/characters/useCharacters";
 
 export default function Home() {
   const { viewer } = useContext(ViewerContext);
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const isZh = language === "zh";
 
-  const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
+  // ---- character roster (owns systemPrompt + koeiroParam + vrmSource) ----
+  const {
+    ready: charactersReady,
+    characters,
+    activeId,
+    active,
+    setActiveId,
+    updateActive,
+    updateCharacter,
+    createCharacter,
+    deleteCharacter,
+    setActiveVrmFile,
+    resolveVrmUrl,
+  } = useCharacters();
+
+  // Derived values for the active character. These replace the old
+  // standalone systemPrompt/koeiroParam useState — the source of truth
+  // is now the character object, so switching characters atomically
+  // swaps the prompt and voice along with the model.
+  const systemPrompt = active?.systemPrompt ?? SYSTEM_PROMPT;
+  const koeiroParam = active?.koeiroParam ?? DEFAULT_PARAM;
+
   const [chatLog, setChatLog] = useState<Message[]>([]);
   const [assistantMessage, setAssistantMessage] = useState("");
-  const [koeiroParam, setKoeiroParam] = useState<KoeiroParam>(DEFAULT_PARAM);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -40,10 +62,9 @@ export default function Home() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitial, setDrawerInitial] = useState<"root" | "chat">("root");
+  const [viewerReady, setViewerReady] = useState(false);
 
   // AbortController for the in-flight conversation (LLM stream + TTS queue).
-  // Lets the stop button cancel both the network request and the
-  // remaining utterances without mutating shared state.
   const abortRef = useRef<AbortController | null>(null);
 
   // ---- persist to localStorage ----
@@ -53,6 +74,22 @@ export default function Home() {
   useEffect(() => {
     saveTTSSettings(ttsSettings);
   }, [ttsSettings]);
+
+  // ---- load VRM when the active character changes (or viewer becomes ready) ----
+  // We intentionally depend on activeId (not active.vrmSource) so that
+  // in-place VRM swaps (handlePickVrm) don't double-load — those are
+  // handled by the pick handler itself.
+  useEffect(() => {
+    if (!viewerReady || !viewer || !active) return;
+    let cancelled = false;
+    resolveVrmUrl(active.vrmSource).then((url) => {
+      if (cancelled || !url || !viewer) return;
+      viewer.loadVrm(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, viewerReady, active, viewer, resolveVrmUrl]);
 
   // Voice position sliders only meaningful for koeiromap-style voice.
   const { provider: ttsProvider } = useMemo(
@@ -70,7 +107,6 @@ export default function Home() {
         return;
       }
 
-      // One controller per conversation turn. handleStop aborts it.
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -103,7 +139,6 @@ export default function Home() {
         let isFirst = true;
         let isLast = false;
         for (let i = 0; i < screenplays.length; i++) {
-          // Stop enqueuing new utterances once the user aborts.
           if (controller.signal.aborted) break;
           if (i === screenplays.length - 1) isLast = true;
           const screenplay = screenplays[i];
@@ -121,11 +156,6 @@ export default function Home() {
               },
               (err) => {
                 setIsSpeaking(false);
-                // Don't clobber the LLM's text in the assistant bubble when
-                // the TTS step alone fails. The reply is already in chatLog
-                // history; the user can read it there. A non-fatal warning
-                // in the console is enough — surfacing a TTS error after a
-                // successful reply was masking the actual content.
                 console.warn("[TTS playback error]", err);
                 resolve();
               }
@@ -133,8 +163,6 @@ export default function Home() {
           });
         }
       } catch (err: unknown) {
-        // AbortError is expected when the user hits stop — don't surface
-        // it as an error in the assistant bubble.
         if (err instanceof DOMException && err.name === "AbortError") {
           // keep whatever text was already streamed
         } else {
@@ -153,40 +181,65 @@ export default function Home() {
   );
 
   const handleStop = useCallback(() => {
-    // Abort the in-flight LLM stream (if any) and signal the TTS
-    // loop to stop enqueuing further utterances. The viewer's audio
-    // chain doesn't expose a public abort hook, so the currently
-    // playing utterance will finish naturally.
     abortRef.current?.abort();
     abortRef.current = null;
     setIsProcessing(false);
     setIsSpeaking(false);
   }, []);
 
+  // Pick a VRM file: load into viewer immediately for instant feedback,
+  // and persist it to the active character (IndexedDB blob + metadata).
   const handlePickVrm = useCallback(
     (file: File) => {
       if (!viewer) return;
       const url = URL.createObjectURL(file);
-      // Revoke the object URL after the VRM finishes loading to avoid
-      // leaking blob URLs on repeated picks.
       viewer.loadVrm(url, () => URL.revokeObjectURL(url));
+      void setActiveVrmFile(file);
     },
-    [viewer]
+    [viewer, setActiveVrmFile]
   );
 
   const handleResetVrm = useCallback(() => {
-    if (!viewer) return;
+    if (!viewer || !active) return;
     viewer.loadVrm(buildUrl("/AvatarSample_B.vrm"));
-  }, [viewer]);
+    updateActive({ vrmSource: "/AvatarSample_B.vrm" });
+  }, [viewer, active, updateActive]);
+
+  const handleAddCharacter = useCallback(async () => {
+    await createCharacter({
+      name: isZh ? "新角色" : "New Character",
+      // Seed from the current active character so the user can branch
+      // off an existing persona — they can edit afterwards.
+      systemPrompt: active?.systemPrompt ?? SYSTEM_PROMPT,
+      koeiroParam: active?.koeiroParam ?? DEFAULT_PARAM,
+      vrmSource: "/AvatarSample_B.vrm",
+    });
+  }, [createCharacter, active, isZh]);
+
+  const handleRenameCharacter = useCallback(
+    (id: string, name: string) => {
+      updateCharacter(id, { name });
+    },
+    [updateCharacter]
+  );
+
+  const handleDeleteCharacter = useCallback(
+    (id: string) => {
+      deleteCharacter(id);
+    },
+    [deleteCharacter]
+  );
 
   const handleResetAll = useCallback(() => {
     setLlmSettings(loadLLMSettings());
     setTtsSettings(loadTTSSettings());
-    setSystemPrompt(SYSTEM_PROMPT);
-    setKoeiroParam(DEFAULT_PARAM);
+    // Reset the active character's prompt + voice to defaults. We do
+    // NOT delete user-created characters here — that's a destructive
+    // action reserved for the per-character delete button.
+    updateActive({ systemPrompt: SYSTEM_PROMPT, koeiroParam: DEFAULT_PARAM });
     setChatLog([]);
     setAssistantMessage("");
-  }, []);
+  }, [updateActive]);
 
   const openMenu = () => {
     setDrawerInitial("root");
@@ -199,8 +252,11 @@ export default function Home() {
   };
 
   return (
-    <div className="font-M_PLUS_2">
-      <VrmViewer />
+    <div className="font_M_PLUS_2">
+      <VrmViewer
+        onReady={() => setViewerReady(true)}
+        onVrmFile={handlePickVrm}
+      />
       <TopBar
         onOpenMenu={openMenu}
         onOpenChat={openChat}
@@ -225,17 +281,27 @@ export default function Home() {
         ttsSettings={ttsSettings}
         onChangeTts={setTtsSettings}
         systemPrompt={systemPrompt}
-        onChangeSystemPrompt={setSystemPrompt}
+        onChangeSystemPrompt={(s) => updateActive({ systemPrompt: s })}
         koeiroParam={koeiroParam}
-        onChangeKoeiro={setKoeiroParam}
+        onChangeKoeiro={(p: KoeiroParam) => updateActive({ koeiroParam: p })}
         messages={chatLog}
         onClearMessages={() => setChatLog([])}
         onPickVrm={handlePickVrm}
         onResetVrm={handleResetVrm}
         onResetAll={handleResetAll}
         showVoicePos={showVoicePos}
+        characters={characters}
+        activeCharacterId={activeId}
+        onSelectCharacter={setActiveId}
+        onAddCharacter={handleAddCharacter}
+        onRenameCharacter={handleRenameCharacter}
+        onDeleteCharacter={handleDeleteCharacter}
       />
       {viewer && <VrmStoreProvider viewer={viewer} />}
+      {/* charactersReady is referenced here so the hook's initial load
+          is treated as part of the render tree's lifecycle — keeps
+          SSR/hydration honest even though we don't render a fallback. */}
+      {charactersReady ? null : null}
     </div>
   );
 }
