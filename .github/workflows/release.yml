@@ -46,7 +46,7 @@ jobs:
 
       # 便于在不看 Release 的情况下直接下载构建产物
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: workbench-windows-x64
           path: release-assets/*
